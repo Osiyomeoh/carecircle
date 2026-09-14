@@ -54,3 +54,22 @@ Template:
   with TypeScript's own recommended `NodeNext` resolution — which undercuts the main
   reason to reach for it.
 - **Date:** 2026-09-14
+
+### Node 24 type stripping — parameter properties are rejected at runtime
+- **Task attempted:** Run tests against source using TypeScript parameter properties
+  (`constructor(public readonly capability: Capability)`), a standard idiom for
+  typed error classes.
+- **Steps taken:** `tsc --noEmit` passed cleanly. `node --test` on the same files failed.
+- **Expected:** Either both tools accept the code, or `tsc` warns that the syntax is
+  incompatible with Node's strip-only mode when the project targets it.
+- **Actual:** `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX: TypeScript parameter property is not
+  supported in strip-only mode` — at runtime, per file, only when that file is loaded.
+  The type checker gives no hint, so the failure surfaces late and one file at a time.
+- **Severity:** major — valid, type-checked TypeScript that crashes only at runtime.
+- **Workaround:** Declare fields explicitly and assign in the constructor body.
+- **Suggestion:** Ship a `tsconfig` flag (e.g. `"erasableSyntaxOnly"` surfaced in
+  `--init` templates) that makes `tsc` reject non-erasable syntax up front, and mention
+  the strip-only restrictions in Node's own type-stripping docs with the full list —
+  parameter properties, enums, namespaces, decorators — rather than leaving developers
+  to discover them one runtime crash at a time.
+- **Date:** 2026-09-14
