@@ -468,6 +468,43 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     } catch (err) { return guidance(describeError(err)); }
   });
 
+  // --- 11. "Tell Renee I'm taking Mom." ----------------------------------
+  server.registerTool('notify_member', {
+    title: 'Let someone in the care circle know something',
+    description:
+      'Send a short message to another member of the care circle — "tell Renee I\'m '
+      + 'taking Mom Thursday", "let David know the pharmacy called". Use this when the '
+      + 'speaker wants a specific PERSON told something. To record something for the '
+      + 'whole family to see later, use add_note instead.',
+    inputSchema: {
+      recipientName: z.string().describe('Who to tell, as the speaker named them.'),
+      message: z.string().describe('What to tell them, in the speaker\'s own words.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ recipientName, message }) => {
+    try {
+      const me = actor();
+      const recipient = store.findMemberByName(me.householdId, recipientName);
+      if (!recipient) {
+        const others = state().members.filter((m) => m.id !== me.id).map((m) => m.spokenAs ?? m.name);
+        return guidance(
+          `There's nobody called "${recipientName}" in this care circle. `
+          + `The people here are ${joinSpoken(others)}. Ask which one they meant.`,
+        );
+      }
+      const event = await store.appendEvent({
+        householdId: me.householdId,
+        kind: 'member_notified',
+        reportedBy: me.id,
+        occurredAt: now().toISOString(),
+        detail: message,
+        data: { recipientId: recipient.id },
+      });
+      const who = recipient.spokenAs ?? recipient.name;
+      return reply(`I'll let ${who} know.`, { eventId: event.id, recipientId: recipient.id });
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
   // --- Resources: the care record, readable as a document ----------------
   server.registerResource('care-state', 'carecircle://household/state', {
     title: 'Current care state',
@@ -488,6 +525,15 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
             provenance: o.provenance.kind,
           })),
           gaps: detectCareGaps(s, { now: now() }),
+          notifications: s.events
+            .filter((e) => e.kind === 'member_notified')
+            .slice(-5)
+            .map((e) => ({
+              from: nameOf(e.reportedBy) ?? 'Someone',
+              to: nameOf(e.data['recipientId'] as string) ?? 'someone',
+              message: e.detail ?? '',
+              at: e.occurredAt,
+            })),
         }, null, 2),
       }],
     };

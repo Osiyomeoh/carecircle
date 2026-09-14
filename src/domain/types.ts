@@ -39,6 +39,7 @@ export type EventKind =
   | 'appointment_scheduled'
   | 'note_added'
   | 'obligation_resolved'
+  | 'member_notified'
   | 'check_in';
 
 /**

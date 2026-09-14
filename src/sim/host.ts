@@ -156,5 +156,28 @@ export class SimulatedAlexa {
     };
   }
 
+  /**
+   * Invoke a tool directly, bypassing the model — what a card button does.
+   *
+   * The turn is still recorded in the conversation history so the model knows what
+   * happened; otherwise the next spoken turn would contradict the screen.
+   */
+  async callToolDirect(name: string, args: Record<string, unknown>): Promise<ToolCallRecord> {
+    const started = Date.now();
+    const out = await this.#mcp.callTool({ name, arguments: args }) as {
+      content?: { text?: string }[]; structuredContent?: unknown; isError?: boolean;
+    };
+    const text = out.content?.[0]?.text ?? '';
+    this.#history.push(
+      { role: 'user', content: [{ text: `[tapped ${name}]` }] },
+      { role: 'assistant', content: [{ text }] },
+    );
+    return {
+      name, arguments: args, result: text,
+      ...(out.structuredContent !== undefined ? { structured: out.structuredContent } : {}),
+      isError: out.isError === true, ms: Date.now() - started,
+    };
+  }
+
   async close(): Promise<void> { await this.#mcp.close(); }
 }

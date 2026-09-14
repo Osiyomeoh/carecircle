@@ -64,6 +64,32 @@ app.post('/api/say', async (req, res) => {
 });
 
 /**
+ * A card button tap.
+ *
+ * This is the feature request in working form: the card carries a bound tool call,
+ * and tapping it invokes that tool directly with no model in the loop. Voice is the
+ * right input for capture; a tap is the right input for choosing among similar
+ * items, where a misheard referring expression would assign a hospital trip to the
+ * wrong person.
+ */
+app.post('/api/act', async (req, res) => {
+  const { memberId, tool, args } = req.body as {
+    memberId?: string; tool?: string; args?: Record<string, unknown>;
+  };
+  if (!memberId || !tool) {
+    res.status(400).json({ error: 'memberId and tool are required' });
+    return;
+  }
+  try {
+    const host = await hostFor(memberId);
+    const out = await host.callToolDirect(tool, args ?? {});
+    res.json(out);
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
+});
+
+/**
  * The live care board. Read through the MCP server's own resource, so the panel
  * shows exactly what the protocol exposes — not a privileged side channel.
  */
