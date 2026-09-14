@@ -180,3 +180,34 @@ Template:
   regions and models, which is the opposite of what a developer familiar with
   regional service quotas will assume, and costs real time to discover by probing.
 - **Date:** 2026-09-14
+
+
+### Bedrock — "Too many tokens per day" is reported when the quota is zero
+- **Task attempted:** Run a tool-selection evaluation, then diagnose why every call failed.
+- **Steps taken:** Every `Converse` call returned
+  `ThrottlingException: Too many tokens per day, please wait before trying again.`
+  We checked other regions, then other model families, then compared the account's
+  applied quotas against the AWS defaults.
+- **Expected:** That message to mean what it says — a budget consumed, refilling later.
+- **Actual:** The account's applied value for
+  `Cross-region model inference tokens per minute for Anthropic Claude Sonnet 4.5`
+  (`L-8EA73537`) is **0**, against an AWS default of **1,000,000**. Every Bedrock
+  inference quota on the account is 0, across all vendors, for both tokens per day and
+  requests per minute. Nothing had been consumed. There was never any capacity to
+  consume, and waiting would never have helped.
+- **Severity:** blocker, and the wrong diagnosis is the expensive part. The message
+  describes exhaustion, so we spent time looking for the workload that drained the
+  budget, checking whether credits had run out, and enabling a second region on the
+  assumption that quotas were regional. All of that was wasted: the true state was
+  "this account has no Bedrock capacity allocated."
+- **Workaround:** None available to the developer. The quota has to be raised, and the
+  daily-token quotas are marked non-adjustable, so it appears to need AWS Support.
+- **Suggestion:** (1) Distinguish "you have used your quota" from "your quota is zero".
+  They are completely different situations and only one of them is worth waiting out.
+  A zero quota should return something like *"This account has no on-demand inference
+  quota for this model. Request an increase or contact support."* (2) Surface the
+  applied-vs-default quota in the Bedrock console, since a value of 0 against a default
+  of 1,000,000 is instantly diagnostic and currently takes a Service Quotas comparison
+  to discover. (3) `ThrottlingException` is the wrong error class for a permanent
+  condition — clients retry it by default, which here means retrying forever.
+- **Date:** 2026-09-14
