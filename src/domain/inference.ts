@@ -80,3 +80,65 @@ export function proposeFromAppointment(
       dueAt: startsAt,
     }));
 }
+
+
+/**
+ * Constraints: obligations discovered from what someone says they *cannot* do.
+ *
+ * This is the deeper half of obligation discovery. An appointment implies work that
+ * does not exist yet. A constraint does something else: it *orphans work that
+ * already has an owner*. Nobody says "create a task" — somebody says "I can't drive
+ * Thursday", and a ride that was covered silently stops being covered.
+ *
+ * That silence is precisely the failure mode CareCircle exists to catch, so the
+ * orphaned obligation is surfaced the same way as any other inference: as a
+ * proposal, explaining what it noticed and what it is guessing.
+ */
+
+export interface Unavailability {
+  /** Who is unavailable. */
+  memberId: string;
+  /** ISO window they cannot cover. */
+  from: string;
+  to: string;
+  /** What they said, verbatim. */
+  said?: string;
+}
+
+export interface OrphanedWork {
+  obligationId: string;
+  what: string;
+  /** The question to put to a human about who picks this up. */
+  ask: string;
+}
+
+/**
+ * Find work that a stated unavailability leaves without a real owner.
+ *
+ * Returns descriptions, not decisions: CareCircle never silently reassigns someone
+ * else's responsibility. It notices, and it asks.
+ */
+export function orphanedBy(
+  unavailability: Unavailability,
+  obligations: Obligation[],
+  nameOf: (memberId: string) => string,
+): OrphanedWork[] {
+  const from = new Date(unavailability.from).getTime();
+  const to = new Date(unavailability.to).getTime();
+  const who = nameOf(unavailability.memberId);
+
+  return obligations
+    .filter((o) => o.ownerId === unavailability.memberId)
+    .filter((o) => o.status === 'ASSIGNED')
+    .filter((o) => {
+      if (!o.dueAt) return false;
+      const due = new Date(o.dueAt).getTime();
+      return due >= from && due <= to;
+    })
+    .map((o) => ({
+      obligationId: o.id,
+      what: o.what,
+      ask: `${who} has "${o.what}" but just said they aren't available then. `
+        + 'Does someone else need to pick it up?',
+    }));
+}

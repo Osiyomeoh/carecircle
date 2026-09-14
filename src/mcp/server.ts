@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { detectCareGaps, pendingProposals } from '../domain/gaps.js';
-import { proposeFromAppointment } from '../domain/inference.js';
+import { orphanedBy, proposeFromAppointment } from '../domain/inference.js';
 import { can, canActOn, NotPermittedError, require as requireCap } from '../domain/auth.js';
 import { CareStore, HouseholdScopeError, NotFoundError } from '../store/store.js';
 import { countPhrase, joinSpoken, sentence, speakGaps } from './text.js';
@@ -217,13 +217,21 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       'Record an observation, concern, or piece of context that the rest of the family '
       + 'should see — "Mom sounded tired", "the doctor changed her dose". Use this when '
       + 'there is something to SAY but nothing specific that must be DONE. If someone needs '
-      + 'to take an action, use record_appointment or let the note stand and let them claim it.',
+      + 'to take an action, use record_appointment or let the note stand and let them claim it.\n\n'
+      + 'IMPORTANT: if the person says someone is UNAVAILABLE — "I can\'t drive Thursday", '
+      + '"Renee is away next week" — fill in `unavailable`. Work that person was covering may '
+      + 'quietly stop being covered, and that silence is exactly what this system exists to catch.',
     inputSchema: {
       note: z.string().describe('The observation, in the words it was said.'),
       aboutMemberId: z.string().optional().describe('Who it concerns. Defaults to the care recipient.'),
+      unavailable: z.object({
+        memberName: z.string().describe('Who is unavailable, as the speaker named them.'),
+        from: z.string().describe('ISO start of the window they cannot cover.'),
+        to: z.string().describe('ISO end of the window.'),
+      }).optional().describe('Set when the note says someone cannot do something in a time window.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-  }, async ({ note, aboutMemberId }) => {
+  }, async ({ note, aboutMemberId, unavailable }) => {
     try {
       const me = actor();
       const s = state();
@@ -234,9 +242,38 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         reportedBy: me.id,
         occurredAt: now().toISOString(),
         detail: note,
-        data: { aboutMemberId: about },
+        data: { aboutMemberId: about, ...(unavailable ? { unavailable } : {}) },
       });
-      return reply("I've added that to the care record.", { eventId: event.id });
+
+      if (!unavailable) {
+        return reply("I've added that to the care record.", { eventId: event.id });
+      }
+
+      // A constraint does not create work — it can orphan work that already has an
+      // owner. Nobody says "create a task"; somebody says they can't make Thursday.
+      const person = store.findMemberByName(me.householdId, unavailable.memberName);
+      if (!person) {
+        return reply("I've added that to the care record.", { eventId: event.id });
+      }
+      const orphaned = orphanedBy(
+        { memberId: person.id, from: unavailable.from, to: unavailable.to, said: note },
+        s.obligations,
+        (id) => nameOf(id) ?? 'They',
+      );
+      if (orphaned.length === 0) {
+        return reply("Noted — I'll keep that in mind.", { eventId: event.id, orphaned: [] });
+      }
+
+      // Reopen the orphaned work rather than silently reassigning it: CareCircle
+      // notices, and asks. It never moves someone else's responsibility on its own.
+      for (const o of orphaned) {
+        await store.transition(o.obligationId, me.householdId, 'OPEN', me.id, { ownerId: null },
+          `Owner unavailable: ${note}`);
+      }
+      return reply(orphaned[0]!.ask, {
+        eventId: event.id,
+        orphaned: orphaned.map((o) => ({ obligationId: o.obligationId, what: o.what })),
+      });
     } catch (err) { return guidance(describeError(err)); }
   });
 

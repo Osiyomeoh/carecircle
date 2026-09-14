@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { can, canActOn, NotPermittedError, require as requireCap } from './auth.ts';
-import { proposeFromAppointment } from './inference.ts';
+import { orphanedBy, proposeFromAppointment } from './inference.ts';
 import type { Member, Obligation, Role } from './types.ts';
 
 const member = (role: Role, id = 'm1'): Member =>
@@ -55,4 +55,34 @@ test('an appointment proposes transport, and says it is guessing', () => {
 
 test('a non-medical event proposes nothing', () => {
   assert.deepEqual(proposeFromAppointment('book club', 'Mom', '2026-10-16T14:00:00Z'), []);
+});
+
+test('an unavailability orphans work that person was covering', () => {
+  const thursday = '2026-10-15T14:00:00Z';
+  const obligations = [
+    { id:'o1', ownerId:'m_renee', status:'ASSIGNED', dueAt:thursday, what:'Drive Mom to cardiology' },
+    { id:'o2', ownerId:'m_david', status:'ASSIGNED', dueAt:thursday, what:'Pick up prescription' },
+    { id:'o3', ownerId:'m_renee', status:'RESOLVED', dueAt:thursday, what:'Already done' },
+  ] as unknown as Obligation[];
+
+  const orphaned = orphanedBy(
+    { memberId:'m_renee', from:'2026-10-15T00:00:00Z', to:'2026-10-15T23:59:00Z' },
+    obligations,
+    () => 'Renee',
+  );
+
+  // Only Renee's still-open work in that window. Nobody else's, nothing already done.
+  assert.deepEqual(orphaned.map((o) => o.obligationId), ['o1']);
+  assert.match(orphaned[0]!.ask, /Does someone else need to pick it up/);
+});
+
+test('an unavailability outside the window orphans nothing', () => {
+  const obligations = [
+    { id:'o1', ownerId:'m_renee', status:'ASSIGNED', dueAt:'2026-11-20T14:00:00Z', what:'Drive Mom' },
+  ] as unknown as Obligation[];
+  assert.deepEqual(
+    orphanedBy({ memberId:'m_renee', from:'2026-10-15T00:00:00Z', to:'2026-10-15T23:59:00Z' },
+      obligations, () => 'Renee'),
+    [],
+  );
 });
