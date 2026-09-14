@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { can, canActOn, NotPermittedError, require as requireCap } from './auth.ts';
 import { orphanedBy, proposeFromAppointment } from './inference.ts';
 import type { Member, Obligation, Role } from './types.ts';
+import { CareStore } from '../store/store.ts';
+import { seedDemoHousehold } from '../demo/seed.ts';
+import { seedScenario } from '../demo/scenario.ts';
 
 const member = (role: Role, id = 'm1'): Member =>
   ({ id, householdId: 'h1', name: 'Test', role });
@@ -85,4 +88,38 @@ test('an unavailability outside the window orphans nothing', () => {
       obligations, () => 'Renee'),
     [],
   );
+});
+
+test('the scenario puts cardiology on a real Thursday at 10:00 New York', async () => {
+  // The video says "Thursday at ten". A card reading "Wednesday at 6:44 AM" while
+  // the narrator says Thursday is the kind of detail a judge notices.
+  const store = new CareStore();
+  await store.reset();
+  await seedDemoHousehold(store);
+  const { cardiologyAt } = await seedScenario(store, 'h_margaret');
+
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', weekday: 'long', hour: 'numeric', minute: '2-digit', hour12: false,
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(cardiologyAt).map((p) => [p.type, p.value]));
+  assert.equal(parts['weekday'], 'Thursday');
+  assert.equal(Number(parts['hour']) % 24, 10);
+  assert.equal(parts['minute'], '00');
+  assert.ok(cardiologyAt.getTime() > Date.now(), 'must be in the future');
+});
+
+test('the scenario opens with the ride unowned and the evening dose unrecorded', async () => {
+  const store = new CareStore();
+  await store.reset();
+  await seedDemoHousehold(store);
+  await seedScenario(store, 'h_margaret');
+  const state = store.getCareState('h_margaret');
+
+  const ride = state.obligations.find((o) => o.what.includes('Drive Mom'));
+  assert.equal(ride?.status, 'OPEN');
+  assert.equal(ride?.ownerId, null);
+
+  // Morning doses logged; the evening one deliberately absent.
+  const logged = state.events.filter((e) => e.kind === 'medication_taken');
+  assert.equal(logged.length, 2);
 });
