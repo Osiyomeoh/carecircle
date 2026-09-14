@@ -152,3 +152,45 @@ first and most urgent instance, but the Events -> Obligations -> Ownership model
 underlies disability support, family logistics, community care, and any setting
 where several people share responsibility for someone who is not fully able to
 advocate for themselves.
+
+---
+
+## 7. Deferred: ambient obligation capture (Bee)
+
+**Status: gated. Do not start until the MCP server, the simulator, and the video
+script are done.**
+
+The current input model has one real weakness: an obligation only enters the system
+when somebody explicitly states it. In actual caregiving, obligations are created in
+conversation — at the clinic, on the phone with the pharmacy, in the kitchen. Nobody
+stops to log them. That is *why* things fall through the cracks.
+
+Bee (an ambient conversation recorder, usable via app + CLI with no hardware) closes
+that loop:
+
+```
+Real conversation at the cardiology appointment
+        |
+        v
+Bee transcript / facts  (CLI or MCP)
+        |
+        v
+Obligation extraction
+   provenance: INFERRED
+   status:     PROPOSED       <- never asserted as fact
+        |
+        v
+Human confirms  ->  OPEN  ->  claimable
+```
+
+This needs no new trust machinery: section 2 already requires that inferences enter
+as proposals for a human to confirm. Ambient capture is simply another source of
+`INFERRED` obligations.
+
+**Why it is gated anyway:** the Alexa+ track is judged on MCP quality, and Bee
+improves none of that. A project may win only one track prize and one mini challenge,
+so this adds strength to the idea, not another prize. And a half-working ambient
+capture is worse on video than none at all.
+
+**If time allows**, this is the highest-value remaining work, because it makes the
+strongest possible demo claim: *nobody typed any of this in.*
