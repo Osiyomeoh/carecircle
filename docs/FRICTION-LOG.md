@@ -113,3 +113,27 @@ Template:
   for initialize requests." A short "sessions span requests" note near the top of the
   Streamable HTTP docs would prevent the whole class of mistake.
 - **Date:** 2026-09-14
+
+### Bedrock — no way to discover which models you can actually call
+- **Task attempted:** Pick a valid Claude model id for `ConverseCommand` from a developer
+  account, for an agent loop driving an MCP server.
+- **Steps taken:** Guessed an id from the docs' naming pattern; got
+  `ValidationException: The provided model identifier is invalid.` Tried to enumerate
+  with `ListInferenceProfiles`; got `AccessDenied` for that action. Fell back to probing
+  candidate ids one at a time against `Converse` and reading the error types apart.
+- **Expected:** One call that answers "what can this principal invoke right now?"
+- **Actual:** Three different failure modes that have to be told apart by hand:
+  `ValidationException` (id malformed or nonexistent), `ResourceNotFoundException`
+  ("this model version has reached the end of its life"), and `AccessDeniedException`
+  (the id is real and you lack permission). Only the third confirms an id is correct —
+  so the way to verify a model id is to be denied access to it.
+- **Severity:** major — a first-run blocker for anyone whose account is not already set
+  up, and the error text does not point at the fix.
+- **Workaround:** Script a probe across candidate ids and treat `AccessDenied` as proof
+  the id is valid.
+- **Suggestion:** (1) Let `ListFoundationModels`/`ListInferenceProfiles` be readable by
+  default, or provide a `GetInvokableModels` that needs no extra grant. (2) Make the
+  invalid-identifier error name the nearest valid ids. (3) In the console, show the
+  exact `modelId` string to paste next to each model, including the regional inference
+  profile prefix — the `us.` prefix is easy to miss and produces the same opaque error.
+- **Date:** 2026-09-14

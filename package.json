@@ -4,15 +4,22 @@
   "description": "An open-source MCP server for shared household care coordination. Events -> Obligations -> Ownership.",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/http.ts",
     "start": "node dist/http.js",
     "test": "node --test \"src/**/*.test.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "sim": "tsx src/sim/app.ts",
+    "demo": "npm run build && node dist/http.js",
+    "e2e": "tsx scripts/e2e.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock": "^3.1131.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.1131.0",
     "@modelcontextprotocol/sdk": "1.30.0",
     "express": "^5.1.0",
     "zod": "^3.25.0"

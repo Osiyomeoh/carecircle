@@ -1,0 +1,126 @@
+import express from 'express';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { SimulatedAlexa } from './host.js';
+import { DEMO_TOKENS } from '../demo/seed.js';
+
+/**
+ * Simulated Alexa+ experience.
+ *
+ * Serves the device mock and brokers turns between the browser, a Bedrock model,
+ * and the CareCircle MCP server. One host per member, so each device in the demo
+ * (Margaret's kitchen Echo, David's phone) keeps its own conversation.
+ */
+
+const PORT = Number(process.env['SIM_PORT'] ?? 5173);
+const MCP_ENDPOINT = process.env['CARECIRCLE_URL'] ?? 'http://localhost:8787/mcp';
+const REGION = process.env['AWS_REGION'] ?? 'us-east-1';
+const MODEL_ID = process.env['BEDROCK_MODEL_ID'] ?? 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+
+const here = dirname(fileURLToPath(import.meta.url));
+
+/** member id -> its connected host. Created lazily on first utterance. */
+const hosts = new Map<string, SimulatedAlexa>();
+const tokenFor = new Map(Object.entries(DEMO_TOKENS).map(([token, member]) => [member, token]));
+
+async function hostFor(memberId: string): Promise<SimulatedAlexa> {
+  const existing = hosts.get(memberId);
+  if (existing) return existing;
+  const token = tokenFor.get(memberId);
+  if (!token) throw new Error(`No credential for ${memberId}`);
+  const host = await SimulatedAlexa.connect({
+    endpoint: MCP_ENDPOINT, token, region: REGION, modelId: MODEL_ID,
+  });
+  hosts.set(memberId, host);
+  return host;
+}
+
+const app = express();
+app.use(express.json());
+app.use(express.static(join(here, '../../public')));
+
+/** One spoken turn from one member's device. */
+app.post('/api/say', async (req, res) => {
+  const { memberId, text } = req.body as { memberId?: string; text?: string };
+  if (!memberId || !text) {
+    res.status(400).json({ error: 'memberId and text are required' });
+    return;
+  }
+  try {
+    const host = await hostFor(memberId);
+    const turn = await host.say(text);
+    res.json(turn);
+  } catch (err) {
+    const message = (err as Error).message;
+    // Bedrock credential problems are the most likely failure on a fresh clone,
+    // so say so plainly rather than surfacing an opaque SDK error in the UI.
+    const isAuth = /credential|security token|AccessDenied|not authorized|region/i.test(message);
+    res.status(502).json({
+      error: isAuth
+        ? `Bedrock could not be reached: ${message}. Check AWS credentials, the region (${REGION}), and that model access is enabled for ${MODEL_ID}.`
+        : message,
+    });
+  }
+});
+
+/**
+ * The live care board. Read through the MCP server's own resource, so the panel
+ * shows exactly what the protocol exposes — not a privileged side channel.
+ */
+app.get('/api/state', async (_req, res) => {
+  try {
+    const token = tokenFor.get('m_david');
+    const response = await fetch(MCP_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'initialize',
+        params: {
+          protocolVersion: '2025-11-25',
+          capabilities: {},
+          clientInfo: { name: 'carecircle-board', version: '0.1.0' },
+        },
+      }),
+    });
+    const sessionId = response.headers.get('mcp-session-id');
+    await response.text();
+    if (!sessionId) throw new Error('No session id returned by the MCP server');
+
+    const headers = {
+      'content-type': 'application/json',
+      accept: 'application/json, text/event-stream',
+      authorization: `Bearer ${token}`,
+      'mcp-session-id': sessionId,
+    };
+    await fetch(MCP_ENDPOINT, {
+      method: 'POST', headers,
+      body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }),
+    });
+    const read = await fetch(MCP_ENDPOINT, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 2, method: 'resources/read',
+        params: { uri: 'carecircle://household/state' },
+      }),
+    });
+    const body = await read.json() as { result?: { contents?: { text?: string }[] } };
+    void fetch(MCP_ENDPOINT, { method: 'DELETE', headers }).catch(() => undefined);
+    res.json(JSON.parse(body.result?.contents?.[0]?.text ?? '{}'));
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
+});
+
+app.get('/api/config', (_req, res) => {
+  res.json({ region: REGION, modelId: MODEL_ID, endpoint: MCP_ENDPOINT });
+});
+
+app.listen(PORT, () => {
+  console.log(`Alexa+ simulator on http://localhost:${PORT}`);
+  console.log(`  talking to MCP server at ${MCP_ENDPOINT}`);
+  console.log(`  model ${MODEL_ID} in ${REGION}`);
+});

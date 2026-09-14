@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CareCircle — Alexa+ simulator</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel-2:#182030; --line:#243044;
+    --text:#e8edf5; --dim:#8b9bb4; --accent:#00c8ff; --accent-dim:#0a4c63;
+    --high:#ff5c6c; --med:#ffb648; --low:#6ee7a8; --prop:#b98bff;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;overflow:hidden}
+  .wrap{display:grid;grid-template-columns:minmax(380px,1fr) minmax(420px,1.15fr);gap:18px;padding:18px;height:100vh}
+  .col{display:flex;flex-direction:column;gap:14px;min-height:0}
+  h1{font-size:15px;margin:0;letter-spacing:.3px}
+  h1 span{color:var(--dim);font-weight:400}
+  .sub{font-size:11px;color:var(--dim);margin-top:3px}
+
+  /* device */
+  .device{background:#05080c;border:1px solid var(--line);border-radius:20px;padding:14px;display:flex;flex-direction:column;flex:1;min-height:0;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+  .who{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .who button{background:var(--panel-2);border:1px solid var(--line);color:var(--dim);padding:6px 10px;border-radius:999px;font-size:11px;cursor:pointer;font-family:var(--font)}
+  .who button.on{background:var(--accent-dim);border-color:var(--accent);color:var(--text)}
+  .screen{flex:1;overflow-y:auto;padding:6px 2px;display:flex;flex-direction:column;gap:12px;min-height:0}
+  .bubble{max-width:88%;padding:10px 13px;border-radius:14px;font-size:13px;line-height:1.5;animation:rise .25s ease}
+  .me{align-self:flex-end;background:var(--panel-2);border:1px solid var(--line)}
+  .alexa{align-self:flex-start;background:linear-gradient(180deg,#0d2a38,#0a1f2b);border:1px solid var(--accent-dim)}
+  .alexa .tag{font-size:9px;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase;display:block;margin-bottom:5px}
+  .err{align-self:flex-start;background:#2a1216;border:1px solid #5a2530;color:#ffb3bd;font-size:12px}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .bar{border-top:1px solid var(--line);padding-top:11px;margin-top:8px}
+  .bar form{display:flex;gap:8px}
+  input[type=text]{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 13px;font-size:13px;font-family:var(--font)}
+  input[type=text]:focus{outline:none;border-color:var(--accent)}
+  .go{background:var(--accent);color:#04222d;border:none;border-radius:10px;padding:0 16px;font-weight:600;cursor:pointer;font-size:13px}
+  .go:disabled{opacity:.45;cursor:default}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .chips button{background:transparent;border:1px dashed var(--line);color:var(--dim);font-size:11px;padding:5px 9px;border-radius:8px;cursor:pointer;font-family:var(--font);text-align:left}
+  .chips button:hover{border-color:var(--accent);color:var(--text)}
+
+  /* board */
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;min-height:0}
+  .panel.grow{flex:1;overflow:hidden}
+  .cards{overflow-y:auto;display:flex;flex-direction:column;gap:9px;margin-top:11px;min-height:0}
+  .card{background:var(--panel-2);border:1px solid var(--line);border-left-width:3px;border-radius:10px;padding:11px 13px;animation:rise .3s ease}
+  .card.HIGH{border-left-color:var(--high)} .card.MEDIUM{border-left-color:var(--med)} .card.LOW{border-left-color:var(--low)}
+  .card.proposal{border-left-color:var(--prop);border-style:dashed}
+  .card .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .card .what{font-size:13px;font-weight:500;line-height:1.4}
+  .pill{font-size:9px;letter-spacing:1px;padding:3px 7px;border-radius:999px;white-space:nowrap;text-transform:uppercase}
+  .pill.HIGH{background:#3a1119;color:#ff8b97} .pill.MEDIUM{background:#3a2a10;color:#ffce85}
+  .pill.LOW{background:#0f2c1f;color:#8df0bb} .pill.prop{background:#261a3d;color:#cdaaff}
+  .why{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.5}
+  .owner{font-size:11px;margin-top:7px;color:var(--dim)}
+  .owner b{color:var(--low);font-weight:600}
+  .none{color:var(--dim);font-size:12px;padding:16px 2px;text-align:center}
+
+  /* tool calls */
+  .calls{overflow-y:auto;margin-top:10px;display:flex;flex-direction:column;gap:6px;min-height:0}
+  .call{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;background:#0a0f16;border:1px solid var(--line);border-radius:8px;padding:8px 10px;animation:rise .2s ease}
+  .call .n{color:var(--accent)} .call.bad .n{color:var(--high)}
+  .call .a{color:var(--dim);word-break:break-all;margin-top:3px;line-height:1.45}
+  .call .ms{float:right;color:#54657f}
+  .legend{font-size:10px;color:var(--dim);margin-top:9px;border-top:1px solid var(--line);padding-top:9px;line-height:1.6}
+  .thinking{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="col">
+    <div>
+      <h1>CareCircle <span>· simulated Alexa+ device</span></h1>
+      <div class="sub" id="cfg">connecting…</div>
+    </div>
+    <div class="device">
+      <div class="who" id="who"></div>
+      <div class="screen" id="screen"></div>
+      <div class="bar">
+        <form id="form">
+          <input type="text" id="utt" placeholder="Say something…" autocomplete="off">
+          <button class="go" id="go" type="submit">Speak</button>
+        </form>
+        <div class="chips" id="chips"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="panel grow">
+      <div>
+        <h1>Care Gaps <span>· live</span></h1>
+        <div class="sub">Work that is known to be needed and has nobody on it.</div>
+      </div>
+      <div class="cards" id="gaps"><div class="none">loading…</div></div>
+      <div class="legend">
+        <b>Rich cards are the ask.</b> Spoken, this list caps out at about three items.
+        On a screen a family reads twelve at a glance and points at the one they mean.
+        Everything shown here — severity, reason, owner — is already in the MCP
+        <code>structuredContent</code>; today it has to be flattened into a sentence.
+      </div>
+    </div>
+    <div class="panel" style="height:34%">
+      <div>
+        <h1>MCP calls <span>· spec 2025-11-25</span></h1>
+        <div class="sub">Chosen by the model from tool descriptions — nothing is scripted.</div>
+      </div>
+      <div class="calls" id="calls"><div class="none">no calls yet</div></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+const MEMBERS = [
+  { id:'m_margaret', label:'Margaret · kitchen Echo', chips:[
+      'I took my heart pill','I took my thyroid tablet' ] },
+  { id:'m_david', label:'David · phone', chips:[
+      "What's going to fall through the cracks this week?",
+      "How's Mom doing today?", "I'll take the cardiology one" ] },
+  { id:'m_renee', label:'Renee · sister', chips:[
+      'Mom has cardiology on Thursday at 10am',
+      'Mom sounded tired on the phone',
+      'Assign the pharmacy run to David' ] },
+  { id:'m_aide', label:'Tasha · paid aide', chips:[
+      'What do I need to know today?', "What's going on with the family?" ] },
+];
+
+let current = MEMBERS[1];
+const $ = (id) => document.getElementById(id);
+
+fetch('/api/config').then(r=>r.json()).then(c=>{
+  $('cfg').textContent = `${c.modelId.split('.').pop()} · ${c.region} · MCP ${c.endpoint}`;
+}).catch(()=>{ $('cfg').textContent = 'simulator offline'; });
+
+function renderWho(){
+  $('who').innerHTML='';
+  for(const m of MEMBERS){
+    const b=document.createElement('button');
+    b.textContent=m.label;
+    if(m.id===current.id) b.className='on';
+    b.onclick=()=>{ current=m; renderWho(); renderChips(); };
+    $('who').append(b);
+  }
+}
+function renderChips(){
+  $('chips').innerHTML='';
+  for(const c of current.chips){
+    const b=document.createElement('button');
+    b.textContent=c;
+    b.onclick=()=>{ $('utt').value=c; $('form').requestSubmit(); };
+    $('chips').append(b);
+  }
+}
+function bubble(cls, html){
+  const d=document.createElement('div');
+  d.className='bubble '+cls; d.innerHTML=html;
+  $('screen').append(d); $('screen').scrollTop=$('screen').scrollHeight;
+  return d;
+}
+const esc = (s)=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function renderCalls(calls){
+  if(!calls.length) return;
+  if($('calls').querySelector('.none')) $('calls').innerHTML='';
+  for(const c of calls){
+    const d=document.createElement('div');
+    d.className='call'+(c.isError?' bad':'');
+    d.innerHTML=`<span class="ms">${c.ms}ms</span><span class="n">${esc(c.name)}</span>`
+      + `<div class="a">${esc(JSON.stringify(c.arguments))}</div>`;
+    $('calls').prepend(d);
+  }
+}
+
+async function refreshBoard(){
+  try{
+    const s = await (await fetch('/api/state')).json();
+    const gaps = s.gaps ?? [];
+    const proposals = (s.obligations ?? []).filter(o=>o.status==='PROPOSED');
+    const owned = (s.obligations ?? []).filter(o=>o.status==='ASSIGNED');
+    const box=$('gaps'); box.innerHTML='';
+
+    for(const p of proposals){
+      const d=document.createElement('div');
+      d.className='card proposal';
+      d.innerHTML=`<div class="top"><div class="what">${esc(p.what)}</div>`
+        +`<div class="pill prop">proposed</div></div>`
+        +`<div class="why">Inferred by the system. Not treated as real work until a person confirms it.</div>`;
+      box.append(d);
+    }
+    for(const g of gaps){
+      const d=document.createElement('div');
+      d.className='card '+g.severity;
+      d.innerHTML=`<div class="top"><div class="what">${esc(g.spoken)}</div>`
+        +`<div class="pill ${g.severity}">${esc(g.kind)}</div></div>`
+        +`<div class="why">${esc(g.because)}</div>`;
+      box.append(d);
+    }
+    for(const o of owned){
+      const d=document.createElement('div');
+      d.className='card LOW';
+      d.innerHTML=`<div class="top"><div class="what">${esc(o.what)}</div>`
+        +`<div class="pill LOW">claimed</div></div>`
+        +`<div class="owner"><b>${esc(o.owner ?? 'someone')}</b> has this.</div>`;
+      box.append(d);
+    }
+    if(!box.children.length) box.innerHTML='<div class="none">Nothing outstanding. Everything recorded has an owner.</div>';
+  }catch{
+    $('gaps').innerHTML='<div class="none">care board unavailable — is the MCP server running?</div>';
+  }
+}
+
+$('form').onsubmit = async (e)=>{
+  e.preventDefault();
+  const text=$('utt').value.trim();
+  if(!text) return;
+  $('utt').value=''; $('go').disabled=true;
+  bubble('me', esc(text));
+  const pending = bubble('alexa','<span class="tag">Alexa</span><span class="thinking"></span>');
+  try{
+    const res = await fetch('/api/say',{
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({ memberId: current.id, text }),
+    });
+    const data = await res.json();
+    if(!res.ok){ pending.className='bubble err'; pending.textContent=data.error; }
+    else{
+      pending.innerHTML=`<span class="tag">Alexa</span>${esc(data.spoken)}`;
+      renderCalls(data.toolCalls ?? []);
+    }
+  }catch(err){
+    pending.className='bubble err'; pending.textContent=String(err);
+  }
+  $('go').disabled=false; $('utt').focus();
+  refreshBoard();
+};
+
+renderWho(); renderChips(); refreshBoard();
+setInterval(refreshBoard, 4000);
+</script>
+</body>
+</html>
