@@ -171,12 +171,32 @@ npm run e2e      # the whole story, through a real MCP client
 npm test
 ```
 
-The simulator needs AWS credentials with Bedrock access:
+The simulator and the evals need AWS credentials with Bedrock access:
 
 ```bash
+export AWS_PROFILE=conductor
 export AWS_REGION=us-east-1
 export BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
 ```
+
+See `.env.example`. Bedrock daily token quotas are per region, so a second region
+with model access enabled is a useful fallback when one is exhausted.
+
+## Measured tool selection
+
+An MCP server lives or dies on whether a model picks the right tool from the
+descriptions alone, so we measure it rather than assert it:
+
+```bash
+npm run demo:reset && npm run dev   # in one shell
+npm run evals                       # in another
+```
+
+68 utterances across all four members of the care circle. The model receives the
+real tool definitions and one utterance; we record its first tool choice and
+execute nothing. Cases that never reach the model — credentials, throttling — are
+excluded from the accuracy figure rather than counted as wrong answers, because a
+number that can lie is worse than no number.
 
 Demo credentials (one per member — the identity model in miniature):
 

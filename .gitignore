@@ -3,3 +3,4 @@ dist/
 .env
 *.log
 carecircle.db*
+evals-results.json
