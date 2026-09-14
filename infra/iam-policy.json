@@ -1,0 +1,154 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "BedrockInference",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel",
+        "bedrock:InvokeModelWithResponseStream",
+        "bedrock:Converse",
+        "bedrock:ConverseStream",
+        "bedrock:ListFoundationModels",
+        "bedrock:GetFoundationModel",
+        "bedrock:ListInferenceProfiles",
+        "bedrock:GetInferenceProfile",
+        "bedrock:ListCustomModels",
+        "bedrock:GetModelInvocationLoggingConfiguration"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AgentCoreRuntime",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DiagnoseQuotasAndUsage",
+      "Effect": "Allow",
+      "Action": [
+        "servicequotas:GetServiceQuota",
+        "servicequotas:GetAWSDefaultServiceQuota",
+        "servicequotas:ListServiceQuotas",
+        "servicequotas:ListAWSDefaultServiceQuotas",
+        "servicequotas:ListRequestedServiceQuotaChangeHistory",
+        "servicequotas:RequestServiceQuotaIncrease",
+        "cloudwatch:GetMetricStatistics",
+        "cloudwatch:GetMetricData",
+        "cloudwatch:ListMetrics",
+        "cloudwatch:PutMetricData",
+        "cloudwatch:DescribeAlarms",
+        "cloudwatch:PutMetricAlarm",
+        "freetier:GetFreeTierUsage",
+        "ce:GetCostAndUsage",
+        "ce:GetCostForecast"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Deployment",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:*",
+        "ecr:*",
+        "s3:*",
+        "apprunner:*",
+        "codebuild:*",
+        "logs:*",
+        "xray:PutTraceSegments",
+        "xray:PutTelemetryRecords",
+        "xray:GetSamplingRules",
+        "xray:GetSamplingTargets"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DataAndMessaging",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:*",
+        "sns:CreateTopic",
+        "sns:DeleteTopic",
+        "sns:Publish",
+        "sns:Subscribe",
+        "sns:Unsubscribe",
+        "sns:ListTopics",
+        "sns:ListSubscriptionsByTopic",
+        "sns:GetTopicAttributes",
+        "sns:SetTopicAttributes",
+        "ses:SendEmail",
+        "ses:SendRawEmail",
+        "ses:VerifyEmailIdentity",
+        "ses:GetAccountSendingEnabled",
+        "ses:ListIdentities"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "IdentityProviderForInboundAuth",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:CreateUserPool",
+        "cognito-idp:DeleteUserPool",
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:ListUserPools",
+        "cognito-idp:CreateUserPoolClient",
+        "cognito-idp:DeleteUserPoolClient",
+        "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:ListUserPoolClients",
+        "cognito-idp:AdminCreateUser",
+        "cognito-idp:AdminDeleteUser",
+        "cognito-idp:AdminSetUserPassword",
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:ListUsers",
+        "cognito-idp:InitiateAuth",
+        "cognito-idp:AdminInitiateAuth"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RolesForDeployedServices",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:ListRoles",
+        "iam:TagRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:GetRolePolicy",
+        "iam:PassRole",
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:CreatePolicyVersion",
+        "iam:DeletePolicyVersion",
+        "iam:ListPolicyVersions",
+        "iam:CreateServiceLinkedRole",
+        "iam:GetUser",
+        "sts:GetCallerIdentity",
+        "sts:AssumeRole"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "MarketplaceModelSubscriptions",
+      "Effect": "Allow",
+      "Action": [
+        "aws-marketplace:Subscribe",
+        "aws-marketplace:Unsubscribe",
+        "aws-marketplace:ViewSubscriptions"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
