@@ -199,6 +199,7 @@ Most entrants write this in the last hour. It is scored.
 
 | # | Work |
 |---|---|
+| 6.0 | **Make the repo public.** It is private during development; the rules require a public repo with the licence visible in GitHub's About panel, and a private repo fails Stage One. |
 | 6.1 | **Submit Tuesday 21 Oct** — two days of margin, not two hours |
 | 6.2 | Confirm the deployed URL is up and unauthenticated |
 | 6.3 | Confirm the video is public and plays logged out |
@@ -253,6 +254,7 @@ Submission is ready when all are true:
 
 - [ ] A judge can open a URL and use CareCircle without credentials or setup
 - [ ] The repo clones and runs from the README on a clean machine
+- [ ] **The repo is public** (private during development — must be flipped before submitting)
 - [ ] GitHub's About section shows the MIT licence
 - [ ] The video is under 2:30, public, and works muted
 - [ ] Tool-selection accuracy is measured and published
