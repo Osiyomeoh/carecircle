@@ -63,6 +63,55 @@ Template: what we wanted, why it mattered *for this project*, what we did instea
   real-world failure, not a bad chat response. Servers with consequences need a
   guaranteed confirmation path, not a convention.
 
+### Rich cards: a structured visual return channel for MCP results
+- **Urgency:** critical
+- **What:** A way for an MCP server to return a *renderable* result alongside spoken
+  text — a card with fields, status, and actions — that Alexa+ displays on a screen
+  device and degrades gracefully to speech on a headless one.
+- **Why it matters:** This is the single biggest constraint we hit. CareCircle's core
+  answer is a *ranked list with state*: four care gaps, each with a severity, an owner
+  or the absence of one, a due time, and a reason. Spoken, the usable ceiling is about
+  three items — past that a person cannot hold the list in their head. On a screen, a
+  family absorbs twelve at a glance and points at the one they mean.
+  Today the whole answer has to be flattened into a sentence, which throws away exactly
+  the structure that makes it useful. We already compute `severity`, `because`,
+  `dueAt` and `owner` per gap and have to discard all of it at the speech boundary.
+- **Shape we would want:** `structuredContent` is already in the spec and already
+  carries this data. What is missing is a *rendering contract* — an agreed schema (or a
+  set of card types: list, detail, confirmation, status) that a host knows how to draw,
+  so servers do not each invent their own and hosts do not have to guess.
+- **Instead:** We truncate to three spoken items and say how many remain, and we render
+  our own cards in our simulator to show what the experience should be.
+
+### Actionable cards: let a card carry the next tool call
+- **Urgency:** important
+- **What:** Cards whose controls invoke a named tool with bound arguments — a Claim
+  button on a care gap that calls `claim_obligation` with that id.
+- **Why it matters:** "I'll take the cardiology one" requires the model to resolve a
+  referring expression to an id, and it will sometimes get that wrong. When the action
+  is assigning responsibility for a hospital trip, sometimes-wrong is not acceptable.
+  A tap is unambiguous. Voice is the right input for *capture* and the wrong input for
+  *disambiguation among similar items* — a good multi-modal design uses each for what
+  it is good at.
+
+### Confirmation as a first-class surface
+- **Urgency:** important
+- **What:** A host-rendered confirmation step for consequential tool calls, showing
+  what is about to happen and who it affects, before it happens.
+- **Why it matters:** Related to elicitation, but the point is the *display*: before
+  Thursday's hospital run is assigned to Renee, Renee's name should be on screen. See
+  also the confirmation request under Alexa+ above.
+
+### Ambient and glanceable state, not just turn-taking
+- **Urgency:** nice-to-have
+- **What:** A way for an add-on to contribute to a device's ambient/home screen —
+  the state a screen device shows when nobody is talking to it.
+- **Why it matters:** The most valuable moment for CareCircle is not a conversation. It
+  is a family member walking past the kitchen Echo and noticing that Thursday still has
+  no driver. Care coordination is ambient by nature; the conversational turn is the
+  exception, not the rule. Every assistant integration model we have seen assumes the
+  conversation is the product.
+
 ---
 
 ## AWS (Bedrock AgentCore / Strands)
