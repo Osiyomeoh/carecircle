@@ -94,6 +94,12 @@ Template:
   standard fix for `exactOptionalPropertyTypes` compatibility, is backwards compatible
   for every existing consumer, and costs nothing. Worth adding the flag to the SDK's own
   `tsconfig` so the incompatibility is caught in CI.
+- **Update (verified upstream):** `main` already carries exactly this fix —
+  `onclose?: (() => void) | undefined` — but it has not been released; the published
+  1.30.0 still has the broken declaration. So the remaining friction is release
+  cadence rather than the bug: every current consumer hits it with no way to tell
+  from npm that a fix exists. A note in the README, or a patch release for a fix that
+  blocks a documented usage pattern under a recommended compiler flag, would close it.
 - **Date:** 2026-09-14
 
 ### MCP TypeScript SDK — "Server not initialized" does not say what is actually wrong
@@ -136,4 +142,28 @@ Template:
   invalid-identifier error name the nearest valid ids. (3) In the console, show the
   exact `modelId` string to paste next to each model, including the regional inference
   profile prefix — the `us.` prefix is easy to miss and produces the same opaque error.
+- **Date:** 2026-09-14
+
+
+### Bedrock — daily token quota is invisible until you hit it
+- **Task attempted:** Run a 68-case tool-selection evaluation through `Converse`.
+- **Steps taken:** Ran the suite; every case returned
+  `ThrottlingException: Too many tokens per day, please wait before trying again.`
+- **Expected:** To know the daily budget and how much is left *before* starting a run —
+  or at minimum, for the error to say when the quota resets.
+- **Actual:** No figure, no reset time, no console page showing consumption against a
+  daily token quota. The only way to discover the limit is to exhaust it, and the only
+  way to discover it has reset is to retry. Quotas are also per region, which is not
+  obvious: the same model was throttled in one region and denied outright in another,
+  producing two different errors for what looked like one problem.
+- **Severity:** major for anything batch-shaped — evals, backfills, any workload that
+  issues many small calls. It is unplannable.
+- **Workaround:** Exclude throttled cases from results rather than scoring them as
+  failures, and keep a second region with model access enabled as another lane.
+- **Suggestion:** (1) Surface daily token consumption and the remaining budget in the
+  Bedrock console and via an API, the way Service Quotas does for request rates.
+  (2) Include the reset time in the `ThrottlingException` message. (3) Distinguish
+  "rate limited, retry shortly" from "daily budget exhausted, retry tomorrow" — they
+  call for completely different client behaviour, and today both arrive as
+  `ThrottlingException`.
 - **Date:** 2026-09-14
