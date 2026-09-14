@@ -1,0 +1,134 @@
+import express from 'express';
+import { randomUUID } from 'node:crypto';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { createCareCircleServer } from './mcp/server.js';
+import { CareStore } from './store/store.js';
+import { FilePersistence } from './store/persistence.js';
+import { seedDemoHousehold, DEMO_TOKENS } from './demo/seed.js';
+
+/**
+ * Streamable HTTP transport (MCP spec 2025-11-25).
+ *
+ * The identity model lives here. Each member of a care circle holds their own
+ * credential, and a session is bound to one member at initialize time. Everything
+ * afterwards is attributed to that member — never to whoever the conversation
+ * claims to be, because a model can be talked into believing anything about who
+ * is speaking, and this server assigns responsibility for someone's medical care.
+ *
+ * A session whose credential later changes is rejected outright rather than
+ * re-bound: that would be one person acting with another's authority.
+ */
+
+const PORT = Number(process.env['PORT'] ?? 8787);
+const DB_PATH = process.env['CARECIRCLE_DB'] ?? 'carecircle.db.json';
+
+const store = new CareStore(new FilePersistence(DB_PATH));
+await store.init();
+await seedDemoHousehold(store);
+
+/** token -> member id. In production this is an identity provider, not a map. */
+const tokens = new Map<string, string>(Object.entries(DEMO_TOKENS));
+
+interface Session {
+  server: McpServer;
+  transport: StreamableHTTPServerTransport;
+  /** The member this session speaks for, fixed at initialize. */
+  actorId: string;
+}
+
+const sessions = new Map<string, Session>();
+
+const app = express();
+app.use(express.json({ limit: '1mb' }));
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, protocol: '2025-11-25', sessions: sessions.size });
+});
+
+function actorFor(req: express.Request): string | null {
+  const match = /^Bearer\s+(.+)$/i.exec((req.header('authorization') ?? '').trim());
+  if (!match) return null;
+  return tokens.get(match[1]!.trim()) ?? null;
+}
+
+function rpcError(res: express.Response, status: number, code: number, message: string): void {
+  res.status(status).json({ jsonrpc: '2.0', error: { code, message }, id: null });
+}
+
+/** `connect` accepts the SDK's own transport; see docs/FRICTION-LOG.md for the cast. */
+type ConnectArg = Parameters<McpServer['connect']>[0];
+
+app.post('/mcp', async (req, res) => {
+  const actorId = actorFor(req);
+  if (!actorId) {
+    res.set('WWW-Authenticate', 'Bearer realm="carecircle"');
+    rpcError(res, 401, -32001,
+      'Unauthorized: this server needs to know which member of the care circle you are.');
+    return;
+  }
+
+  const sessionId = req.header('mcp-session-id');
+
+  if (sessionId) {
+    const session = sessions.get(sessionId);
+    if (!session) {
+      rpcError(res, 404, -32001, 'Unknown session. Start a new one with initialize.');
+      return;
+    }
+    // The credential and the session must agree for the whole life of the session.
+    if (session.actorId !== actorId) {
+      rpcError(res, 403, -32001,
+        'This session belongs to a different member of the care circle.');
+      return;
+    }
+    await session.transport.handleRequest(req, res, req.body);
+    return;
+  }
+
+  if (!isInitializeRequest(req.body)) {
+    rpcError(res, 400, -32000, 'Expected an initialize request to start a session.');
+    return;
+  }
+
+  const server = createCareCircleServer({ store, actorId });
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => randomUUID(),
+    enableJsonResponse: true,
+    onsessioninitialized: (id) => { sessions.set(id, { server, transport, actorId }); },
+    onsessionclosed: (id) => { sessions.delete(id); },
+  });
+
+  transport.onclose = () => {
+    if (transport.sessionId) sessions.delete(transport.sessionId);
+  };
+
+  try {
+    await server.connect(transport as unknown as ConnectArg);
+    await transport.handleRequest(req, res, req.body);
+  } catch (err) {
+    console.error('[carecircle] initialize failed', err);
+    if (!res.headersSent) rpcError(res, 500, -32603, 'Internal server error');
+  }
+});
+
+/** SSE stream for server-initiated messages, and session teardown. */
+for (const method of ['get', 'delete'] as const) {
+  app[method]('/mcp', async (req, res) => {
+    const actorId = actorFor(req);
+    const sessionId = req.header('mcp-session-id');
+    const session = sessionId ? sessions.get(sessionId) : undefined;
+    if (!actorId || !session || session.actorId !== actorId) {
+      rpcError(res, session ? 403 : 404, -32001, 'No such session for this credential.');
+      return;
+    }
+    await session.transport.handleRequest(req, res);
+  });
+}
+
+app.listen(PORT, () => {
+  console.log(`CareCircle MCP server on http://localhost:${PORT}/mcp  (spec 2025-11-25)`);
+  console.log('Demo credentials:');
+  for (const [token, memberId] of tokens) console.log(`  ${memberId.padEnd(14)} Bearer ${token}`);
+});

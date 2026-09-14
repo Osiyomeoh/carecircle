@@ -73,3 +73,43 @@ Template:
   parameter properties, enums, namespaces, decorators — rather than leaving developers
   to discover them one runtime crash at a time.
 - **Date:** 2026-09-14
+
+### MCP TypeScript SDK — transports are not assignable to `Transport` under `exactOptionalPropertyTypes`
+- **Task attempted:** `await server.connect(transport)` with
+  `StreamableHTTPServerTransport`, in a project using TypeScript's
+  `exactOptionalPropertyTypes: true`.
+- **Steps taken:** Standard usage, straight from the SDK's own documented example.
+- **Expected:** The SDK's own transport satisfies the SDK's own `Transport` interface.
+- **Actual:** `TS2379: Argument of type 'StreamableHTTPServerTransport' is not assignable
+  to parameter of type 'Transport' with 'exactOptionalPropertyTypes: true'`. The
+  interface declares `onclose?: () => void`, while every transport implementation
+  exposes accessors typed `(() => void) | undefined`. Those are not assignable under
+  this flag, so **no strict consumer can connect any SDK transport without a cast.**
+- **Severity:** major — the SDK is unusable as documented under a recommended strictness
+  setting, and the error message points at the consumer rather than the SDK.
+- **Workaround:** Cast at the call site (`transport as unknown as Parameters<...>[0]`),
+  which discards real type safety at exactly the boundary where you want it.
+- **Suggestion:** Declare the optional handler members on `Transport` as
+  `onclose?: (() => void) | undefined` (likewise `onerror`, `onmessage`). This is the
+  standard fix for `exactOptionalPropertyTypes` compatibility, is backwards compatible
+  for every existing consumer, and costs nothing. Worth adding the flag to the SDK's own
+  `tsconfig` so the incompatibility is caught in CI.
+- **Date:** 2026-09-14
+
+### MCP TypeScript SDK — "Server not initialized" does not say what is actually wrong
+- **Task attempted:** Serve Streamable HTTP by creating a fresh `McpServer` and transport
+  per HTTP request.
+- **Steps taken:** POST `initialize`, then let the client send `notifications/initialized`.
+- **Expected:** Either it works, or an error explaining that sessions span requests.
+- **Actual:** `400 Bad Request: Server not initialized` on the *second* request. The
+  message describes a state, not the cause. The real problem is that a stateful session
+  must be reused across requests and keyed by `Mcp-Session-Id` — the server object cannot
+  be per-request.
+- **Severity:** minor (a correct design is documented; the diagnostic is the problem)
+- **Workaround:** Keep a `Map<sessionId, {server, transport}>`, create on `initialize`,
+  look up on subsequent requests, and clean up via `onsessionclosed`/`onclose`.
+- **Suggestion:** Make the error say what to do: "No session found for this request. In
+  stateful mode, reuse the transport for a given Mcp-Session-Id; create a new one only
+  for initialize requests." A short "sessions span requests" note near the top of the
+  Streamable HTTP docs would prevent the whole class of mistake.
+- **Date:** 2026-09-14
