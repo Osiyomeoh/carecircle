@@ -47,12 +47,16 @@ Template:
   specifier and never considers the `.ts` sibling.
 - **Severity:** major — the two tools disagree about the same import, so a file cannot
   satisfy `tsc --noEmit` and `node --test` at once without a build step or a loader.
-- **Workaround:** Import `.ts` specifiers in test files and exclude tests from `tsconfig`,
-  so each toolchain sees only the form it accepts. Source files keep `.js`.
+- **Workaround:** Initially, import `.ts` specifiers in test files and exclude tests from
+  `tsconfig`. **This stops working the moment a test imports real source** — the source
+  file's own `.js` imports fail the same way, one level down. The only durable fix was to
+  abandon native type stripping for tests and run them through `tsx`, which resolves the
+  specifiers TypeScript requires.
 - **Suggestion:** Make type stripping resolve `./x.js` to `./x.ts` when the `.js` file does
   not exist and the `.ts` sibling does. Without it, native type stripping cannot be used
   with TypeScript's own recommended `NodeNext` resolution — which undercuts the main
-  reason to reach for it.
+  reason to reach for it: avoiding a build step or a loader dependency. We ended up adding
+  the loader dependency anyway, which is the outcome the feature exists to prevent.
 - **Date:** 2026-09-14
 
 ### Node 24 type stripping — parameter properties are rejected at runtime

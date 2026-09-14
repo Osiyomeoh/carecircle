@@ -11,7 +11,7 @@
     "build": "tsc",
     "dev": "tsx watch src/http.ts",
     "start": "node dist/http.js",
-    "test": "node --test \"src/**/*.test.ts\"",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "sim": "tsx src/sim/app.ts",
     "demo": "npm run build && node dist/http.js",
