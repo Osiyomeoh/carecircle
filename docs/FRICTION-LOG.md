@@ -163,11 +163,20 @@ Template:
 - **Severity:** major for anything batch-shaped — evals, backfills, any workload that
   issues many small calls. It is unplannable.
 - **Workaround:** Exclude throttled cases from results rather than scoring them as
-  failures, and keep a second region with model access enabled as another lane.
+  failures. There is no second lane: we assumed the quota was per region and enabled a
+  second one, but `us-east-1`, `us-east-2` and `us-west-2` all return the identical
+  message for both Sonnet 4.5 and Haiku 4.5, so the budget is account-wide and spans
+  models. Nothing in the error says that, and we only established it by probing.
+- **Also:** `servicequotas:ListServiceQuotas` is denied by default, so a developer who
+  hits this cannot even read what the limit is or whether it is adjustable without
+  going back to an administrator for another permission.
 - **Suggestion:** (1) Surface daily token consumption and the remaining budget in the
-  Bedrock console and via an API, the way Service Quotas does for request rates.
+  Bedrock console and via an API readable with plain Bedrock access, the way Service
+  Quotas does for request rates.
   (2) Include the reset time in the `ThrottlingException` message. (3) Distinguish
   "rate limited, retry shortly" from "daily budget exhausted, retry tomorrow" — they
   call for completely different client behaviour, and today both arrive as
-  `ThrottlingException`.
+  `ThrottlingException`. (4) State the scope in the message — account-wide across
+  regions and models, which is the opposite of what a developer familiar with
+  regional service quotas will assume, and costs real time to discover by probing.
 - **Date:** 2026-09-14
