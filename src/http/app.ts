@@ -5,6 +5,7 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createCareCircleServer } from '../mcp/server.js';
 import type { CareStore } from '../store/store.js';
+import { staticTokens, type IdentityResolver } from './identity.js';
 
 /**
  * Streamable HTTP transport (MCP spec 2025-11-25).
@@ -30,27 +31,32 @@ const sessions = new Map<string, Session>();
 
 export interface AppOptions {
   store: CareStore;
-  /** token -> member id. In production this is an identity provider, not a map. */
-  tokens: Map<string, string>;
+  /**
+   * How a request's member is established. Defaults to the static token map for
+   * local development; production passes a JWT resolver. See ./identity.ts.
+   */
+  identity?: IdentityResolver;
+  /** token -> member id, used when no resolver is given. */
+  tokens?: Map<string, string>;
 }
 
 /**
  * Build the MCP HTTP app. Exported as a factory so the identity and session rules
  * can be attacked directly in tests over real HTTP, rather than trusted.
  */
-export function createCareCircleApp({ store, tokens }: AppOptions): express.Express {
+export function createCareCircleApp({ store, identity, tokens }: AppOptions): express.Express {
+const resolver = identity ?? staticTokens(tokens ?? new Map());
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, protocol: '2025-11-25', sessions: sessions.size });
+  res.json({
+    ok: true, protocol: '2025-11-25', sessions: sessions.size,
+    identity: resolver.strategy,
+  });
 });
 
-function actorFor(req: express.Request): string | null {
-  const match = /^Bearer\s+(.+)$/i.exec((req.header('authorization') ?? '').trim());
-  if (!match) return null;
-  return tokens.get(match[1]!.trim()) ?? null;
-}
+const actorFor = (req: express.Request): string | null => resolver.resolve(req);
 
 function rpcError(res: express.Response, status: number, code: number, message: string): void {
   res.status(status).json({ jsonrpc: '2.0', error: { code, message }, id: null });
