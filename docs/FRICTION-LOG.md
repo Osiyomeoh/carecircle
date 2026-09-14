@@ -211,3 +211,28 @@ Template:
   to discover. (3) `ThrottlingException` is the wrong error class for a permanent
   condition — clients retry it by default, which here means retrying forever.
 - **Date:** 2026-09-14
+
+
+### Service Quotas — a zeroed quota cannot be restored through Service Quotas
+- **Task attempted:** Request a Bedrock inference quota increase after discovering the
+  account's applied quota was 0.
+- **Steps taken:** `aws service-quotas request-service-quota-increase --quota-code
+  L-F4DDD3EB --desired-value 200000` — a modest value, far below the AWS default of
+  5,000,000, and far more than enough for the workload.
+- **Expected:** A request to raise an applied quota from 0 to 200,000 to be accepted.
+- **Actual:** `IllegalArgumentException: You must provide a quota value greater than the
+  default quota value of 5000000.0`. The API validates the desired value against the
+  **default**, not against the account's **applied** value. With an applied quota of 0
+  and a default of 5,000,000, the only requests it will accept are for *more than* the
+  default — so there is no way to ask to be restored *to* it.
+- **Severity:** blocker. The self-service path for quota problems cannot address the
+  most severe quota problem there is: having none. The only remaining route is a support
+  case, and the Support API is unavailable on Basic support, so it is console-only.
+- **Workaround:** None through the API. Either file a console support case, or request a
+  dishonestly inflated value above the default purely to satisfy the validator.
+- **Suggestion:** Validate `desiredValue` against the account's applied quota, not the
+  default. A request that raises an applied value is legitimate whether or not it reaches
+  the default — and "my quota is below default and I would like the default" is the most
+  natural request a customer can make. At minimum, the error should say what the applied
+  value is and direct the customer to support when it is below default.
+- **Date:** 2026-09-14
