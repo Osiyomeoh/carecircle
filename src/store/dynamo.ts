@@ -1,6 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient, BatchWriteCommand, ScanCommand,
+  type BatchWriteCommandInput,
 } from '@aws-sdk/lib-dynamodb';
 import type { Persistence, StoreSnapshot } from './store.js';
 
@@ -154,13 +155,14 @@ export class DynamoPersistence implements Persistence {
     const requests = [
       ...puts.map((row) => ({ PutRequest: { Item: row } })),
       ...deletes.map((key) => {
-        const [pk, sk] = key.split('|');
+        const [pk = '', sk = ''] = key.split('|');
         return { DeleteRequest: { Key: { pk, sk } } };
       }),
     ];
 
+    type RequestItems = NonNullable<BatchWriteCommandInput['RequestItems']>;
     for (const batch of chunk(requests)) {
-      let unprocessed = { [this.#table]: batch };
+      let unprocessed: RequestItems = { [this.#table]: batch };
       // BatchWrite can partially succeed; retry what it did not take, with backoff.
       for (let attempt = 0; attempt < 5; attempt += 1) {
         const result = await this.#doc.send(new BatchWriteCommand({

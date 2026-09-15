@@ -17,7 +17,8 @@
     "demo": "npm run build && node dist/http.js",
     "e2e": "tsx scripts/e2e.ts",
     "demo:reset": "tsx scripts/demo-reset.ts",
-    "evals": "tsx scripts/evals.ts"
+    "evals": "tsx scripts/evals.ts",
+    "dynamo:check": "tsx scripts/dynamo-check.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.1131.0",
