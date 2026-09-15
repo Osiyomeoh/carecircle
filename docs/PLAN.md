@@ -119,7 +119,13 @@ anything. It affects whether we are shortlisted at all.
 | 1.7 | Eval harness v1: 60 utterances, tool-selection accuracy | Me |
 | 1.8 | Fix what the evals expose (incl. the `get_care_summary` overlap question) | Me |
 
-**Exit:** Bedrock works, PR filed, first accuracy number exists.
+**Exit:** Bedrock works, first accuracy number exists.
+
+*Status 15 Sept:* scenario seed, eval harness, adversarial suite, DynamoDB
+persistence, pluggable identity and the Bedrock preflight are all done. The SDK PR
+turned out to be already fixed upstream. The accuracy number is the only item still
+blocked, and only by the quota hold — the harness is built and verified, so it
+produces the number within minutes of quota landing.
 
 ### Sprint 2 · 21–27 Sept — the AWS pipeline
 
