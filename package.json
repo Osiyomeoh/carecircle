@@ -18,12 +18,14 @@
     "e2e": "tsx scripts/e2e.ts",
     "demo:reset": "tsx scripts/demo-reset.ts",
     "evals": "tsx scripts/evals.ts",
-    "dynamo:check": "tsx scripts/dynamo-check.ts"
+    "dynamo:check": "tsx scripts/dynamo-check.ts",
+    "preflight": "tsx scripts/preflight.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.1131.0",
     "@aws-sdk/client-bedrock-runtime": "^3.1131.0",
     "@aws-sdk/client-dynamodb": "^3.1132.0",
+    "@aws-sdk/client-service-quotas": "^3.1132.0",
     "@aws-sdk/lib-dynamodb": "^3.1132.0",
     "@modelcontextprotocol/sdk": "1.30.0",
     "express": "^5.1.0",

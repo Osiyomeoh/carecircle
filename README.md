@@ -182,6 +182,25 @@ export BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
 See `.env.example`. Bedrock daily token quotas are per region, so a second region
 with model access enabled is a useful fallback when one is exhausted.
 
+## Preflight
+
+```bash
+npm run preflight
+```
+
+Bedrock reports an exhausted quota and a quota of zero with the same error —
+`ThrottlingException: Too many tokens per day`. They are opposite situations: a
+budget refills, a zero quota never will. Clients retry `ThrottlingException` by
+default, so an account with no allocation retries forever.
+
+The preflight reads the applied quota values and says which case you are in,
+including whether a zero is an `ACCOUNT`-level override that only AWS Support can
+lift. The simulator runs the same check automatically when a turn is throttled, so
+the error explains itself rather than advising a wait that will never end.
+
+Working this out by hand cost the better part of a day. See
+[`docs/FRICTION-LOG.md`](docs/FRICTION-LOG.md).
+
 ## Measured tool selection
 
 An MCP server lives or dies on whether a model picks the right tool from the

@@ -2,6 +2,7 @@ import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { SimulatedAlexa } from './host.js';
+import { diagnoseBedrock, describe as describeDiagnosis } from './preflight.js';
 import { DEMO_TOKENS } from '../demo/seed.js';
 
 /**
@@ -52,8 +53,24 @@ app.post('/api/say', async (req, res) => {
     res.json(turn);
   } catch (err) {
     const message = (err as Error).message;
-    // Bedrock credential problems are the most likely failure on a fresh clone,
-    // so say so plainly rather than surfacing an opaque SDK error in the UI.
+
+    // Throttling is the ambiguous one: it means either "you used your budget" or
+    // "you never had one", and Bedrock reports both identically. Ask Service
+    // Quotas which, rather than telling the user to wait for a refill that will
+    // never come.
+    if (/throttl|too many tokens/i.test(message)) {
+      const diagnosis = await diagnoseBedrock({ region: REGION, modelId: MODEL_ID });
+      res.status(502).json({
+        error: diagnosis.state === 'ok' || diagnosis.state === 'unknown'
+          ? `Bedrock is rate limiting: ${message}`
+          : describeDiagnosis(diagnosis),
+        diagnosis: diagnosis.state,
+      });
+      return;
+    }
+
+    // Credential problems are the most likely failure on a fresh clone, so say so
+    // plainly rather than surfacing an opaque SDK error in the UI.
     const isAuth = /credential|security token|AccessDenied|not authorized|region/i.test(message);
     res.status(502).json({
       error: isAuth
