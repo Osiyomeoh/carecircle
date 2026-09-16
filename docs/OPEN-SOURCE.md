@@ -1,5 +1,7 @@
 # Open Source mini-challenge — submission
 
+
+**Published:** https://github.com/Osiyomeoh/care-events (public, MIT). Fields below are filled.
 ## The contribution: `@carecircle/care-events`
 
 A new, standalone, MIT-licensed, zero-dependency TypeScript package that extracts
@@ -48,9 +50,9 @@ gh repo create care-events --public --source=. --push   # its own repo, MIT lice
 
 ## Submission form fields (fill the URLs after publishing)
 
-- **Contribution URL:** `https://github.com/<username>/care-events` (or the first commit/PR URL)
-- **Project repository URL:** `https://github.com/<username>/care-events`
-- **GitHub username:** `<username>`
+- **Contribution URL:** `https://github.com/Osiyomeoh/care-events` (or the first commit/PR URL)
+- **Project repository URL:** `https://github.com/Osiyomeoh/care-events`
+- **GitHub username:** `Osiyomeoh`
 - **Description:** the What / How / Why above, condensed to a paragraph.
 
 ## Rubric note
