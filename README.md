@@ -1,15 +1,21 @@
 # CareCircle
 
-**An MCP server that finds the work nobody has taken responsibility for.**
+### Margaret is 78 and lives alone. Her two kids and a paid aide share her care. Nobody is in charge — so the work that falls through the cracks is the work nobody realised was anyone's job.
 
-Every family coordination tool assumes someone already noticed the work. Someone
-notices a ride is needed, creates a task, assigns it. That is exactly the step that
-fails: the problem is almost never *"we had a task and ignored it"*. It is
-*"nobody realised a ride was needed until Thursday morning."*
+*"Nobody knew a ride to cardiology was needed until Thursday morning."* That sentence
+is the whole problem. Every family-care tool assumes someone already **noticed** the
+work and typed a task. That is exactly the step that fails.
 
-CareCircle starts one step earlier. Ordinary sentences become structured events,
-events imply obligations, and obligations need an owner. The ones without an owner
-are **Care Gaps**.
+**CareCircle is an Alexa+ MCP server that starts one step earlier — and it does two
+things no other assistant does.** The person being cared for is a **participant, not a
+patient on a dashboard**: Margaret, who has never used a smartphone, logs her own care
+by *talking*. And it **refuses to lie** — a missing record is surfaced as *"there's no
+record,"* never *"she missed it."*
+
+Ordinary spoken sentences become structured events, events imply obligations, and the
+obligations nobody owns are **Care Gaps** — surfaced before they fail, closed by voice,
+or fixed by **buying the thing in place** (reorder the prescription, right in the
+conversation).
 
 ```
 EVENTS          ->   OBLIGATIONS       ->   OWNERSHIP
@@ -17,6 +23,18 @@ what happened        what must happen        who has it
 "cardiology          someone has to          ...nobody
  Thursday at 10"     drive her                has claimed it
 ```
+
+**And it is real — not a mockup.** Live MCP server you can hit right now, **87 tests**,
+**93.3%** measured tool-selection accuracy on Amazon Bedrock, and a trust model
+**measured at 0% false accusations where a raw LLM hits 50%**. See it end-to-end in ~60
+seconds, no AWS or keys required:
+
+```bash
+git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
+npm ci && npm run story
+```
+
+Live server: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/health`
 
 ---
 

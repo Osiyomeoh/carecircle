@@ -11,20 +11,47 @@ fix in place, without ever turning a guess into a fact.
 
 ---
 
+## The problem, in one family
+
+Margaret is 78 and lives alone. Her son **David**, her daughter **Renee**, and a paid
+aide, **Tasha**, share her care. Nobody is in charge — so the work that falls through
+the cracks is the work **nobody realised was anyone's job**. *"Nobody knew a ride to
+cardiology was needed until Thursday morning."* Every family-care tool assumes someone
+already noticed the work and typed a task. CareCircle starts one step earlier.
+
 ## What it does
 
-CareCircle is an Alexa+ MCP server for a family caring for an aging relative. It turns
-ordinary care signals into shared **obligations**, and surfaces the **Care Gaps** —
-the ones nobody owns — so nothing falls through the cracks.
+CareCircle is an Alexa+ MCP server that turns ordinary spoken care signals into shared
+**obligations**, and surfaces the **Care Gaps** — the ones nobody owns — before they
+fail. It does two things no other assistant does:
+
+- **The cared-for person is a participant, not a patient on a dashboard.** Margaret,
+  who has never used a smartphone, **logs her own care by talking.**
+- **It refuses to lie.** A missing record is surfaced as *"there's no record,"* never
+  *"she missed it"* — a rule enforced in the type system and the tests.
+
+And a Care Gap can be closed by voice, or **fixed by buying the thing in place** —
+reorder the prescription right in the conversation.
 
 `EVENTS → OBLIGATIONS → OWNERSHIP.` Something happens, it implies work, and someone
 must own that work. A Care Gap is the failure state of the third stage.
+
+## It's real — not a mockup
+
+The judges' own advice is to beware glossy vapor. CareCircle is the opposite:
+
+- A **live MCP server** a judge can hit now (Streamable HTTP, spec 2025-11-25).
+- **87 automated tests**, strict TypeScript, an adversarial suite, CI.
+- Tool selection **measured at 93.3%** (held-out) on Amazon Bedrock — `npm run evals`.
+- The trust model **measured**: a raw Sonnet 4.5 turns a missing dose into "she missed
+  it" **50%** of the time; CareCircle **0%** — `npm run trust-benchmark`.
+- Reproduce the whole one-day story end-to-end with **no AWS or keys**: `npm ci && npm run story`.
 
 ## Who it's for, and how many (market)
 
 **~53 million** adults in the U.S. were unpaid family caregivers as of 2020, about
 one in five adults — *Caregiving in the U.S. 2020*, AARP & the National Alliance for
-Caregiving. Most caregiving is **shared** across siblings and a paid aide, runtime onboarding (create a household, add/remove members and medications), and the
+Caregiving. Most caregiving is **shared** across siblings and a paid aide, and the
 coordination — not the tasks themselves — is where it breaks down; the same report
 finds higher-hour, higher-complexity situations are rising. Narrow that to the
 serviceable slice CareCircle is built for — families coordinating care for an aging
