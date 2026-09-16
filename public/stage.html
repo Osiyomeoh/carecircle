@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CareCircle — two voices, one record</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel-2:#182030; --line:#243044;
+    --text:#e8edf5; --dim:#8b9bb4; --accent:#00c8ff; --accent-dim:#0a4c63;
+    --high:#ff5c6c; --med:#ffb648; --low:#6ee7a8; --prop:#b98bff;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;overflow:hidden}
+  .stage{display:grid;grid-template-rows:auto 1fr auto;height:100vh;padding:16px;gap:14px}
+  .head{display:flex;justify-content:space-between;align-items:baseline}
+  h1{font-size:15px;margin:0;letter-spacing:.3px}
+  h1 span{color:var(--dim);font-weight:400}
+  .cfg{font-size:11px;color:var(--dim)}
+
+  /* two devices */
+  .devices{display:grid;grid-template-columns:1fr 1fr;gap:14px;min-height:0}
+  .device{background:#05080c;border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;min-height:0;position:relative;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+  .device::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:0;transition:opacity .25s}
+  .device.listening::after{opacity:1;animation:sweep 1.6s linear infinite}
+  .device.speaking::after{opacity:.55;background:linear-gradient(90deg,transparent,#7de3ff,transparent);animation:sweep 2.4s linear infinite}
+  @keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+  .who{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .avatar{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:18px;background:var(--panel-2);border:1px solid var(--line)}
+  .who .name{font-weight:600;font-size:14px}
+  .who .role{font-size:11px;color:var(--dim)}
+  .screen{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:0;padding:4px 2px}
+  .bubble{max-width:90%;padding:10px 13px;border-radius:14px;font-size:13px;line-height:1.5;animation:rise .25s ease}
+  .me{align-self:flex-end;background:var(--panel-2);border:1px solid var(--line)}
+  .alexa{align-self:flex-start;background:linear-gradient(180deg,#0d2a38,#0a1f2b);border:1px solid var(--accent-dim)}
+  .alexa .tag{font-size:9px;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase;display:block;margin-bottom:5px}
+  .err{align-self:flex-start;background:#2a1216;border:1px solid #5a2530;color:#ffb3bd;font-size:12px}
+  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .bar{display:flex;gap:8px;align-items:center;margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+  .mic{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel-2);color:var(--dim);cursor:pointer;flex-shrink:0;display:grid;place-items:center;font-size:16px;transition:all .2s}
+  .mic:hover{border-color:var(--accent);color:var(--text)}
+  .mic.on{background:var(--accent);color:#04222d;border-color:var(--accent);animation:pr 1.4s ease-out infinite}
+  .mic:disabled{opacity:.35;cursor:not-allowed}
+  @keyframes pr{0%{box-shadow:0 0 0 0 rgba(0,200,255,.55)}70%{box-shadow:0 0 0 14px rgba(0,200,255,0)}100%{box-shadow:0 0 0 0 rgba(0,200,255,0)}}
+  input[type=text]{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 13px;font-size:13px;font-family:var(--font)}
+  input[type=text]:focus{outline:none;border-color:var(--accent)}
+  .go{background:var(--accent);color:#04222d;border:none;border-radius:10px;padding:0 15px;height:44px;font-weight:600;cursor:pointer;font-size:13px}
+  .go:disabled{opacity:.45}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chips button{background:transparent;border:1px dashed var(--line);color:var(--dim);font-size:11px;padding:5px 9px;border-radius:8px;cursor:pointer;font-family:var(--font)}
+  .chips button:hover{border-color:var(--accent);color:var(--text)}
+
+  /* shared record strip */
+  .shared{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px;display:flex;flex-direction:column;gap:8px;max-height:32vh;overflow:hidden}
+  .shared .lbl{display:flex;justify-content:space-between;align-items:baseline}
+  .shared h2{font-size:13px;margin:0}
+  .shared h2 span{color:var(--dim);font-weight:400}
+  .shared .hint{font-size:11px;color:var(--dim)}
+  .gaps{display:flex;gap:9px;overflow-x:auto;padding-bottom:4px}
+  .gap{flex:0 0 auto;min-width:210px;max-width:280px;background:var(--panel-2);border:1px solid var(--line);border-left-width:3px;border-radius:10px;padding:10px 12px;animation:rise .3s ease}
+  .gap.HIGH{border-left-color:var(--high)} .gap.MEDIUM{border-left-color:var(--med)} .gap.LOW{border-left-color:var(--low)}
+  .gap.proposal{border-left-color:var(--prop);border-style:dashed}
+  .gap.claimed{border-left-color:var(--low)}
+  .gap .what{font-size:12.5px;font-weight:500;line-height:1.4}
+  .gap .pill{font-size:9px;letter-spacing:1px;padding:2px 6px;border-radius:999px;text-transform:uppercase;display:inline-block;margin-top:6px}
+  .pill.HIGH{background:#3a1119;color:#ff8b97} .pill.MEDIUM{background:#3a2a10;color:#ffce85}
+  .pill.LOW{background:#0f2c1f;color:#8df0bb} .pill.prop{background:#261a3d;color:#cdaaff}
+  .gap .owner{font-size:11px;margin-top:6px;color:var(--dim)} .gap .owner b{color:var(--low)}
+  .none{color:var(--dim);font-size:12px;padding:10px 2px}
+  .heard{font-size:11px;color:var(--accent);min-height:14px;font-style:italic}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="head">
+    <h1>CareCircle <span>· two voices, one record</span></h1>
+    <div class="cfg" id="cfg">connecting…</div>
+  </div>
+
+  <div class="devices" id="devices"></div>
+
+  <div class="shared">
+    <div class="lbl">
+      <h2>Margaret's care record <span>· shared, live</span></h2>
+      <div class="hint">Both devices read and write the same record. Watch it change when either of them speaks.</div>
+    </div>
+    <div class="gaps" id="gaps"><div class="none">loading…</div></div>
+  </div>
+</div>
+
+<script type="module">
+const DEVICES = [
+  { id:'m_margaret', name:'Margaret', role:'in her kitchen', emoji:'\u{1F469}\u{200D}\u{1F9B3}',
+    chips:['I took my heart pill','I have cardiology on Thursday at ten'] },
+  { id:'m_david', name:'David', role:'driving home', emoji:'\u{1F468}',
+    chips:["What's going to fall through the cracks this week?","I'll take the cardiology one","How's Mom doing today?"] },
+];
+const $ = (id)=>document.getElementById(id);
+const esc = (s)=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+fetch('/api/config').then(r=>r.json()).then(c=>{
+  $('cfg').textContent = `${c.provider} · ${c.modelId}`;
+}).catch(()=>{ $('cfg').textContent='offline'; });
+
+// Build the two device panels.
+const panels = {};
+for(const d of DEVICES){
+  const el = document.createElement('div');
+  el.className='device'; el.id='dev_'+d.id;
+  el.innerHTML = `
+    <div class="who">
+      <div class="avatar">${d.emoji}</div>
+      <div><div class="name">${d.name}</div><div class="role">${esc(d.role)}</div></div>
+    </div>
+    <div class="screen" id="screen_${d.id}"></div>
+    <div class="heard" id="heard_${d.id}"></div>
+    <div class="bar">
+      <button class="mic" id="mic_${d.id}" title="Speak">&#127908;</button>
+      <input type="text" id="utt_${d.id}" placeholder="Say something…" autocomplete="off">
+      <button class="go" id="go_${d.id}">Send</button>
+    </div>
+    <div class="chips" id="chips_${d.id}"></div>`;
+  $('devices').append(el);
+  panels[d.id]=d;
+
+  const chips=$('chips_'+d.id);
+  for(const c of d.chips){
+    const b=document.createElement('button'); b.textContent=c;
+    b.onclick=()=>{ $('utt_'+d.id).value=c; sendTurn(d.id); };
+    chips.append(b);
+  }
+  $('go_'+d.id).onclick=()=>sendTurn(d.id);
+  $('utt_'+d.id).addEventListener('keydown',e=>{ if(e.key==='Enter') sendTurn(d.id); });
+  setupMic(d.id);
+}
+
+function bubble(memberId, cls, html){
+  const s=$('screen_'+memberId);
+  const b=document.createElement('div'); b.className='bubble '+cls; b.innerHTML=html;
+  s.append(b); s.scrollTop=s.scrollHeight; return b;
+}
+
+function speak(memberId, text){
+  if(!window.speechSynthesis) return;
+  const dev=$('dev_'+memberId);
+  const u=new SpeechSynthesisUtterance(text); u.rate=1.02;
+  const voices=window.speechSynthesis.getVoices();
+  u.voice=voices.find(v=>/samantha|google us english|zira|aria/i.test(v.name))??voices.find(v=>v.lang?.startsWith('en'))??null;
+  u.onstart=()=>dev.classList.add('speaking');
+  u.onend=()=>dev.classList.remove('speaking');
+  window.speechSynthesis.speak(u);
+}
+
+async function sendTurn(memberId){
+  const input=$('utt_'+memberId); const text=input.value.trim();
+  if(!text) return;
+  input.value=''; $('go_'+memberId).disabled=true;
+  bubble(memberId,'me',esc(text));
+  const pending=bubble(memberId,'alexa','<span class="tag">Alexa</span>…');
+  try{
+    const res=await fetch('/api/say',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({memberId,text})});
+    const data=await res.json();
+    if(!res.ok){
+      pending.className='bubble err';
+      let m=typeof data.error==='string'?data.error:JSON.stringify(data.error||{});
+      if(/503|overload|high demand/i.test(m)) m='The model is busy — try again in a moment.';
+      else if(/429|rate.?limit|quota/i.test(m)) m='Rate limited — give it a few seconds.';
+      pending.textContent=m;
+    } else {
+      pending.innerHTML=`<span class="tag">Alexa</span>${esc(data.spoken)}`;
+      speak(memberId,data.spoken);
+    }
+  }catch(err){ pending.className='bubble err'; pending.textContent=String(err); }
+  $('go_'+memberId).disabled=false;
+  refreshBoard();
+}
+
+function setupMic(memberId){
+  const mic=$('mic_'+memberId);
+  if(!SpeechRec){ mic.disabled=true; mic.title='Voice needs Chrome'; return; }
+  let rec=null, on=false;
+  mic.onclick=()=>{
+    if(on){ rec&&rec.stop(); return; }
+    rec=new SpeechRec(); rec.lang='en-US'; rec.interimResults=true; rec.continuous=false;
+    const dev=$('dev_'+memberId), heard=$('heard_'+memberId);
+    rec.onstart=()=>{ on=true; mic.classList.add('on'); dev.classList.add('listening'); heard.textContent='Listening…'; };
+    rec.onresult=(e)=>{
+      let t=''; for(const r of e.results) t+=r[0].transcript;
+      $('utt_'+memberId).value=t;
+      const fin=e.results[e.results.length-1].isFinal;
+      heard.textContent=fin?'':t;
+      if(fin&&t.trim()) sendTurn(memberId);
+    };
+    rec.onerror=(e)=>{ heard.textContent=e.error==='not-allowed'?'Mic blocked — allow access.':`(${e.error})`; };
+    rec.onend=()=>{ on=false; mic.classList.remove('on'); dev.classList.remove('listening'); };
+    try{ rec.start(); }catch{}
+  };
+}
+
+let lastBoard='';
+async function refreshBoard(force){
+  try{
+    const s=await (await fetch('/api/state')).json();
+    const fp=JSON.stringify([s.gaps,s.obligations,s.notifications]);
+    if(!force&&fp===lastBoard) return;
+    lastBoard=fp;
+    const box=$('gaps'); box.innerHTML='';
+    for(const p of (s.obligations??[]).filter(o=>o.status==='PROPOSED')){
+      const d=document.createElement('div'); d.className='gap proposal';
+      d.innerHTML=`<div class="what">${esc(p.what)}</div><span class="pill prop">proposed</span>`;
+      box.append(d);
+    }
+    for(const g of (s.gaps??[])){
+      const d=document.createElement('div'); d.className='gap '+g.severity;
+      d.innerHTML=`<div class="what">${esc(g.spoken)}</div><span class="pill ${g.severity}">${esc(g.kind)}</span>`;
+      box.append(d);
+    }
+    for(const o of (s.obligations??[]).filter(o=>o.status==='ASSIGNED')){
+      const d=document.createElement('div'); d.className='gap claimed';
+      d.innerHTML=`<div class="what">${esc(o.what)}</div><div class="owner"><b>${esc(o.owner??'someone')}</b> has this.</div>`;
+      box.append(d);
+    }
+    if(!box.children.length) box.innerHTML='<div class="none">Nothing outstanding — everything recorded has an owner.</div>';
+  }catch{ $('gaps').innerHTML='<div class="none">record unavailable</div>'; }
+}
+window.speechSynthesis?.getVoices();
+refreshBoard(true); setInterval(refreshBoard,3000);
+</script>
+</body>
+</html>
