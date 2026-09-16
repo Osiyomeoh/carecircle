@@ -165,12 +165,33 @@ the ordering inspectable (every gap carries its `score` and a plain-language
 
 ## Running it
 
+### Quickstart for judges — no credentials, no AWS, ~60 seconds
+
+Either try the deployed server, or clone and run the self-contained demo:
+
 ```bash
-npm install
+# Option A — hit the live MCP server, nothing to install
+curl https://ypq2dfq2p7.us-east-1.awsapprunner.com/health
+
+# Option B — clone and reproduce locally (no AWS needed)
+git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
+npm ci
+npm test          # 87 tests
+npm run story     # the whole one-day story, end to end, over real MCP
+```
+
+`npm run story` is the fastest way to see it work: it seeds the demo family, starts
+the real MCP server in-process, and plays every beat through real MCP clients — **no
+AWS, no API keys, no external services.** Deterministic, so you see exactly what the
+video shows.
+
+### Full experience (needs AWS Bedrock)
+
+```bash
 npm run dev      # MCP server on :8787
-npm run sim      # simulated Alexa+ experience on :5173
-npm run e2e      # the whole story, through a real MCP client
-npm test
+npm run sim      # simulated Alexa+ experience on :5173  (needs Bedrock)
+npm run e2e      # the story through a real MCP client   (needs the server on :8787)
+npm run evals    # published tool-selection accuracy      (needs Bedrock)
 ```
 
 The simulator and the evals need AWS credentials with Bedrock access:
