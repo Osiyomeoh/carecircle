@@ -5,7 +5,7 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createCareCircleServer } from '../mcp/server.js';
 import type { CareStore } from '../store/store.js';
-import { staticTokens, type IdentityResolver } from './identity.js';
+import { staticTokens, BOOTSTRAP_PREFIX, type IdentityResolver } from './identity.js';
 import { RecordOnlyNotifier, type Notifier } from '../notify/notifier.js';
 import { log } from '../obs/log.js';
 
@@ -48,14 +48,22 @@ export interface AppOptions {
    * genuinely overdue and the absence beat has something real to surface.
    */
   now?: () => Date;
+  /**
+   * Whether an authenticated-but-unmapped caller may bootstrap a new household. Only
+   * applies to the built-in static resolver (ignored when `identity` is supplied).
+   * Defaults to the CARECIRCLE_ALLOW_SELF_SIGNUP env var.
+   */
+  allowSelfSignup?: boolean;
 }
 
 /**
  * Build the MCP HTTP app. Exported as a factory so the identity and session rules
  * can be attacked directly in tests over real HTTP, rather than trusted.
  */
-export function createCareCircleApp({ store, identity, tokens, notifier, now }: AppOptions): express.Express {
-const resolver = identity ?? staticTokens(tokens ?? new Map());
+export function createCareCircleApp({ store, identity, tokens, notifier, now, allowSelfSignup }: AppOptions): express.Express {
+// Runtime-provisioned members authenticate via the persisted identity map.
+const lookup = (subject: string): string | null => store.resolveIdentity(subject)?.memberId ?? null;
+const resolver = identity ?? staticTokens(tokens ?? new Map(), lookup, allowSelfSignup);
 const messenger = notifier ?? new RecordOnlyNotifier();
 const app = express();
 app.use(express.json({ limit: '1mb' }));
@@ -84,7 +92,16 @@ app.get('/health', (_req, res) => {
   });
 });
 
-const actorFor = (req: express.Request): string | null => resolver.resolve(req);
+// The effective actor: a member id, or a bootstrap principal (`bootstrap:<subject>`)
+// that may only create its first household. Everything downstream is attributed to
+// whichever this returns, and the credential must keep resolving to the same one for
+// the life of the session.
+const actorFor = (req: express.Request): string | null => {
+  const member = resolver.resolve(req);
+  if (member) return member;
+  const principal = resolver.principal(req);
+  return principal ? `${BOOTSTRAP_PREFIX}${principal}` : null;
+};
 
 function rpcError(res: express.Response, status: number, code: number, message: string): void {
   res.status(status).json({ jsonrpc: '2.0', error: { code, message }, id: null });

@@ -43,7 +43,7 @@
   <rect class="srv" x="620" y="120" width="460" height="360" rx="14"/>
 
   <!-- Tools -->
-  <text x="640" y="150" class="m">Tools (14)</text>
+  <text x="640" y="150" class="m">Tools (18)</text>
   <rect class="cap" x="640" y="160" width="200" height="64" rx="9"/>
   <text x="652" y="180" class="s" font-weight="700">Capture</text>
   <text x="652" y="198" class="s">log_care_event · record_appointment</text>

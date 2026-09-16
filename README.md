@@ -144,7 +144,7 @@ conversation, surfaces the ones nobody owns, and lets a family resolve them by v
        +-------------+------+------+--------------+
        v             v             v              v
    Resources       Tools        Prompts      Elicitation
-   care state    11 tools    daily check    confirm a
+   care state    18 tools    daily check    confirm a
    timeline                  weekly review  proposal
        |             |
        +------+------+

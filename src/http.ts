@@ -29,7 +29,9 @@ const persistence = config.persistence === 'dynamodb'
 
 const store = new CareStore(persistence);
 const tokens = new Map<string, string>(Object.entries(DEMO_TOKENS));
-const identity = resolverFromEnv(tokens);
+// Members provisioned at runtime (add_member / create_household) authenticate via the
+// persisted identity map, in addition to any env-configured mapping.
+const identity = resolverFromEnv(tokens, (subject) => store.resolveIdentity(subject)?.memberId ?? null);
 const notifier = notifierFromEnv();
 
 // Bind the port FIRST, then load state. A slow or misconfigured storage backend must

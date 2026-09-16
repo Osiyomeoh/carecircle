@@ -20,6 +20,19 @@ the ones nobody owns — so nothing falls through the cracks.
 `EVENTS → OBLIGATIONS → OWNERSHIP.` Something happens, it implies work, and someone
 must own that work. A Care Gap is the failure state of the third stage.
 
+## Who it's for, and how many (market)
+
+**~53 million** adults in the U.S. were unpaid family caregivers as of 2020, about
+one in five adults — *Caregiving in the U.S. 2020*, AARP & the National Alliance for
+Caregiving. Most caregiving is **shared** across siblings and a paid aide, runtime onboarding (create a household, add/remove members and medications), and the
+coordination — not the tasks themselves — is where it breaks down; the same report
+finds higher-hour, higher-complexity situations are rising. Narrow that to the
+serviceable slice CareCircle is built for — families coordinating care for an aging
+parent who lives alone, on the Amazon devices already in the home — and it is still a
+multi-million-household market, reachable through the existing Alexa+ install base
+rather than a new device or app the parent has to learn. The path beyond the
+hackathon is concrete: an Alexa+ add-on, distributed the way Amazon distributes them.
+
 ## How it works — Build / Ship / Shape
 
 - **Build** — the record builds itself. A spoken sentence ("I took my heart pill"), a
@@ -46,17 +59,17 @@ won't assert an inference.
 Built new during the window. Highlights added this period: the purchase-in-place flow
 (`reorder_prescription` / `confirm_purchase`), the tool-selection eval harness and its
 published accuracy, production hardening (config validation, structured logging,
-graceful shutdown, DynamoDB persistence, App Runner deployment), and the
+graceful shutdown, DynamoDB persistence, App Runner deployment), runtime onboarding (create a household, add/remove members and medications), and the
 `@carecircle/care-events` open-source package.
 
 ## How well it's built
 
-- MCP spec **2025-11-25** over **Streamable HTTP**; 14 tools, session-bound identity
+- MCP spec **2025-11-25** over **Streamable HTTP**; 18 tools, session-bound identity
   (a member's credential, never the conversation, decides who they are).
 - **Measured tool selection: 93.3% first-tool accuracy (126/135)** on Claude Sonnet 4.5
   via Bedrock — 68 authored cases at 100% plus **67 held-out cases** (never tuned
   against) at 86.6%. Reproducible: `npm run evals`.
-- **82 automated tests** incl. an adversarial suite (credential swap mid-session,
+- **87 automated tests** incl. an adversarial suite (credential swap mid-session,
   cross-household access, prompt-injection through note text), strict TypeScript, CI.
 - Deterministic end-to-end demo over real MCP: `npm run story`.
 
@@ -121,6 +134,6 @@ with a provenance trust model). Details, what/how/why, and publish steps in
 
 ## Links
 
-- Code: `https://github.com/<username>/carecircle-mcp` (public, MIT visible in About)
+- Code: `https://github.com/Osiyomeoh/carecircle` (public, MIT visible in About)
 - Video: `<YouTube/Vimeo link>` (≤ 3:00)
 - Live MCP: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/mcp`

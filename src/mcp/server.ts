@@ -6,6 +6,7 @@ import { orphanedBy, proposeFromAppointment } from '../domain/inference.js';
 import { interpretSignal, type CareSignal } from '../domain/signals.js';
 import { offerFor, offerSpoken, formatPrice, type OfferKind, type PurchaseOffer } from '../domain/commerce.js';
 import { can, canActOn, NotPermittedError, require as requireCap } from '../domain/auth.js';
+import { bootstrapSubject } from '../http/identity.js';
 import { CareStore, HouseholdScopeError, NotFoundError } from '../store/store.js';
 import { countPhrase, joinSpoken, sentence, speakGaps } from './text.js';
 import type { Member } from '../domain/types.js';
@@ -751,6 +752,125 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         ? `Done — ${offer.item} is ordered for ${price}, and that takes "${closed}" off the list.`
         : `Done — ${offer.item} is ordered for ${price}. You'll get a confirmation from ${offer.merchant}.`;
       return reply(spoken, { offerId, placed: true, amountCents: offer.amountCents, closedObligation: closed });
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
+  // --- 15. "Set up a care circle for my mother." — onboarding bootstrap --
+  server.registerTool('create_household', {
+    title: 'Create a new care circle',
+    description:
+      'Start a brand-new care circle. This is the one action available to someone who '
+      + 'is authenticated but not yet part of any circle: it creates the household and '
+      + 'makes the caller its first primary caregiver. Everyone else joins an existing '
+      + 'circle via add_member.',
+    inputSchema: {
+      name: z.string().describe('A name for the care circle, e.g. "Margaret\'s care circle".'),
+      timezone: z.string().describe('IANA timezone, e.g. "America/New_York". Medication times are read in it.'),
+      callerName: z.string().describe('The founding caregiver\'s name, as they gave it.'),
+      spokenAs: z.string().optional().describe('How the caller is referred to when spoken about.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ name, timezone, callerName, spokenAs }) => {
+    try {
+      const subject = bootstrapSubject(actorId);
+      if (!subject) {
+        return guidance('You already belong to a care circle, so I can\'t start a new one for you here.');
+      }
+      const householdId = `h_${randomUUID()}`;
+      const memberId = `m_${randomUUID()}`;
+      await store.addHousehold({ id: householdId, name, timezone });
+      await store.addMember({
+        id: memberId, householdId, name: callerName, role: 'primary_caregiver',
+        ...(spokenAs ? { spokenAs } : {}),
+      });
+      await store.mapIdentity({ subject, memberId, householdId });
+      return reply(
+        `Done — "${name}" is set up, and you're its primary caregiver. Add the rest of the family with add_member.`,
+        { householdId, memberId },
+      );
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
+  // --- 16. "Add my sister Renee to the circle." --------------------------
+  server.registerTool('add_member', {
+    title: 'Add someone to the care circle',
+    description:
+      'Add a member to this care circle and give them a role: care_recipient, '
+      + 'primary_caregiver, caregiver, or helper. Only a primary caregiver can do this. '
+      + 'If the new member will sign in, pass the subject their credential carries so '
+      + 'they resolve to this member.',
+    inputSchema: {
+      name: z.string().describe('Their name.'),
+      role: z.enum(['care_recipient', 'primary_caregiver', 'caregiver', 'helper'])
+        .describe('Their authority in the circle.'),
+      spokenAs: z.string().optional().describe('How they are referred to when spoken about.'),
+      subject: z.string().optional().describe('The credential subject that authenticates as this member.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ name, role, spokenAs, subject }) => {
+    try {
+      const me = actor();
+      requireCap(me, 'manage_circle');
+      const memberId = `m_${randomUUID()}`;
+      await store.addMember({
+        id: memberId, householdId: me.householdId, name, role,
+        ...(spokenAs ? { spokenAs } : {}),
+      });
+      if (subject) await store.mapIdentity({ subject, memberId, householdId: me.householdId });
+      return reply(`Added ${name} to the circle as ${role.replace('_', ' ')}.`, { memberId });
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
+  // --- 17. "She takes her heart pill at 8 and 8." -----------------------
+  server.registerTool('add_medication', {
+    title: 'Add a medication schedule',
+    description:
+      'Record a medication and the times it is due, so missing doses can be noticed. '
+      + 'Times are 24-hour "HH:MM" in the household timezone. Only a primary caregiver '
+      + 'can do this.',
+    inputSchema: {
+      name: z.string().describe('The medication, as the family calls it (e.g. "heart pill").'),
+      times: z.array(z.string()).describe('Due times, 24-hour "HH:MM", e.g. ["08:00","20:00"].'),
+      forMemberId: z.string().optional().describe('Who it is for. Defaults to the care recipient.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ name, times, forMemberId }) => {
+    try {
+      const me = actor();
+      requireCap(me, 'manage_circle');
+      const forId = forMemberId ?? state().members.find((m) => m.role === 'care_recipient')?.id;
+      if (!forId) return guidance('I don\'t know who this medication is for. Tell me which member.');
+      const id = `med_${randomUUID()}`;
+      await store.addMedication({ id, householdId: me.householdId, name, times, forMemberId: forId });
+      return reply(`Added ${name} at ${joinSpoken(times)}.`, { medicationId: id });
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
+  // --- 18. "Take Tasha off the circle." ---------------------------------
+  server.registerTool('remove_member', {
+    title: 'Remove someone from the care circle',
+    description:
+      'Remove a member. Their open work is not deleted — it is released back to the '
+      + 'circle as unowned, so it resurfaces as a Care Gap rather than vanishing. Only '
+      + 'a primary caregiver can do this, and the last primary caregiver cannot be '
+      + 'removed.',
+    inputSchema: {
+      memberId: z.string().describe('Who to remove.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+  }, async ({ memberId }) => {
+    try {
+      const me = actor();
+      requireCap(me, 'manage_circle');
+      if (memberId === me.id) return guidance('You can\'t remove yourself from the circle.');
+      const target = store.getMember(memberId);
+      if (target.role === 'primary_caregiver'
+        && store.membersWithRole(me.householdId, 'primary_caregiver').length <= 1) {
+        return guidance('That\'s the only primary caregiver — add another before removing this one.');
+      }
+      const { released } = await store.removeMember(me.householdId, memberId);
+      const tail = released > 0 ? ` ${countPhrase(released, 'piece')} of their work is back on the board.` : '';
+      return reply(`Removed ${target.name} from the circle.${tail}`, { memberId, released });
     } catch (err) { return guidance(describeError(err)); }
   });
 
