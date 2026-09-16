@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 700" font-family="'Segoe UI',Arial,sans-serif">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5b6472"/></marker>
+    <style>
+      .t{fill:#1f2733;font-size:15px;font-weight:700}
+      .s{fill:#5b6472;font-size:12px}
+      .m{fill:#3b4a5e;font-size:12.5px;font-weight:600}
+      .lbl{fill:#8a93a2;font-size:11px;font-weight:700;letter-spacing:.09em}
+      .host{fill:#f4f6f9;stroke:#c3cad6;stroke-width:2}
+      .wire{fill:#eef4ff;stroke:#3b82f6;stroke-width:2}
+      .srv{fill:#f7fbff;stroke:#3b82f6;stroke-width:2.5}
+      .cap{fill:#ffffff;stroke:#9db7e8;stroke-width:1.5}
+      .eng{fill:#eafaf1;stroke:#22a45d;stroke-width:2}
+      .store{fill:#fff5ec;stroke:#ff9900;stroke-width:2}
+      .note{fill:#fffbe6;stroke:#e6c200;stroke-width:1.5}
+    </style>
+  </defs>
+  <rect width="1120" height="700" fill="#ffffff"/>
+  <text x="40" y="44" fill="#1f2733" font-size="23" font-weight="700">CareCircle — MCP server architecture</text>
+  <text x="40" y="68" class="s">Streamable HTTP · spec 2025-11-25 · session-bound identity · deterministic engine behind the tools</text>
+
+  <!-- HOST -->
+  <text x="60" y="108" class="lbl">MCP HOST</text>
+  <rect class="host" x="40" y="120" width="220" height="92" rx="12"/>
+  <text x="60" y="150" class="t">Alexa+ (simulated)</text>
+  <text x="60" y="172" class="s">or any MCP client</text>
+  <text x="60" y="194" class="s">Bedrock planner picks a tool</text>
+
+  <!-- TRANSPORT + SESSION -->
+  <text x="330" y="108" class="lbl">TRANSPORT &amp; IDENTITY</text>
+  <rect class="wire" x="310" y="120" width="250" height="92" rx="12"/>
+  <text x="330" y="148" class="t">Streamable HTTP</text>
+  <text x="330" y="170" class="s">POST /mcp · SSE · session id</text>
+  <text x="330" y="192" class="s">Bearer credential → member</text>
+
+  <!-- auth note -->
+  <rect class="note" x="310" y="228" width="250" height="48" rx="10"/>
+  <text x="326" y="250" class="s">Identity comes from the session</text>
+  <text x="326" y="266" class="s" font-weight="700">credential, never the conversation.</text>
+
+  <!-- SERVER -->
+  <text x="640" y="108" class="lbl">MCP SERVER · carecircle</text>
+  <rect class="srv" x="620" y="120" width="460" height="360" rx="14"/>
+
+  <!-- Tools -->
+  <text x="640" y="150" class="m">Tools (14)</text>
+  <rect class="cap" x="640" y="160" width="200" height="64" rx="9"/>
+  <text x="652" y="180" class="s" font-weight="700">Capture</text>
+  <text x="652" y="198" class="s">log_care_event · record_appointment</text>
+  <text x="652" y="214" class="s">add_note · ingest_signal</text>
+
+  <rect class="cap" x="856" y="160" width="204" height="64" rx="9"/>
+  <text x="868" y="180" class="s" font-weight="700">Discover</text>
+  <text x="868" y="198" class="s">get_care_gaps · get_care_summary</text>
+  <text x="868" y="214" class="s">get_shift_brief</text>
+
+  <rect class="cap" x="640" y="232" width="200" height="64" rx="9"/>
+  <text x="652" y="252" class="s" font-weight="700">Own</text>
+  <text x="652" y="270" class="s">claim · assign · confirm_proposal</text>
+  <text x="652" y="286" class="s">resolve_obligation</text>
+
+  <rect class="cap" x="856" y="232" width="204" height="64" rx="9"/>
+  <text x="868" y="252" class="s" font-weight="700">Buy · Tell</text>
+  <text x="868" y="270" class="s">reorder_prescription</text>
+  <text x="868" y="286" class="s">confirm_purchase · notify_member</text>
+
+  <!-- Resources + Prompts -->
+  <rect class="cap" x="640" y="308" width="200" height="58" rx="9"/>
+  <text x="652" y="328" class="s" font-weight="700">Resources</text>
+  <text x="652" y="348" class="s">carecircle://household/state</text>
+
+  <rect class="cap" x="856" y="308" width="204" height="58" rx="9"/>
+  <text x="868" y="328" class="s" font-weight="700">Prompts</text>
+  <text x="868" y="348" class="s">daily-check · weekly-review</text>
+
+  <!-- Engine (inside server band) -->
+  <rect class="eng" x="640" y="382" width="420" height="80" rx="11"/>
+  <text x="652" y="406" class="m">Care engine — deterministic, not model narration</text>
+  <text x="652" y="428" class="s">Events → Obligations → Ownership · Care Gap detection (ranked + reasoned)</text>
+  <text x="652" y="446" class="s" font-weight="700" fill="#22a45d">Known ≠ Assumed — provenance on every fact</text>
+
+  <!-- STORE -->
+  <text x="640" y="524" class="lbl">STATE</text>
+  <rect class="store" x="620" y="536" width="460" height="60" rx="12"/>
+  <text x="640" y="562" class="t">Append-only event store</text>
+  <text x="640" y="582" class="s">care state is a fold over the log · DynamoDB (deployed) / file (local)</text>
+
+  <!-- arrows -->
+  <path d="M260 166 H306" stroke="#5b6472" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <path d="M560 166 H616" stroke="#5b6472" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <path d="M850 462 V532" stroke="#5b6472" stroke-width="2" fill="none" marker-end="url(#a)"/>
+  <text x="864" y="502" class="s">read / append</text>
+
+  <!-- legend -->
+  <g transform="translate(40,632)">
+    <rect class="srv" x="0" y="0" width="15" height="15" rx="3"/><text x="22" y="12" class="s">MCP server / protocol</text>
+    <rect class="eng" x="185" y="0" width="15" height="15" rx="3"/><text x="207" y="12" class="s">deterministic engine</text>
+    <rect class="store" x="360" y="0" width="15" height="15" rx="3"/><text x="382" y="12" class="s">event store</text>
+    <rect class="note" x="500" y="0" width="15" height="15" rx="3"/><text x="522" y="12" class="s">the one rule that matters</text>
+  </g>
+  <text x="40" y="686" class="s">A host's model selects a tool → the server binds the caller to a member → deterministic logic answers → the model speaks the result.</text>
+</svg>

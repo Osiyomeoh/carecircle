@@ -6,7 +6,7 @@
 nobody has taken responsibility for — and lets you close it by voice, even buy the
 fix in place, without ever turning a guess into a fact.
 
-**Live MCP server (judge-usable until judging ends):** `https://svqcxr3amt.us-east-1.awsapprunner.com/mcp`
+**Live MCP server (judge-usable until judging ends):** `https://ypq2dfq2p7.us-east-1.awsapprunner.com/mcp`
 · health: `/health` · spec 2025-11-25, Streamable HTTP. Demo credentials below.
 
 ---
@@ -123,4 +123,4 @@ with a provenance trust model). Details, what/how/why, and publish steps in
 
 - Code: `https://github.com/<username>/carecircle-mcp` (public, MIT visible in About)
 - Video: `<YouTube/Vimeo link>` (≤ 3:00)
-- Live MCP: `https://svqcxr3amt.us-east-1.awsapprunner.com/mcp`
+- Live MCP: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/mcp`

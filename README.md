@@ -130,6 +130,8 @@ conversation, surfaces the ones nobody owns, and lets a family resolve them by v
 
 ## Architecture
 
+![CareCircle MCP server architecture](docs/mcp-architecture.png)
+
 ```
                     Alexa+ / any MCP host
                             |
