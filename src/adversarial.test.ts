@@ -259,3 +259,44 @@ test('notify_member does not claim delivery when it only recorded', async () => 
   assert.doesNotMatch(spoken(body), /\bsent\b|\btexted\b|\bmessaged\b/i);
   assert.match(spoken(body), /noted|care record/i);
 });
+
+test('a Ring delivery is evidence, not an auto-resolve of the prescription', async () => {
+  // The crazy beat, made safe: a doorbell proposes; it never closes medical work alone.
+  const session = await openSession('david-token');
+  const state = store.getCareState('h_margaret');
+  const prescription = state.obligations.find((o) => o.what.includes('prescription'))!;
+  const before = prescription.status;
+
+  const { body } = await callTool('david-token', session, 'ingest_signal', {
+    source: 'ring', kind: 'delivery_arrived',
+  });
+  assert.equal(body.result.isError, undefined);
+  assert.match(spoken(body), /delivery.*arrived/i);
+  assert.match(spoken(body), /should I mark it picked up/i);
+  // The obligation is unchanged — it only ASKED.
+  assert.equal(store.getObligation(prescription.id, 'h_margaret').status, before);
+  // And it pointed at the right item for the model to confirm.
+  assert.equal(body.result.structuredContent.resolvesCandidate, prescription.id);
+});
+
+test('no-activity creates a check-in proposal, never an alarm', async () => {
+  const session = await openSession('david-token');
+  const { body } = await callTool('david-token', session, 'ingest_signal', {
+    source: 'ring', kind: 'no_activity',
+  });
+  assert.doesNotMatch(spoken(body), /emergency|collapsed|call 911|something is wrong/i);
+  assert.match(spoken(body), /check in/i);
+  // It is a proposal awaiting a human, not open work.
+  const pid = body.result.structuredContent.proposalId;
+  assert.ok(pid);
+  assert.equal(store.getObligation(pid, 'h_margaret').status, 'PROPOSED');
+});
+
+test('the paid aide cannot feed device signals into the record', async () => {
+  // Signals reshape the whole care picture, so they need full-state authority.
+  const session = await openSession('aide-token');
+  const { body } = await callTool('aide-token', session, 'ingest_signal', {
+    source: 'ring', kind: 'delivery_arrived',
+  });
+  assert.equal(body.result.isError, true);
+});

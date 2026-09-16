@@ -40,6 +40,7 @@ export type EventKind =
   | 'note_added'
   | 'obligation_resolved'
   | 'member_notified'
+  | 'external_signal'
   | 'check_in';
 
 /**
