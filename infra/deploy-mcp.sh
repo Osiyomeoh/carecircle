@@ -87,7 +87,7 @@ fi
 INST_ROLE_ARN=$(aws iam get-role --role-name "$INST_ROLE" --query Role.Arn --output text)
 
 echo "==> App Runner service"
-CONFIG="{\"ImageRepository\":{\"ImageIdentifier\":\"$ECR_URI:latest\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"8000\",\"RuntimeEnvironmentVariables\":{\"CARECIRCLE_TABLE\":\"${CARECIRCLE_TABLE:-carecircle}\"}}},\"AutoDeploymentsEnabled\":false}"
+CONFIG="{\"ImageRepository\":{\"ImageIdentifier\":\"$ECR_URI:latest\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"8000\",\"RuntimeEnvironmentVariables\":{\"CARECIRCLE_TABLE\":\"${CARECIRCLE_TABLE:-carecircle}\",\"AWS_REGION\":\"$REGION\"}}},\"AutoDeploymentsEnabled\":false}"
 ARN=$(aws apprunner list-services --region "$REGION" --query "ServiceSummaryList[?ServiceName=='carecircle-mcp'].ServiceArn" --output text)
 if [ -n "$ARN" ]; then
   aws apprunner update-service --service-arn "$ARN" --source-configuration "{\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"$AR_ROLE_ARN\"},$(echo "$CONFIG" | sed 's/^{//')" --region "$REGION" >/dev/null
