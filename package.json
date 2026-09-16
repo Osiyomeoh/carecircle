@@ -9,17 +9,18 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch src/http.ts",
+    "dev": "tsx watch --env-file-if-exists=.env src/http.ts",
     "start": "node dist/http.js",
     "test": "tsx --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "sim": "tsx src/sim/app.ts",
-    "demo": "npm run build && node dist/http.js",
-    "e2e": "tsx scripts/e2e.ts",
-    "demo:reset": "tsx scripts/demo-reset.ts",
-    "evals": "tsx scripts/evals.ts",
-    "dynamo:check": "tsx scripts/dynamo-check.ts",
-    "preflight": "tsx scripts/preflight.ts"
+    "sim": "tsx --env-file-if-exists=.env src/sim/app.ts",
+    "demo": "npm run build && node --env-file-if-exists=.env dist/http.js",
+    "e2e": "tsx --env-file-if-exists=.env scripts/e2e.ts",
+    "story": "tsx --env-file-if-exists=.env scripts/story.ts",
+    "demo:reset": "tsx --env-file-if-exists=.env scripts/demo-reset.ts",
+    "evals": "tsx --env-file-if-exists=.env scripts/evals.ts",
+    "dynamo:check": "tsx --env-file-if-exists=.env scripts/dynamo-check.ts",
+    "preflight": "tsx --env-file-if-exists=.env scripts/preflight.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.1131.0",

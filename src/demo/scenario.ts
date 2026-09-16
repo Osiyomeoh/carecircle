@@ -56,6 +56,13 @@ export interface ScenarioOptions {
    * so the opening state leaves it unowned.
    */
   rideClaimedByRenee?: boolean;
+  /**
+   * Skip seeding Margaret's morning heart-pill dose. The live walkthrough logs it
+   * on camera as beat one, so seeding it as well would double-count the same dose.
+   * The thyroid tablet is still seeded, so the morning is not falsely reported as a
+   * missed record. Defaults to false, which keeps `npm run demo:reset` unchanged.
+   */
+  skipMorningHeartPill?: boolean;
 }
 
 /**
@@ -74,12 +81,15 @@ export async function seedScenario(
   const now = options.now ?? new Date();
   const cardiologyAt = nextWeekdayAt(4, 10, 0, now, NY); // 4 = Thursday
 
-  // Morning medications, confirmed by Margaret herself.
-  await store.appendEvent({
-    householdId, kind: 'medication_taken', reportedBy: 'm_margaret',
-    occurredAt: todayAt(8, 10, now, NY).toISOString(),
-    data: { medicationId: 'med_heart', medicationName: 'heart pill', aboutMemberId: 'm_margaret' },
-  });
+  // Morning medications, confirmed by Margaret herself. The heart pill is optionally
+  // left for the live walkthrough to log on camera (see skipMorningHeartPill).
+  if (!options.skipMorningHeartPill) {
+    await store.appendEvent({
+      householdId, kind: 'medication_taken', reportedBy: 'm_margaret',
+      occurredAt: todayAt(8, 10, now, NY).toISOString(),
+      data: { medicationId: 'med_heart', medicationName: 'heart pill', aboutMemberId: 'm_margaret' },
+    });
+  }
   await store.appendEvent({
     householdId, kind: 'medication_taken', reportedBy: 'm_margaret',
     occurredAt: todayAt(8, 12, now, NY).toISOString(),

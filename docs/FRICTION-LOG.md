@@ -275,3 +275,58 @@ Template:
   to the type table. One concrete `motion_detected` example with the `attributes` and
   `relationships` filled in would remove the guesswork entirely.
 - **Date:** 2026-09-16
+
+### Bedrock — a model-access grant does not imply the caller can invoke the model
+- **Task attempted:** Invoke Claude Sonnet 4.5 immediately after receiving the email
+  confirming our account had been granted access to the model.
+- **Steps taken:** Ran `aws bedrock-runtime converse --model-id
+  us.anthropic.claude-sonnet-4-5-...` with the credentials the account normally uses.
+- **Expected:** With model access granted, an authenticated principal on the account
+  can call the model.
+- **Actual:** `AccessDeniedException: not authorized to perform bedrock:InvokeModel ...
+  because no identity-based policy allows the action`. Model access (an account-level
+  grant) and IAM permission (an identity policy on the calling user/role) are two
+  independent gates, and the failure looked identical to the earlier quota hold.
+- **Severity:** major — after a multi-day wait for access, the first call still fails,
+  and the error does not say the *account* is fine and only the *principal* is missing a
+  permission. Easy to misread as "the grant didn't actually land."
+- **Workaround:** Switch to a principal that carries `bedrock:InvokeModel` (we keep a
+  dedicated `conductor` IAM user with the inference policy), or attach the action.
+- **Suggestion:** In the model-access confirmation, state that the caller still needs
+  `bedrock:InvokeModel` on the target inference-profile ARN, and have the runtime error
+  distinguish "account has no model access" from "this principal lacks InvokeModel".
+- **Date:** 2026-09-16
+
+### Bedrock — the newer Claude models must be called by inference-profile id, not model id
+- **Task attempted:** Call Claude Sonnet 4.5 by what looks like its model id.
+- **Steps taken:** Reached for a foundation-model style id first; the working id turned
+  out to be the cross-region *inference profile* `us.anthropic.claude-sonnet-4-5-...`
+  (note the leading `us.`), and the IAM resource is
+  `arn:aws:bedrock:...:inference-profile/us.anthropic...`, not `foundation-model/...`.
+- **Expected:** One obvious identifier to invoke a model, matching what the console lists.
+- **Actual:** Two identifier shapes (foundation-model vs inference-profile) that are easy
+  to confuse; an IAM policy scoped to `foundation-model/*` silently fails to authorize an
+  inference-profile invoke, producing an AccessDenied that names the profile ARN.
+- **Severity:** minor — once known it is a one-time fix, but it costs a debugging loop.
+- **Workaround:** Use the `us.`-prefixed inference-profile id everywhere, and scope IAM
+  to the inference-profile resource (or `*`).
+- **Suggestion:** In the model catalogue/console, label plainly which id to pass to
+  `InvokeModel`/`Converse` and which ARN to put in IAM, side by side, for each model.
+- **Date:** 2026-09-16
+
+### Bedrock / Service Quotas — you cannot self-diagnose readiness without a second permission
+- **Task attempted:** Have the app pre-flight its own Bedrock readiness (is the quota
+  non-zero, is access live) before a demo, so a failure is explained, not opaque.
+- **Steps taken:** Called `servicequotas:ListServiceQuotas` / `GetServiceQuota` for the
+  Bedrock per-model quota from the same principal that invokes the model.
+- **Expected:** A principal allowed to invoke a model can read that model's own quota to
+  report headroom.
+- **Actual:** Reading the quota requires a separate `servicequotas:*` permission the
+  invoke principal usually does not have, so the preflight reports "quota state unknown"
+  even when invocation works. Diagnosing the *quota=0* failure mode needs a permission
+  you are unlikely to have granted just to run inference.
+- **Severity:** minor — the app degrades to "unknown" rather than a clear readiness line.
+- **Suggestion:** Expose a lightweight, invoke-scoped readiness signal (e.g. remaining
+  daily tokens) on the Bedrock runtime API itself, so an app can self-report headroom
+  without granting Service Quotas read access to its inference role.
+- **Date:** 2026-09-16

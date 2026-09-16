@@ -1,0 +1,19 @@
+{
+  "name": "@carecircle/care-events",
+  "version": "0.1.0",
+  "description": "One adapter seam any device plugs into: turn heterogeneous signals (voice, wearable, doorbell) into one CareEvent contract, with a trust model that never lets a guess become a fact.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsx --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["mcp", "care", "adapter", "provenance", "ring", "bee", "alexa", "events"],
+  "devDependencies": { "tsx": "^4.19.0", "typescript": "^5.7.0", "@types/node": "^24.0.0" }
+}

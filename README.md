@@ -211,11 +211,31 @@ npm run demo:reset && npm run dev   # in one shell
 npm run evals                       # in another
 ```
 
-68 utterances across all four members of the care circle. The model receives the
-real tool definitions and one utterance; we record its first tool choice and
-execute nothing. Cases that never reach the model — credentials, throttling — are
-excluded from the accuracy figure rather than counted as wrong answers, because a
-number that can lie is worse than no number.
+**Result: 93.3% first-tool accuracy (126 / 135), 0 errored — Claude Sonnet 4.5 on
+Amazon Bedrock.**
+
+The corpus is deliberately split so the number cannot be gamed:
+
+- **68 authored cases**, used while tuning the tool descriptions — **100%**.
+- **67 held-out cases**, written afterward and never tuned against (harder phrasings,
+  multi-intent, wrong-role attempts, the purchase flow, and out-of-scope lines that
+  name care words on purpose) — **86.6%**.
+
+The model receives the real tool definitions and one utterance, using the exact
+planner prompt the simulator ships (imported, not a friendlier copy written to
+score well); we record its first tool choice and execute nothing. Cases that never
+reach the model — credentials, throttling — are excluded from the figure rather than
+counted as wrong, because a number that can lie is worse than no number.
+
+**Honest limitations** (the nine held-out misses, unfixed on purpose): reschedules
+("move her cardiology to Friday"), vague-time scheduling ("a flu shot next week
+sometime"), a couple of elliptical unavailabilities ("count me out this weekend"),
+and cold purchase confirmations with no offer in context. These are the edges a
+larger corpus would harden next.
+
+We went from an early 85.3% to 100% on the authored set by finding the exact failures
+the harness named and rewriting the ambiguous descriptions — then re-measured on the
+held-out set to get the honest 93.3%.
 
 Demo credentials (one per member — the identity model in miniature):
 

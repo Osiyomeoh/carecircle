@@ -1,8 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { detectCareGaps, pendingProposals } from '../domain/gaps.js';
 import { orphanedBy, proposeFromAppointment } from '../domain/inference.js';
 import { interpretSignal, type CareSignal } from '../domain/signals.js';
+import { offerFor, offerSpoken, formatPrice, type OfferKind, type PurchaseOffer } from '../domain/commerce.js';
 import { can, canActOn, NotPermittedError, require as requireCap } from '../domain/auth.js';
 import { CareStore, HouseholdScopeError, NotFoundError } from '../store/store.js';
 import { countPhrase, joinSpoken, sentence, speakGaps } from './text.js';
@@ -160,9 +162,12 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   server.registerTool('record_appointment', {
     title: 'Record an appointment',
     description:
-      'Record a scheduled appointment. This also works out what the appointment probably '
-      + 'requires — a ride, someone to come along — and PROPOSES that work for a human to '
-      + 'confirm. Proposals are guesses and are never treated as real until confirmed with '
+      'Record a scheduled appointment or any future dated commitment the person mentions '
+      + '— a doctor\'s visit, a haircut, book club on Wednesday, a birthday. It does not '
+      + 'have to be medical: use this, not add_note, whenever there is a date and time. '
+      + 'It also works out what the appointment probably requires — only a MEDICAL one '
+      + 'proposes a ride or a companion — and PROPOSES that work for a human to confirm. '
+      + 'Proposals are guesses and are never treated as real until confirmed with '
       + 'confirm_proposal. Tell the person what was proposed and ask.',
     inputSchema: {
       kind: z.string().describe('What the appointment is, as said (e.g. "cardiology", "dentist").'),
@@ -223,9 +228,11 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       + 'should see — "Mom sounded tired", "the doctor changed her dose". Use this when '
       + 'there is something to SAY but nothing specific that must be DONE. If someone needs '
       + 'to take an action, use record_appointment or let the note stand and let them claim it.\n\n'
-      + 'IMPORTANT: if the person says someone is UNAVAILABLE — "I can\'t drive Thursday", '
-      + '"Renee is away next week" — fill in `unavailable`. Work that person was covering may '
-      + 'quietly stop being covered, and that silence is exactly what this system exists to catch.',
+      + 'IMPORTANT: if the person says they (or someone) will be UNAVAILABLE — "I can\'t drive '
+      + 'Thursday", "I won\'t be able to make Friday after all", "Renee is away next week" — '
+      + 'this is still an add_note, with `unavailable` filled in. It is never "nothing to do": '
+      + 'work that person was covering may quietly stop being covered, and that silence is '
+      + 'exactly what this system exists to catch.',
     inputSchema: {
       note: z.string().describe('The observation, in the words it was said.'),
       aboutMemberId: z.string().optional().describe('Who it concerns. Defaults to the care recipient.'),
@@ -289,9 +296,11 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       'THE core tool. Returns everything that needs attention and has no owner — unclaimed '
       + 'work, expected records that are missing, and things past their due time. Use this '
       + 'for "what needs doing", "what\'s unassigned", "what might fall through the cracks", '
-      + 'or "is anything being missed". Results are already ranked by urgency and already '
-      + 'phrased for speech: read them as written. Never restate a missing record as someone '
-      + 'having failed to do something.',
+      + 'or "is anything being missed". Also use it to resolve an implicit reference: when '
+      + 'someone says "yes", "that one", "I\'ve got it" or "that\'s done" and you need to know '
+      + 'which item they mean, call this to find it, then act. Results are already ranked by '
+      + 'urgency and already phrased for speech: read them as written. Never restate a missing '
+      + 'record as someone having failed to do something.',
     inputSchema: {
       withinDays: z.number().int().positive().max(365).optional()
         .describe('Only include dated items within this many days. Omit for everything.'),
@@ -318,9 +327,10 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   server.registerTool('claim_obligation', {
     title: 'Take responsibility for something',
     description:
-      'The speaker takes on a piece of work themselves ("I\'ll do it", "I\'ve got Thursday"). '
-      + 'To give work to someone ELSE, use assign_obligation instead. If you are unsure which '
-      + 'item they mean, call get_care_gaps and ask rather than guessing.',
+      'The speaker takes on a piece of work themselves ("I\'ll do it", "I\'ve got Thursday", '
+      + '"I can take that one", "leave it with me"). To give work to someone ELSE, use '
+      + 'assign_obligation instead. If you are unsure which item they mean — "that one", "it" '
+      + '— call get_care_gaps to find it, then claim it, rather than doing nothing.',
     inputSchema: { obligationId: z.string().describe('Which piece of work. From get_care_gaps.') },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   }, async ({ obligationId }) => {
@@ -384,8 +394,11 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     description:
       'The system infers work from appointments (a ride to cardiology, someone to take notes) '
       + 'but never treats a guess as real. This turns a guess into actual work, or dismisses '
-      + 'it. Always ask a person before calling this — the confirmation must come from them, '
-      + 'not from your own judgement about what seems sensible.',
+      + 'it. A short affirmation of a suggested need — "yes", "that\'s right", "she will need '
+      + 'that", "someone should drive her" — is a confirmation: call this. If you do not know '
+      + 'which proposal they mean, call get_care_gaps first to find it, then confirm. Always '
+      + 'ask a person before calling this — the confirmation must come from them, not from '
+      + 'your own judgement about what seems sensible.',
     inputSchema: {
       obligationId: z.string().describe('The proposal being answered.'),
       confirmed: z.boolean().describe('True if the person said it is needed, false if not.'),
@@ -412,7 +425,11 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   // --- 8. "Picked up the prescription." ----------------------------------
   server.registerTool('resolve_obligation', {
     title: 'Mark something as done',
-    description: 'Record that a piece of work has been completed.',
+    description:
+      'Record that a piece of work has been completed. Use this when someone says a task '
+      + 'is handled — "that\'s sorted now", "taken care of", "I dropped it off", "done". If '
+      + 'they do not name which task, call get_care_gaps first to find which one they mean, '
+      + 'then resolve it.',
     inputSchema: {
       obligationId: z.string().describe('Which piece of work.'),
       note: z.string().optional().describe('Anything they said about how it went.'),
@@ -484,8 +501,10 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     title: 'What this shift needs to know',
     description:
       'A short handoff brief for whoever is on duty: what is due, what they own, and any '
-      + 'recent notes that change how today should go. Scoped deliberately — it does not '
-      + 'expose the whole family record.',
+      + 'recent notes that change how today should go. Use it when a helper or aide asks '
+      + 'what they need to know, what is happening today, or what medications the person is '
+      + 'on today — for the aide this is how they see the day. Scoped deliberately — it does '
+      + 'not expose the whole family record.',
     inputSchema: {},
     annotations: { readOnlyHint: true, idempotentHint: true },
   }, async () => {
@@ -515,9 +534,10 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     title: 'Let someone in the care circle know something',
     description:
       'Send a short message to another member of the care circle — "tell Renee I\'m '
-      + 'taking Mom Thursday", "let David know the pharmacy called". Use this when the '
-      + 'speaker wants a specific PERSON told something. To record something for the '
-      + 'whole family to see later, use add_note instead.',
+      + 'taking Mom Thursday", "let David know the pharmacy called", "message Renee about '
+      + 'the appointment change", "text Renee". Any of tell / message / text / let-know a '
+      + 'named person maps here. Use this when the speaker wants a specific PERSON told '
+      + 'something. To record something for the whole family to see later, use add_note.',
     inputSchema: {
       recipientName: z.string().describe('Who to tell, as the speaker named them.'),
       message: z.string().describe('What to tell them, in the speaker\'s own words.'),
@@ -633,6 +653,107 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     } catch (err) { return guidance(describeError(err)); }
   });
 
+  // --- 13. "Reorder Mom's prescription." — the purchase, as an offer -----
+  server.registerTool('reorder_prescription', {
+    title: 'Offer to reorder a prescription',
+    description:
+      'Some work is closed by buying the thing, not by doing it. When a prescription '
+      + 'needs refilling — often the same one a delivery or a pickup gap is about — this '
+      + 'prepares a priced OFFER from a pharmacy and presents it. It does NOT buy '
+      + 'anything: like every inference here, a purchase is a proposal until a person '
+      + 'confirms it with confirm_purchase. Tell them the item, the price and the ETA, '
+      + 'and that nothing is charged yet.',
+    inputSchema: {
+      medicationName: z.string().optional()
+        .describe('Which medication to refill, as said (e.g. "heart pill").'),
+      obligationId: z.string().optional()
+        .describe('The pickup/refill Care Gap this would close, if known.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ medicationName, obligationId }) => {
+    try {
+      const me = actor();
+      requireCap(me, 'create_obligation');
+      const offer = offerFor('prescription_refill', {
+        offerId: `off_${randomUUID()}`,
+        ...(medicationName ? { itemName: medicationName } : {}),
+        ...(obligationId ? { obligationId } : {}),
+      });
+      const event = await store.appendEvent({
+        householdId: me.householdId, kind: 'purchase_offered', reportedBy: me.id,
+        occurredAt: now().toISOString(), detail: offer.item,
+        data: { offer: offer as unknown as Record<string, unknown> },
+      });
+      return reply(offerSpoken(offer), { eventId: event.id, offer });
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
+  // --- 14. "Yes, place it." — the in-place confirmation ------------------
+  server.registerTool('confirm_purchase', {
+    title: 'Place or decline a prepared purchase',
+    description:
+      'Confirm a purchase that was offered, or decline it. This is the only step that '
+      + 'commits money. On confirmation the order is placed and, if the purchase closes '
+      + 'a Care Gap (a prescription pickup), that work is marked done. Only call this '
+      + 'when a person has said yes to a specific offer — never on your own judgement.',
+    inputSchema: {
+      offerId: z.string().describe('The offer being answered, from reorder_prescription.'),
+      confirmed: z.boolean().describe('True to place the order, false to decline it.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  }, async ({ offerId, confirmed }) => {
+    try {
+      const me = actor();
+      requireCap(me, 'create_obligation');
+      const s = state();
+      const offered = s.events.find(
+        (e) => e.kind === 'purchase_offered'
+          && (e.data['offer'] as PurchaseOffer | undefined)?.offerId === offerId,
+      );
+      if (!offered) return guidance(`I can't find that offer any more. Ask me to price it again.`);
+      const offer = offered.data['offer'] as unknown as PurchaseOffer;
+
+      const already = s.events.find(
+        (e) => e.kind === 'purchase_completed' && e.data['offerId'] === offerId,
+      );
+      if (already) {
+        return guidance(`That order was already ${(already.data['placed']) ? 'placed' : 'declined'}.`);
+      }
+
+      await store.appendEvent({
+        householdId: me.householdId, kind: 'purchase_completed', reportedBy: me.id,
+        occurredAt: now().toISOString(),
+        detail: confirmed ? `Placed: ${offer.item}` : `Declined: ${offer.item}`,
+        data: { offerId, placed: confirmed, amountCents: offer.amountCents, simulated: true },
+      });
+
+      if (!confirmed) {
+        return reply(`Okay, I won't place it.`, { offerId, placed: false });
+      }
+
+      // A confirmed purchase closes the Care Gap it was for, when it names one and
+      // the caller may act on it.
+      let closed: string | null = null;
+      if (offer.obligationId) {
+        try {
+          const o = store.getObligation(offer.obligationId, me.householdId);
+          if (o.status !== 'RESOLVED' && o.status !== 'DISMISSED' && canActOn(me, o)) {
+            await store.transition(offer.obligationId, me.householdId, 'RESOLVED', me.id, {
+              resolvedAt: now().toISOString(), resolutionNote: `Ordered via ${offer.merchant}.`,
+            });
+            closed = o.what;
+          }
+        } catch { /* the gap may have been resolved another way; the order still stands */ }
+      }
+
+      const price = formatPrice(offer.amountCents, offer.currency);
+      const spoken = closed
+        ? `Done — ${offer.item} is ordered for ${price}, and that takes "${closed}" off the list.`
+        : `Done — ${offer.item} is ordered for ${price}. You'll get a confirmation from ${offer.merchant}.`;
+      return reply(spoken, { offerId, placed: true, amountCents: offer.amountCents, closedObligation: closed });
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
   // --- Resources: the care record, readable as a document ----------------
   server.registerResource('care-state', 'carecircle://household/state', {
     title: 'Current care state',
@@ -653,6 +774,16 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
             provenance: o.provenance.kind,
           })),
           gaps: detectCareGaps(s, { now: now() }),
+          // Purchase offers still awaiting a decision — the in-place buy moment.
+          offers: (() => {
+            const settled = new Set(s.events
+              .filter((e) => e.kind === 'purchase_completed')
+              .map((e) => e.data['offerId'] as string));
+            return s.events
+              .filter((e) => e.kind === 'purchase_offered')
+              .map((e) => e.data['offer'] as unknown)
+              .filter((o): o is { offerId: string } => !!o && !settled.has((o as { offerId: string }).offerId));
+          })(),
           notifications: s.events
             .filter((e) => e.kind === 'member_notified')
             .slice(-5)

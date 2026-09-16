@@ -32,7 +32,8 @@ type Entity =
   | { kind: 'EVENT'; id: string }
   | { kind: 'OBLIGATION'; id: string }
   | { kind: 'MED'; id: string }
-  | { kind: 'TRANSITION'; id: string };
+  | { kind: 'TRANSITION'; id: string }
+  | { kind: 'IDENTITY'; id: string };
 
 interface Row {
   pk: string;
@@ -56,6 +57,7 @@ function rowsFor(snapshot: StoreSnapshot): Map<string, Row> {
   for (const e of snapshot.events) add(`HH#${e.householdId}`, 'EVENT', e.id, e);
   for (const o of snapshot.obligations) add(`HH#${o.householdId}`, 'OBLIGATION', o.id, o);
   for (const m of snapshot.medications) add(`HH#${m.householdId}`, 'MED', m.id, m);
+  for (const i of snapshot.identities) add(`HH#${i.householdId}`, 'IDENTITY', i.subject, i);
   for (const t of snapshot.transitions) {
     // Transitions carry no household of their own; they belong to their obligation.
     const owner = snapshot.obligations.find((o) => o.id === t.obligationId);
@@ -68,7 +70,7 @@ function rowsFor(snapshot: StoreSnapshot): Map<string, Row> {
 function emptySnapshot(): StoreSnapshot {
   return {
     households: [], members: [], events: [],
-    obligations: [], medications: [], transitions: [],
+    obligations: [], medications: [], transitions: [], identities: [],
   };
 }
 
@@ -83,6 +85,7 @@ function snapshotFrom(rows: Row[]): StoreSnapshot {
       case 'OBLIGATION': snapshot.obligations.push(row.body as never); break;
       case 'MED': snapshot.medications.push(row.body as never); break;
       case 'TRANSITION': snapshot.transitions.push(row.body as never); break;
+      case 'IDENTITY': snapshot.identities.push(row.body as never); break;
     }
   }
   // The event log is append-only and read in order; DynamoDB does not promise one.

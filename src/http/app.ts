@@ -7,6 +7,7 @@ import { createCareCircleServer } from '../mcp/server.js';
 import type { CareStore } from '../store/store.js';
 import { staticTokens, type IdentityResolver } from './identity.js';
 import { RecordOnlyNotifier, type Notifier } from '../notify/notifier.js';
+import { log } from '../obs/log.js';
 
 /**
  * Streamable HTTP transport (MCP spec 2025-11-25).
@@ -41,17 +42,36 @@ export interface AppOptions {
   tokens?: Map<string, string>;
   /** How notify_member delivers. Defaults to record-only. */
   notifier?: Notifier;
+  /**
+   * The clock. Defaults to real time. Injectable so a deterministic walkthrough can
+   * run "as of" the moment the story is set — e.g. 8:05pm, when an evening dose is
+   * genuinely overdue and the absence beat has something real to surface.
+   */
+  now?: () => Date;
 }
 
 /**
  * Build the MCP HTTP app. Exported as a factory so the identity and session rules
  * can be attacked directly in tests over real HTTP, rather than trusted.
  */
-export function createCareCircleApp({ store, identity, tokens, notifier }: AppOptions): express.Express {
+export function createCareCircleApp({ store, identity, tokens, notifier, now }: AppOptions): express.Express {
 const resolver = identity ?? staticTokens(tokens ?? new Map());
 const messenger = notifier ?? new RecordOnlyNotifier();
 const app = express();
 app.use(express.json({ limit: '1mb' }));
+
+// One operational access line per request. Deliberately no body and no query: the
+// request carries PHI (medication names, notes) and it must never reach the logs.
+app.use((req, res, next) => {
+  const started = Date.now();
+  res.on('finish', () => {
+    log.info('request', {
+      method: req.method, path: req.path, status: res.statusCode,
+      ms: Date.now() - started, session: req.header('mcp-session-id') ?? undefined,
+    });
+  });
+  next();
+});
 
 app.get('/health', (_req, res) => {
   // Report ready even before the store has loaded: the process is up and can serve.
@@ -105,7 +125,7 @@ app.post('/mcp', async (req, res) => {
     return;
   }
 
-  const server = createCareCircleServer({ store, actorId, notifier: messenger });
+  const server = createCareCircleServer({ store, actorId, notifier: messenger, ...(now ? { now } : {}) });
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     enableJsonResponse: true,
@@ -139,6 +159,13 @@ for (const method of ['get', 'delete'] as const) {
     await session.transport.handleRequest(req, res);
   });
 }
+
+  // Last-resort error handler: never leak a stack to the client, and keep the shape
+  // JSON-RPC so an MCP client sees a well-formed error. The detail goes to the logs.
+  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    log.error('unhandled request error', { reason: err.message });
+    if (!res.headersSent) rpcError(res, 500, -32603, 'Internal server error');
+  });
 
   return app;
 }

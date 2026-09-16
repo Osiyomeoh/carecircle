@@ -19,7 +19,8 @@ export type Capability =
   | 'assign_obligation'  // give work to someone else
   | 'confirm_proposal'   // turn an inference into real work
   | 'resolve_obligation'
-  | 'escalate';          // pull a human in urgently
+  | 'escalate'           // pull a human in urgently
+  | 'manage_circle';     // add or remove members, edit medication schedules
 
 const CAPABILITIES: Record<Role, ReadonlySet<Capability>> = {
   // The person being cared for: full authority over their own life, and they can
@@ -30,7 +31,7 @@ const CAPABILITIES: Record<Role, ReadonlySet<Capability>> = {
   primary_caregiver: new Set([
     'log_own_event', 'log_others_event', 'read_full_state', 'read_shift',
     'create_obligation', 'claim_obligation', 'assign_obligation',
-    'confirm_proposal', 'resolve_obligation', 'escalate',
+    'confirm_proposal', 'resolve_obligation', 'escalate', 'manage_circle',
   ]),
   caregiver: new Set([
     'log_own_event', 'log_others_event', 'read_full_state', 'read_shift',

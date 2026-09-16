@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CORPUS, MEMBER_LABEL, type EvalCase } from './corpus.js';
 import type { ModelProvider, ToolSpec } from '../sim/providers.js';
+import { SYSTEM_PROMPT } from '../sim/host.js';
 
 /**
  * Tool-selection evaluation.
@@ -20,10 +21,8 @@ import type { ModelProvider, ToolSpec } from '../sim/providers.js';
  * keeps cases from polluting each other's state.
  */
 
-const SYSTEM = `You are Alexa, speaking to a member of a family caring for an elderly relative.
-Use the CareCircle tools for anything about medications, appointments, notes, or who is
-responsible for what. Never answer those from memory. If nothing in the conversation needs
-a tool, just reply normally. Be brief.`;
+// Measure the exact planner the product ships, not a prompt tuned to score well.
+const SYSTEM = SYSTEM_PROMPT;
 
 export interface CaseResult {
   case: EvalCase;

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type {
-  CareEvent, CareState, Household, Member, MedicationSchedule, Obligation,
+  CareEvent, CareState, Household, IdentityMapping, Member, MedicationSchedule, Obligation,
 } from '../domain/types.js';
 
 /**
@@ -34,12 +34,13 @@ export interface StoreSnapshot {
   obligations: Obligation[];
   medications: MedicationSchedule[];
   transitions: ObligationTransition[];
+  identities: IdentityMapping[];
 }
 
 function emptySnapshot(): StoreSnapshot {
   return {
     households: [], members: [], events: [],
-    obligations: [], medications: [], transitions: [],
+    obligations: [], medications: [], transitions: [], identities: [],
   };
 }
 
@@ -77,6 +78,14 @@ export class CareStore {
   async init(): Promise<void> {
     const loaded = await this.#persistence?.load();
     if (loaded) this.#snapshot = loaded;
+  }
+
+  /**
+   * Wait for any in-flight write to finish persisting. Used on graceful shutdown so
+   * a rolling deploy never tears the process down mid-save and loses a care write.
+   */
+  async quiesce(): Promise<void> {
+    await this.#writeQueue;
   }
 
   /** Run a mutation and persist, with writes serialised. */
@@ -214,6 +223,53 @@ export class CareStore {
 
   addMedication(m: MedicationSchedule): Promise<MedicationSchedule> {
     return this.#write(() => { this.#snapshot.medications.push(m); return m; });
+  }
+
+  /**
+   * Bind an authenticated subject to a member. Idempotent per subject: re-mapping a
+   * subject moves it, rather than leaving one credential resolving to two members.
+   */
+  mapIdentity(mapping: IdentityMapping): Promise<IdentityMapping> {
+    return this.#write(() => {
+      this.#snapshot.identities = this.#snapshot.identities.filter((i) => i.subject !== mapping.subject);
+      this.#snapshot.identities.push(mapping);
+      return mapping;
+    });
+  }
+
+  /** The member a subject speaks for, or undefined. In-memory and synchronous by design. */
+  resolveIdentity(subject: string): IdentityMapping | undefined {
+    return this.#snapshot.identities.find((i) => i.subject === subject);
+  }
+
+  /**
+   * Remove a member and their credential mapping. Their open obligations are not
+   * deleted — they are released back to the circle (owner cleared) so the work
+   * resurfaces as a Care Gap rather than vanishing with the person. Exactly the
+   * silent-orphaning this system exists to catch.
+   */
+  removeMember(householdId: string, memberId: string): Promise<{ released: number }> {
+    return this.#write(() => {
+      const member = this.#snapshot.members.find((m) => m.id === memberId && m.householdId === householdId);
+      if (!member) throw new NotFoundError('member', memberId);
+      let released = 0;
+      for (const o of this.#snapshot.obligations) {
+        if (o.householdId === householdId && o.ownerId === memberId
+          && o.status !== 'RESOLVED' && o.status !== 'DISMISSED') {
+          o.ownerId = null;
+          o.status = 'OPEN';
+          released += 1;
+        }
+      }
+      this.#snapshot.members = this.#snapshot.members.filter((m) => m.id !== memberId);
+      this.#snapshot.identities = this.#snapshot.identities.filter((i) => i.memberId !== memberId);
+      return { released };
+    });
+  }
+
+  /** Members with a given role in a household. Used to protect the last caregiver. */
+  membersWithRole(householdId: string, role: Member['role']): Member[] {
+    return this.#snapshot.members.filter((m) => m.householdId === householdId && m.role === role);
   }
 
   /** Replace all state. Used by the demo seeder and by tests. */

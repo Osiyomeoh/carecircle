@@ -23,6 +23,20 @@ export interface Member {
 }
 
 /**
+ * Maps an authenticated subject to the member it speaks for.
+ *
+ * The subject is whatever the credential asserts: a validated JWT claim value in
+ * production, or an opaque token in static/demo mode. Persisting the mapping is
+ * what lets a circle grow at runtime — a member added today can authenticate
+ * tomorrow — instead of membership being frozen into the environment at deploy.
+ */
+export interface IdentityMapping {
+  subject: string;
+  memberId: string;
+  householdId: string;
+}
+
+/**
  * How we came to believe something. This is the spine of the trust model:
  * the system must never let an inference or a silence masquerade as a fact.
  */
@@ -41,7 +55,9 @@ export type EventKind =
   | 'obligation_resolved'
   | 'member_notified'
   | 'external_signal'
-  | 'check_in';
+  | 'check_in'
+  | 'purchase_offered'
+  | 'purchase_completed';
 
 /**
  * The immutable record of something that happened. Events are append-only:

@@ -72,6 +72,9 @@
   .card{background:var(--panel-2);border:1px solid var(--line);border-left-width:3px;border-radius:10px;padding:11px 13px;animation:rise .3s ease}
   .card.HIGH{border-left-color:var(--high)} .card.MEDIUM{border-left-color:var(--med)} .card.LOW{border-left-color:var(--low)}
   .card.proposal{border-left-color:var(--prop);border-style:dashed}
+  .card.offer{border-left-color:var(--accent)}
+  .pill.offer{background:var(--accent-dim);color:var(--text);border:1px solid var(--accent)}
+  .card .sandbox{font-size:10px;color:var(--dim);margin-top:5px;opacity:.8}
   .card .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
   .card .what{font-size:13px;font-weight:500;line-height:1.4}
   .pill{font-size:9px;letter-spacing:1px;padding:3px 7px;border-radius:999px;white-space:nowrap;text-transform:uppercase}
@@ -245,6 +248,20 @@ async function refreshBoard(force){
       d.append(actions([
         ['Yes, needed', 'confirm_proposal', { obligationId:p.id, confirmed:true }, false],
         ['Not needed',  'confirm_proposal', { obligationId:p.id, confirmed:false }, true],
+      ]));
+      box.append(d);
+    }
+    for(const o of (s.offers ?? [])){
+      const price = '$'+((o.amountCents||0)/100).toFixed(2);
+      const d=document.createElement('div');
+      d.className='card offer';
+      d.innerHTML=`<div class="top"><div class="what">${esc(o.item)}</div>`
+        +`<div class="pill offer">${esc(price)}</div></div>`
+        +`<div class="why">${esc(o.merchant)} · ${esc(o.etaText)}</div>`
+        +`<div class="sandbox">Sandbox — no real payment is taken.</div>`;
+      d.append(actions([
+        [`Confirm · ${price}`, 'confirm_purchase', { offerId:o.offerId, confirmed:true }, false],
+        ['Not now', 'confirm_purchase', { offerId:o.offerId, confirmed:false }, true],
       ]));
       box.append(d);
     }
