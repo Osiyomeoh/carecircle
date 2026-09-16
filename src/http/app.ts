@@ -54,9 +54,13 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (_req, res) => {
+  // Report ready even before the store has loaded: the process is up and can serve.
+  // A storage problem shows as households:0, not as a dead service.
+  let households = -1;
+  try { households = store.householdCount(); } catch { /* not ready yet */ }
   res.json({
     ok: true, protocol: '2025-11-25', sessions: sessions.size,
-    identity: resolver.strategy,
+    identity: resolver.strategy, households,
   });
 });
 

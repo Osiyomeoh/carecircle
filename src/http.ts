@@ -19,15 +19,16 @@ const persistence = TABLE
   : new FilePersistence(DB_PATH);
 
 const store = new CareStore(persistence);
-await store.init();
-await seedDemoHousehold(store);
-
 const tokens = new Map<string, string>(Object.entries(DEMO_TOKENS));
 const identity = resolverFromEnv(tokens);
 const notifier = notifierFromEnv();
 
-// AgentCore Runtime expects the server on 0.0.0.0:8000/mcp.
-createCareCircleApp({ store, identity, notifier }).listen(PORT, '0.0.0.0', () => {
+// Bind the port FIRST, then load state. A slow or misconfigured storage backend
+// must not stop the server coming up and answering its health check — otherwise a
+// transient DynamoDB problem reads to the platform as "the app is dead" and the
+// whole service fails to deploy. Storage errors are logged, not fatal.
+const app = createCareCircleApp({ store, identity, notifier });
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`CareCircle MCP server on http://0.0.0.0:${PORT}/mcp  (spec 2025-11-25)`);
   console.log(`Identity: ${identity.strategy} · Storage: ${TABLE ? `dynamodb(${TABLE})` : `file(${DB_PATH})`} · Notify: ${notifier.channel}`);
   if (identity.strategy === 'static') {
@@ -35,3 +36,11 @@ createCareCircleApp({ store, identity, notifier }).listen(PORT, '0.0.0.0', () =>
     for (const [token, memberId] of tokens) console.log(`  ${memberId.padEnd(14)} Bearer ${token}`);
   }
 });
+
+try {
+  await store.init();
+  await seedDemoHousehold(store);
+  console.log('Care record ready.');
+} catch (err) {
+  console.error('[carecircle] storage init failed; serving with an empty record:', (err as Error).message);
+}

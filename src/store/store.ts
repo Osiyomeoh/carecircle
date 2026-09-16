@@ -106,6 +106,11 @@ export class CareStore {
     };
   }
 
+  /** How many households are loaded. Used by the health check. */
+  householdCount(): number {
+    return this.#snapshot.households.length;
+  }
+
   getMember(memberId: string): Member {
     const m = this.#snapshot.members.find((x) => x.id === memberId);
     if (!m) throw new NotFoundError('member', memberId);

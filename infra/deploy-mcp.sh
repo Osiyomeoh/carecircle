@@ -72,6 +72,20 @@ if ! aws iam get-role --role-name "$AR_ROLE" >/dev/null 2>&1; then
 fi
 AR_ROLE_ARN=$(aws iam get-role --role-name "$AR_ROLE" --query Role.Arn --output text)
 
+echo "==> App Runner instance role (the container's own AWS identity)"
+INST_ROLE="carecircle-apprunner-instance"
+if ! aws iam get-role --role-name "$INST_ROLE" >/dev/null 2>&1; then
+  aws iam create-role --role-name "$INST_ROLE" --assume-role-policy-document '{
+    "Version":"2012-10-17","Statement":[{"Effect":"Allow",
+    "Principal":{"Service":"tasks.apprunner.amazonaws.com"},"Action":"sts:AssumeRole"}]}' >/dev/null
+  aws iam put-role-policy --role-name "$INST_ROLE" --policy-name inline --policy-document '{
+    "Version":"2012-10-17","Statement":[
+      {"Effect":"Allow","Action":["dynamodb:*"],"Resource":"*"},
+      {"Effect":"Allow","Action":["sns:Publish"],"Resource":"*"}]}' >/dev/null
+  sleep 10
+fi
+INST_ROLE_ARN=$(aws iam get-role --role-name "$INST_ROLE" --query Role.Arn --output text)
+
 echo "==> App Runner service"
 CONFIG="{\"ImageRepository\":{\"ImageIdentifier\":\"$ECR_URI:latest\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"8000\",\"RuntimeEnvironmentVariables\":{\"CARECIRCLE_TABLE\":\"${CARECIRCLE_TABLE:-carecircle}\"}}},\"AutoDeploymentsEnabled\":false}"
 ARN=$(aws apprunner list-services --region "$REGION" --query "ServiceSummaryList[?ServiceName=='carecircle-mcp'].ServiceArn" --output text)
@@ -80,7 +94,7 @@ if [ -n "$ARN" ]; then
 else
   ARN=$(aws apprunner create-service --service-name carecircle-mcp \
     --source-configuration "{\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"$AR_ROLE_ARN\"},$(echo "$CONFIG" | sed 's/^{//')" \
-    --instance-configuration '{"Cpu":"256","Memory":"512"}' \
+    --instance-configuration "{\"Cpu\":\"256\",\"Memory\":\"512\",\"InstanceRoleArn\":\"$INST_ROLE_ARN\"}" \
     --health-check-configuration '{"Protocol":"HTTP","Path":"/health","Interval":10,"Timeout":5,"HealthyThreshold":1,"UnhealthyThreshold":5}' \
     --region "$REGION" --query 'Service.ServiceArn' --output text)
 fi
