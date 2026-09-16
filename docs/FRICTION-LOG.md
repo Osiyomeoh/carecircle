@@ -251,3 +251,27 @@ Template:
 - **Workaround:** Retry transient errors with backoff at the turn boundary; pace eval
   cases ~6s apart. A paid tier removes it.
 - **Date:** 2026-09-16
+
+
+### Ring Partner API — webhook event types are listed, but the payload schema is not
+- **Task attempted:** Build an adapter from Ring webhook events to CareCircle's care
+  signals, matching Ring's real event contract rather than an invented shape.
+- **Steps taken:** Read the Ring API reference. It documents the event *types*
+  (`motion_detected` with `attributes.sub_type`, `button_press`, device-lifecycle and
+  subscription events), the JSON:API envelope, HMAC-SHA256 `X-Signature` verification,
+  and that metadata carries `account_id` and `request_id` for idempotency.
+- **Expected:** A complete JSON schema (or a documented example payload) for each event
+  type — exact field names and nesting — so an integration can be written against it.
+- **Actual:** The published docs stop at the type list and envelope. The precise field
+  names, nesting, and full attribute set for a webhook payload are not given; the
+  reference effectively points you to support or SDK source to discover them.
+- **Severity:** major for a webhook integration — you cannot parse events reliably from
+  the docs alone, and webhook handlers are exactly where you want certainty.
+- **Workaround:** Model defensively against the guaranteed fields (type, device id,
+  `created_at`, `sub_type`, `request_id`) and ignore the rest; treat a
+  package/delivery as `motion_detected` with a package `sub_type`, since Ring has no
+  distinct delivery event.
+- **Suggestion:** Publish a full example payload per event type, or a JSON Schema, next
+  to the type table. One concrete `motion_detected` example with the `attributes` and
+  `relationships` filled in would remove the guesswork entirely.
+- **Date:** 2026-09-16
