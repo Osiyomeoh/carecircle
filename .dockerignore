@@ -1,0 +1,11 @@
+node_modules
+dist
+.git
+.env
+*.db.json
+carecircle.db*
+evals-results.json
+docs
+public
+scripts
+**/*.test.ts
