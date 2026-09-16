@@ -243,7 +243,7 @@ Every tool exists because a person says a sentence that needs it.
 | `confirm_proposal` | "Yes, she'll need a ride" |
 | `resolve_obligation` | "Picked up the prescription" |
 | `get_shift_brief` | "What do I need to know today?" |
-| `notify_member` | "Tell Renee I'm taking Mom Thursday" |
+| `notify_member` | "Tell Renee I'm taking Mom Thursday" — records it, and delivers over SNS when configured |
 
 Tool design follows four rules, because the model is the user:
 

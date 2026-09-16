@@ -6,6 +6,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createCareCircleServer } from '../mcp/server.js';
 import type { CareStore } from '../store/store.js';
 import { staticTokens, type IdentityResolver } from './identity.js';
+import { RecordOnlyNotifier, type Notifier } from '../notify/notifier.js';
 
 /**
  * Streamable HTTP transport (MCP spec 2025-11-25).
@@ -38,14 +39,17 @@ export interface AppOptions {
   identity?: IdentityResolver;
   /** token -> member id, used when no resolver is given. */
   tokens?: Map<string, string>;
+  /** How notify_member delivers. Defaults to record-only. */
+  notifier?: Notifier;
 }
 
 /**
  * Build the MCP HTTP app. Exported as a factory so the identity and session rules
  * can be attacked directly in tests over real HTTP, rather than trusted.
  */
-export function createCareCircleApp({ store, identity, tokens }: AppOptions): express.Express {
+export function createCareCircleApp({ store, identity, tokens, notifier }: AppOptions): express.Express {
 const resolver = identity ?? staticTokens(tokens ?? new Map());
+const messenger = notifier ?? new RecordOnlyNotifier();
 const app = express();
 app.use(express.json({ limit: '1mb' }));
 
@@ -97,7 +101,7 @@ app.post('/mcp', async (req, res) => {
     return;
   }
 
-  const server = createCareCircleServer({ store, actorId });
+  const server = createCareCircleServer({ store, actorId, notifier: messenger });
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: () => randomUUID(),
     enableJsonResponse: true,

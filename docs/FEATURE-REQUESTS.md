@@ -54,6 +54,21 @@ Template: what we wanted, why it mattered *for this project*, what we did instea
   at the ceiling. Every add-on developer will guess differently, and customers will
   experience the inconsistency.
 
+### Elicitation assumes a request that can stay open; a voice turn cannot
+- **Urgency:** important
+- **What:** Guidance (or a protocol affordance) for elicitation on surfaces where a
+  single request cannot stay open across a human's response — voice being the clearest
+  case.
+- **Why it matters:** MCP elicitation expects the answer to arrive inside the same
+  `tools/call` that raised it. An Alexa turn is over in seconds, so the two disagree
+  about how long one request may stay open. A bridge author who put an Alexa Skill in
+  front of MCP servers hit exactly this and had to park the open call and resume it on a
+  later turn. CareCircle sidesteps it by modelling confirmation as a *separate* tool call
+  (`confirm_proposal`): "will Mom need a ride?" then "yes" survives any gap between turns
+  with nothing parked. That works, but it is a workaround for a protocol assumption that
+  does not hold on voice. Worth either documenting the pattern or letting a server mark a
+  tool's elicitation as resumable out-of-band.
+
 ### Confirmation before consequential actions
 - **Urgency:** important
 - **What:** A documented contract for how Alexa+ surfaces MCP elicitation, and whether

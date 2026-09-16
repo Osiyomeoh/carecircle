@@ -247,3 +247,15 @@ test('no care gap ever states that something did not happen', async () => {
   }
   assert.doesNotMatch(spoken(body), forbidden);
 });
+
+test('notify_member does not claim delivery when it only recorded', async () => {
+  // A caregiving system must never imply it reached a person when it only wrote a note.
+  const session = await openSession('david-token');
+  const { body } = await callTool('david-token', session, 'notify_member', {
+    recipientName: 'Renee', message: "I'm taking Mom Thursday",
+  });
+  assert.equal(body.result.isError, undefined);
+  assert.equal(body.result.structuredContent.delivered, false);
+  assert.doesNotMatch(spoken(body), /\bsent\b|\btexted\b|\bmessaged\b/i);
+  assert.match(spoken(body), /noted|care record/i);
+});

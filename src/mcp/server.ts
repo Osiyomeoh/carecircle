@@ -6,6 +6,7 @@ import { can, canActOn, NotPermittedError, require as requireCap } from '../doma
 import { CareStore, HouseholdScopeError, NotFoundError } from '../store/store.js';
 import { countPhrase, joinSpoken, sentence, speakGaps } from './text.js';
 import type { Member } from '../domain/types.js';
+import { RecordOnlyNotifier, type Notifier } from '../notify/notifier.js';
 
 /**
  * The CareCircle MCP server.
@@ -53,11 +54,14 @@ export interface ServerContext {
   actorId: string;
   /** Injectable for deterministic tests and demos. */
   now?: () => Date;
+  /** How a notify_member message is delivered. Defaults to record-only. */
+  notifier?: Notifier;
 }
 
 export function createCareCircleServer(ctx: ServerContext): McpServer {
   const { store, actorId } = ctx;
   const now = ctx.now ?? (() => new Date());
+  const notifier = ctx.notifier ?? new RecordOnlyNotifier();
 
   const server = new McpServer(
     { name: 'carecircle', version: '0.1.0' },
@@ -529,16 +533,27 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
           + `The people here are ${joinSpoken(others)}. Ask which one they meant.`,
         );
       }
+      const who = recipient.spokenAs ?? recipient.name;
+      const delivery = await notifier.deliver({
+        to: recipient.id, toName: who, from: me.spokenAs ?? me.name, message,
+      });
       const event = await store.appendEvent({
         householdId: me.householdId,
         kind: 'member_notified',
         reportedBy: me.id,
         occurredAt: now().toISOString(),
         detail: message,
-        data: { recipientId: recipient.id },
+        data: { recipientId: recipient.id, delivered: delivery.delivered, channel: delivery.channel },
       });
-      const who = recipient.spokenAs ?? recipient.name;
-      return reply(`I'll let ${who} know.`, { eventId: event.id, recipientId: recipient.id });
+      // Stay honest about what happened. If a real channel pushed it, say so; if we
+      // only recorded it, do not imply a phone buzzed.
+      const spoken = delivery.delivered
+        ? `I've sent that to ${who}.`
+        : `I've noted that for ${who} — they'll see it on the care record.`;
+      return reply(spoken, {
+        eventId: event.id, recipientId: recipient.id,
+        delivered: delivery.delivered, channel: delivery.channel,
+      });
     } catch (err) { return guidance(describeError(err)); }
   });
 
