@@ -1,9 +1,7 @@
-import {
-  BedrockRuntimeClient, ConverseCommand, type Tool,
-} from '@aws-sdk/client-bedrock-runtime';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CORPUS, MEMBER_LABEL, type EvalCase } from './corpus.js';
+import type { ModelProvider, ToolSpec } from '../sim/providers.js';
 
 /**
  * Tool-selection evaluation.
@@ -11,6 +9,11 @@ import { CORPUS, MEMBER_LABEL, type EvalCase } from './corpus.js';
  * The model is given the CareCircle server's real tool definitions — descriptions
  * and schemas exactly as an Alexa+ planner would see them — and one utterance. We
  * record which tool it reaches for first and stop there.
+ *
+ * The provider is pluggable, but the figure published in the README must come from
+ * Bedrock, since that is the planner the submission claims. Other planners are for
+ * finding weak tool descriptions, which is largely model-independent: a description
+ * ambiguous enough to confuse one model will usually confuse another.
  *
  * Nothing is executed. This measures the quality of the tool *descriptions*, which
  * is the part of an MCP server that decides whether it works in practice, and it
@@ -44,7 +47,7 @@ const TOKENS: Record<EvalCase['member'], string> = {
   m_aide: 'aide-token',
 };
 
-async function toolsFor(endpoint: string, token: string): Promise<Tool[]> {
+async function toolsFor(endpoint: string, token: string): Promise<ToolSpec[]> {
   const client = new Client({ name: 'carecircle-evals', version: '0.1.0' });
   await client.connect(new StreamableHTTPClientTransport(new URL(endpoint), {
     requestInit: { headers: { Authorization: `Bearer ${token}` } },
@@ -52,11 +55,9 @@ async function toolsFor(endpoint: string, token: string): Promise<Tool[]> {
   const { tools } = await client.listTools();
   await client.close();
   return tools.map((t) => ({
-    toolSpec: {
-      name: t.name,
-      description: t.description ?? '',
-      inputSchema: { json: (t.inputSchema ?? { type: 'object', properties: {} }) as never },
-    },
+    name: t.name,
+    description: t.description ?? '',
+    inputSchema: (t.inputSchema ?? { type: 'object', properties: {} }) as Record<string, unknown>,
   }));
 }
 
@@ -82,10 +83,25 @@ function judge(c: EvalCase, chosen: string | null, args: Record<string, unknown>
   return { pass: true, reason: chosen };
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Rate limiting is transient; a hard failure is not. Only the first is worth retrying. */
+function isRateLimit(err: unknown): boolean {
+  const message = (err as Error).message ?? '';
+  return /\b429\b|rate.?limit|too many requests|RESOURCE_EXHAUSTED|exceeded your current quota|throttl/i
+    .test(message);
+}
+
 export async function runEvals(options: {
-  endpoint: string; region: string; modelId: string; filter?: string;
+  endpoint: string;
+  provider: ModelProvider;
+  filter?: string;
+  /** Pause between cases, to stay under a provider's requests-per-minute limit. */
+  paceMs?: number;
+  /** Retries for rate-limited cases. */
+  maxRetries?: number;
+  onProgress?: (done: number, total: number) => void;
 }): Promise<CaseResult[]> {
-  const bedrock = new BedrockRuntimeClient({ region: options.region });
   const cases = options.filter
     ? CORPUS.filter((c) => c.id.startsWith(options.filter!))
     : CORPUS;
@@ -93,33 +109,40 @@ export async function runEvals(options: {
   // Tool definitions are identical for every member; fetch once.
   const tools = await toolsFor(options.endpoint, TOKENS.m_david);
   const results: CaseResult[] = [];
+  const pace = options.paceMs ?? 0;
+  const maxRetries = options.maxRetries ?? 5;
 
-  for (const c of cases) {
+  for (const [index, c] of cases.entries()) {
+    if (index > 0 && pace > 0) await sleep(pace);
+
     let chosen: string | null = null;
     let args: Record<string, unknown> = {};
-    try {
-      const response = await bedrock.send(new ConverseCommand({
-        modelId: options.modelId,
-        system: [{ text: SYSTEM }],
-        messages: [{ role: 'user', content: [{ text: c.utterance }] }],
-        toolConfig: { tools },
-        inferenceConfig: { maxTokens: 512, temperature: 0 },
-      }));
-      const content = response.output?.message?.content ?? [];
-      const use = content.find((b) => 'toolUse' in b && b.toolUse)?.toolUse;
-      if (use) {
-        chosen = use.name ?? null;
-        args = (use.input ?? {}) as Record<string, unknown>;
+    let failure: string | null = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+      try {
+        // A fresh conversation per case: nothing carries over between utterances.
+        const output = await options.provider.start(SYSTEM, tools).say(c.utterance);
+        const use = output.toolUses[0];
+        chosen = use?.name ?? null;
+        args = use?.input ?? {};
+        failure = null;
+        break;
+      } catch (err) {
+        failure = `${options.provider.name} error: ${(err as Error).message}`;
+        if (!isRateLimit(err) || attempt === maxRetries) break;
+        // Back off well past a per-minute window; these limits are usually RPM.
+        await sleep(Math.min(60_000, 2_000 * 2 ** attempt));
       }
-    } catch (err) {
-      results.push({
-        case: c, chosen: null, args: {}, pass: false, errored: true,
-        reason: `bedrock error: ${(err as Error).message}`,
-      });
-      continue;
     }
-    const { pass, reason } = judge(c, chosen, args);
-    results.push({ case: c, chosen, args, pass, reason });
+
+    if (failure !== null) {
+      results.push({ case: c, chosen: null, args: {}, pass: false, errored: true, reason: failure });
+    } else {
+      const { pass, reason } = judge(c, chosen, args);
+      results.push({ case: c, chosen, args, pass, reason });
+    }
+    options.onProgress?.(index + 1, cases.length);
   }
   return results;
 }

@@ -9,22 +9,35 @@
  */
 import { writeFileSync } from 'node:fs';
 import { runEvals, summarise, MEMBER_LABEL } from '../src/evals/run.ts';
+import { providerFromEnv } from '../src/sim/providers.ts';
 
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const filter = args.find((a) => !a.startsWith('--'));
 
 const endpoint = process.env.CARECIRCLE_URL ?? 'http://localhost:8787/mcp';
-const region = process.env.AWS_REGION ?? 'us-east-1';
-const modelId = process.env.BEDROCK_MODEL_ID ?? 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+const provider = providerFromEnv();
+const modelId = provider.modelId;
 
-const results = await runEvals({ endpoint, region, modelId, ...(filter ? { filter } : {}) });
+// Free-tier planners are rate limited per minute, so pace by default and let it
+// be overridden when the account has headroom.
+const paceMs = Number(process.env.EVALS_PACE_MS ?? (provider.name === 'gemini' ? 6_000 : 0));
+
+process.stdout.write(`Running ${filter ? `"${filter}" ` : ''}cases on ${provider.name}...`);
+const results = await runEvals({
+  endpoint, provider, paceMs,
+  ...(filter ? { filter } : {}),
+  onProgress: (done, total) => {
+    process.stdout.write(`\rRunning on ${provider.name}: ${done}/${total}   `);
+  },
+});
+process.stdout.write('\r' + ' '.repeat(50) + '\r');
 const s = summarise(results);
 
 if (asJson) {
   console.log(JSON.stringify({ modelId, ...s }, null, 2));
 } else {
-  console.log(`\nCareCircle tool selection · ${modelId}`);
+  console.log(`\nCareCircle tool selection · ${provider.name} · ${modelId}`);
   console.log(`${'─'.repeat(64)}`);
   if (s.accuracy === null) {
     console.log(`  No cases ran. ${s.errored} failed to reach the model.\n`);
@@ -56,7 +69,7 @@ if (asJson) {
 }
 
 writeFileSync('evals-results.json', JSON.stringify({
-  modelId, at: new Date().toISOString(), ...s,
+  provider: provider.name, modelId, at: new Date().toISOString(), ...s,
   results: results.map((r) => ({
     id: r.case.id, utterance: r.case.utterance, member: r.case.member,
     chosen: r.chosen, pass: r.pass, reason: r.reason,

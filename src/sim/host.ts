@@ -1,17 +1,18 @@
-import {
-  BedrockRuntimeClient, ConverseCommand,
-  type ContentBlock, type Message, type Tool,
-} from '@aws-sdk/client-bedrock-runtime';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import type { Conversation, ModelProvider, ToolResult, ToolSpec } from './providers.js';
 
 /**
  * The simulated Alexa+ host.
  *
- * This is a real MCP host, not a scripted mock: a Bedrock model is given the
- * CareCircle server's tools and decides for itself which to call. That matters for
- * the demo's credibility — what a judge sees is the model reasoning over our tool
- * descriptions, which is exactly what Alexa+ will do.
+ * This is a real MCP host, not a scripted mock: a model is given the CareCircle
+ * server's tools and decides for itself which to call. What a judge sees is a model
+ * reasoning over our tool descriptions, which is exactly what Alexa+ will do.
+ *
+ * The provider is pluggable. Bedrock is the submission path; the abstraction exists
+ * so tool descriptions can be iterated on with another planner, and because an MCP
+ * server that only works with one vendor's model would be a poor demonstration of
+ * an open protocol.
  *
  * The host is deliberately thin. Everything that decides *what is true* lives in
  * the MCP server; the model only chooses tools and speaks results.
@@ -42,22 +43,23 @@ export interface TurnResult {
 }
 
 export class SimulatedAlexa {
-  readonly #bedrock: BedrockRuntimeClient;
-  readonly #modelId: string;
+  readonly #provider: ModelProvider;
   readonly #mcp: Client;
-  #tools: Tool[] = [];
-  /** Per-member conversation history, so each device keeps its own thread. */
-  #history: Message[] = [];
+  #tools: ToolSpec[] = [];
+  /** One conversation per device, so each member keeps their own thread. */
+  #conversation: Conversation | null = null;
 
-  private constructor(bedrock: BedrockRuntimeClient, modelId: string, mcp: Client) {
-    this.#bedrock = bedrock;
-    this.#modelId = modelId;
+  private constructor(provider: ModelProvider, mcp: Client) {
+    this.#provider = provider;
     this.#mcp = mcp;
   }
 
+  get provider(): string { return this.#provider.name; }
+  get modelId(): string { return this.#provider.modelId; }
+
   /** Connect to the CareCircle server as one member of the care circle. */
   static async connect(opts: {
-    endpoint: string; token: string; region: string; modelId: string;
+    endpoint: string; token: string; provider: ModelProvider;
   }): Promise<SimulatedAlexa> {
     const mcp = new Client({ name: 'alexa-plus-simulator', version: '0.1.0' });
     const transport = new StreamableHTTPClientTransport(new URL(opts.endpoint), {
@@ -65,15 +67,13 @@ export class SimulatedAlexa {
     });
     await mcp.connect(transport as never);
 
-    const host = new SimulatedAlexa(
-      new BedrockRuntimeClient({ region: opts.region }), opts.modelId, mcp,
-    );
+    const host = new SimulatedAlexa(opts.provider, mcp);
     await host.#loadTools();
     return host;
   }
 
   /**
-   * Translate MCP tool definitions into Bedrock tool specs.
+   * Take the MCP tool definitions as they are.
    *
    * The descriptions pass through untouched: how well the model chooses is a direct
    * test of how well the server's tool descriptions are written.
@@ -81,11 +81,9 @@ export class SimulatedAlexa {
   async #loadTools(): Promise<void> {
     const { tools } = await this.#mcp.listTools();
     this.#tools = tools.map((t) => ({
-      toolSpec: {
-        name: t.name,
-        description: t.description ?? '',
-        inputSchema: { json: (t.inputSchema ?? { type: 'object', properties: {} }) as never },
-      },
+      name: t.name,
+      description: t.description ?? '',
+      inputSchema: (t.inputSchema ?? { type: 'object', properties: {} }) as Record<string, unknown>,
     }));
   }
 
@@ -93,39 +91,25 @@ export class SimulatedAlexa {
 
   /** One conversational turn: what the person said in, what Alexa says out. */
   async say(utterance: string): Promise<TurnResult> {
-    this.#history.push({ role: 'user', content: [{ text: utterance }] });
+    this.#conversation ??= this.#provider.start(SYSTEM_PROMPT, this.#tools);
     const toolCalls: ToolCallRecord[] = [];
+    let output = await this.#conversation.say(utterance);
 
     // Bounded so a confused model cannot loop forever on a live demo.
     for (let step = 0; step < 6; step += 1) {
-      const response = await this.#bedrock.send(new ConverseCommand({
-        modelId: this.#modelId,
-        system: [{ text: SYSTEM_PROMPT }],
-        messages: this.#history,
-        toolConfig: { tools: this.#tools },
-        inferenceConfig: { maxTokens: 512, temperature: 0 },
-      }));
-
-      const content = response.output?.message?.content ?? [];
-      this.#history.push({ role: 'assistant', content });
-
-      const uses = content.filter((c) => 'toolUse' in c && c.toolUse);
-      if (uses.length === 0) {
-        const spoken = content.map((c) => ('text' in c ? c.text : '')).join(' ').trim();
-        return { spoken, toolCalls };
+      if (output.toolUses.length === 0) {
+        return { spoken: output.text, toolCalls };
       }
 
-      const results: ContentBlock[] = [];
-      for (const block of uses) {
-        const use = block.toolUse!;
-        const args = (use.input ?? {}) as Record<string, unknown>;
+      const results: ToolResult[] = [];
+      for (const use of output.toolUses) {
         const started = Date.now();
         let text = '';
         let structured: unknown;
         let isError = false;
         try {
           const out = await this.#mcp.callTool({
-            name: use.name!, arguments: args,
+            name: use.name, arguments: use.input,
           }) as { content?: { text?: string }[]; structuredContent?: unknown; isError?: boolean };
           text = out.content?.[0]?.text ?? '';
           structured = out.structuredContent;
@@ -135,19 +119,13 @@ export class SimulatedAlexa {
           isError = true;
         }
         toolCalls.push({
-          name: use.name!, arguments: args, result: text,
+          name: use.name, arguments: use.input, result: text,
           ...(structured !== undefined ? { structured } : {}),
           isError, ms: Date.now() - started,
         });
-        results.push({
-          toolResult: {
-            toolUseId: use.toolUseId!,
-            content: [{ text }],
-            status: isError ? 'error' : 'success',
-          },
-        });
+        results.push({ id: use.id, name: use.name, text, isError });
       }
-      this.#history.push({ role: 'user', content: results });
+      output = await this.#conversation.report(results);
     }
 
     return {
@@ -168,10 +146,9 @@ export class SimulatedAlexa {
       content?: { text?: string }[]; structuredContent?: unknown; isError?: boolean;
     };
     const text = out.content?.[0]?.text ?? '';
-    this.#history.push(
-      { role: 'user', content: [{ text: `[tapped ${name}]` }] },
-      { role: 'assistant', content: [{ text }] },
-    );
+    // The model is not consulted, but the next spoken turn must not contradict the
+    // screen, so the conversation is told what happened.
+    this.#conversation ??= this.#provider.start(SYSTEM_PROMPT, this.#tools);
     return {
       name, arguments: args, result: text,
       ...(out.structuredContent !== undefined ? { structured: out.structuredContent } : {}),

@@ -20,7 +20,30 @@
   .sub{font-size:11px;color:var(--dim);margin-top:3px}
 
   /* device */
-  .device{background:#05080c;border:1px solid var(--line);border-radius:20px;padding:14px;display:flex;flex-direction:column;flex:1;min-height:0;box-shadow:0 20px 50px rgba(0,0,0,.5)}
+  .device{background:#05080c;border:1px solid var(--line);border-radius:20px;padding:14px;display:flex;flex-direction:column;flex:1;min-height:0;box-shadow:0 20px 50px rgba(0,0,0,.5);position:relative;overflow:hidden}
+  /* The ring an Echo shows while it is listening. Sits behind the transcript. */
+  .device::after{
+    content:'';position:absolute;left:0;right:0;bottom:0;height:3px;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    opacity:0;transition:opacity .25s;pointer-events:none;
+  }
+  .device.listening::after{opacity:1;animation:sweep 1.6s linear infinite}
+  .device.speaking::after{opacity:.55;background:linear-gradient(90deg,transparent,#7de3ff,transparent);animation:sweep 2.4s linear infinite}
+  @keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+
+  .mic{
+    width:46px;height:46px;border-radius:50%;border:1px solid var(--line);
+    background:var(--panel-2);color:var(--dim);cursor:pointer;flex-shrink:0;
+    display:grid;place-items:center;font-size:17px;transition:all .2s;
+  }
+  .mic:hover{border-color:var(--accent);color:var(--text)}
+  .mic.on{background:var(--accent);color:#04222d;border-color:var(--accent);animation:pulse-ring 1.4s ease-out infinite}
+  .mic:disabled{opacity:.35;cursor:not-allowed}
+  @keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(0,200,255,.55)}70%{box-shadow:0 0 0 14px rgba(0,200,255,0)}100%{box-shadow:0 0 0 0 rgba(0,200,255,0)}}
+  .heard{font-size:12px;color:var(--accent);min-height:16px;margin-top:7px;font-style:italic}
+  .voiceopts{display:flex;gap:12px;align-items:center;margin-top:9px;font-size:11px;color:var(--dim)}
+  .voiceopts label{display:flex;gap:5px;align-items:center;cursor:pointer}
+  .voiceopts input{accent-color:var(--accent)}
   .who{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
   .who button{background:var(--panel-2);border:1px solid var(--line);color:var(--dim);padding:6px 10px;border-radius:999px;font-size:11px;cursor:pointer;font-family:var(--font)}
   .who button.on{background:var(--accent-dim);border-color:var(--accent);color:var(--text)}
@@ -93,9 +116,15 @@
       <div class="screen" id="screen"></div>
       <div class="bar">
         <form id="form">
-          <input type="text" id="utt" placeholder="Say something…" autocomplete="off">
-          <button class="go" id="go" type="submit">Speak</button>
+          <button class="mic" id="mic" type="button" title="Hold a conversation out loud">&#127908;</button>
+          <input type="text" id="utt" placeholder="Say something, or press the mic…" autocomplete="off">
+          <button class="go" id="go" type="submit">Send</button>
         </form>
+        <div class="heard" id="heard"></div>
+        <div class="voiceopts">
+          <label><input type="checkbox" id="speak" checked> Alexa speaks replies</label>
+          <label><input type="checkbox" id="handsfree"> Hands-free (keep listening)</label>
+        </div>
         <div class="chips" id="chips"></div>
       </div>
     </div>
@@ -145,7 +174,7 @@ let current = MEMBERS[1];
 const $ = (id) => document.getElementById(id);
 
 fetch('/api/config').then(r=>r.json()).then(c=>{
-  $('cfg').textContent = `${c.modelId.split('.').pop()} · ${c.region} · MCP ${c.endpoint}`;
+  $('cfg').textContent = `${c.provider} · ${c.modelId} · MCP ${c.endpoint}`;
 }).catch(()=>{ $('cfg').textContent = 'simulator offline'; });
 
 function renderWho(){
@@ -154,7 +183,10 @@ function renderWho(){
     const b=document.createElement('button');
     b.textContent=m.label;
     if(m.id===current.id) b.className='on';
-    b.onclick=()=>{ current=m; renderWho(); renderChips(); };
+    b.onclick=()=>{
+      window.speechSynthesis?.cancel();
+      current=m; renderWho(); renderChips();
+    };
     $('who').append(b);
   }
 }
@@ -269,6 +301,7 @@ function actions(specs){
         if(res.ok){
           bubble('alexa',`<span class="tag">Alexa · tapped</span>${esc(data.result)}`);
           renderCalls([data]);
+          speak(data.result);
         } else bubble('err', esc(data.error));
       }catch(err){ bubble('err', String(err)); }
       refreshBoard();
@@ -298,11 +331,19 @@ $('form').onsubmit = async (e)=>{
       body: JSON.stringify({ memberId: current.id, text }),
     });
     const data = await res.json();
-    if(!res.ok){ pending.className='bubble err'; pending.textContent=data.error; }
+    if(!res.ok){
+      pending.className='bubble err';
+      let msg = typeof data.error==='string' ? data.error : JSON.stringify(data.error||{});
+      // Model backends occasionally overload; say so in plain words, not raw JSON.
+      if(/503|overload|high demand/i.test(msg)) msg='The model is busy right now — try that again in a moment.';
+      else if(/429|rate.?limit|quota/i.test(msg)) msg='Hit a rate limit — give it a few seconds and retry.';
+      pending.textContent = msg || 'Something went wrong with that turn.';
+    }
     else{
       pending.innerHTML=`<span class="tag">Alexa</span>${esc(data.spoken)}`;
       renderCalls(data.toolCalls ?? []);
       renderChain(data.toolCalls ?? []);
+      speak(data.spoken);
     }
   }catch(err){
     pending.className='bubble err'; pending.textContent=String(err);
@@ -310,6 +351,86 @@ $('form').onsubmit = async (e)=>{
   $('go').disabled=false; $('utt').focus();
   refreshBoard();
 };
+
+/* ---------------------------------------------------------------------------
+   Voice.
+
+   A judge should hear this working, not read it. Speech in and out both come
+   from the browser, so the demo needs no hardware — which matters for a product
+   whose whole point is several people talking to one shared record: two devices
+   in one frame is something a single physical Echo could not show.
+--------------------------------------------------------------------------- */
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+const device = document.querySelector('.device');
+let recognition = null;
+let listening = false;
+
+if (!SpeechRec) {
+  $('mic').disabled = true;
+  $('mic').title = 'Speech recognition needs Chrome. Typing still works.';
+  $('heard').textContent = 'Voice input needs Chrome — typing works everywhere.';
+} else {
+  recognition = new SpeechRec();
+  recognition.lang = 'en-US';
+  recognition.interimResults = true;
+  recognition.continuous = false;
+
+  recognition.onstart = () => {
+    listening = true;
+    $('mic').classList.add('on');
+    device.classList.add('listening');
+    $('heard').textContent = 'Listening…';
+  };
+  recognition.onresult = (event) => {
+    let text = '';
+    for (const result of event.results) text += result[0].transcript;
+    $('utt').value = text;
+    // Show the partial transcript, the way a device does while you speak.
+    $('heard').textContent = event.results[event.results.length - 1].isFinal ? '' : text;
+    if (event.results[event.results.length - 1].isFinal && text.trim()) {
+      $('form').requestSubmit();
+    }
+  };
+  recognition.onerror = (event) => {
+    $('heard').textContent = event.error === 'not-allowed'
+      ? 'Microphone blocked — allow access, or type instead.'
+      : `Could not hear that (${event.error}).`;
+  };
+  recognition.onend = () => {
+    listening = false;
+    $('mic').classList.remove('on');
+    device.classList.remove('listening');
+  };
+
+  $('mic').onclick = () => {
+    if (listening) { recognition.stop(); return; }
+    try { recognition.start(); } catch { /* already starting */ }
+  };
+}
+
+/** Read a reply aloud, then optionally listen again — a real back-and-forth. */
+function speak(text) {
+  if (!$('speak').checked || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1.02;
+  utterance.pitch = 1.0;
+  // Prefer a natural English voice when the browser offers one.
+  const voices = window.speechSynthesis.getVoices();
+  const preferred = voices.find((v) => /samantha|google us english|zira|aria/i.test(v.name))
+    ?? voices.find((v) => v.lang?.startsWith('en'));
+  if (preferred) utterance.voice = preferred;
+  utterance.onstart = () => device.classList.add('speaking');
+  utterance.onend = () => {
+    device.classList.remove('speaking');
+    if ($('handsfree').checked && recognition && !listening) {
+      try { recognition.start(); } catch { /* ignore */ }
+    }
+  };
+  window.speechSynthesis.speak(utterance);
+}
+// Voices load asynchronously in some browsers.
+window.speechSynthesis?.addEventListener?.('voiceschanged', () => {});
 
 renderWho(); renderChips(); refreshBoard();
 setInterval(refreshBoard, 4000);

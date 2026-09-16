@@ -236,3 +236,18 @@ Template:
   natural request a customer can make. At minimum, the error should say what the applied
   value is and direct the customer to support when it is below default.
 - **Date:** 2026-09-14
+
+
+### Gemini free tier — multi-turn tool loops are unusable under rate limits
+- **Task attempted:** Drive the simulated Alexa+ agent loop with Gemini while the
+  Bedrock account quota is being restored, to iterate on tool descriptions.
+- **Actual:** Single-turn requests (one tool call) succeed. Multi-turn requests — e.g.
+  "I'll take the cardiology one", which needs get_care_gaps then claim_obligation —
+  issue several model calls in seconds and reliably trip 429/503 partway through. With
+  backoff, one conversational turn can take 30s+ or fail. gemini-2.5-flash and
+  gemini-2.0-flash are also listed by models.list() but return 404 on use.
+- **Severity:** minor for us (the submission demo runs on Bedrock/Claude; Gemini is only
+  a stopgap for description iteration), but worth recording as cross-provider friction.
+- **Workaround:** Retry transient errors with backoff at the turn boundary; pace eval
+  cases ~6s apart. A paid tier removes it.
+- **Date:** 2026-09-16

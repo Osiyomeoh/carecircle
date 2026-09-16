@@ -2,6 +2,7 @@ import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { SimulatedAlexa } from './host.js';
+import { providerFromEnv } from './providers.js';
 import { diagnoseBedrock, describe as describeDiagnosis } from './preflight.js';
 import { DEMO_TOKENS } from '../demo/seed.js';
 
@@ -16,7 +17,8 @@ import { DEMO_TOKENS } from '../demo/seed.js';
 const PORT = Number(process.env['SIM_PORT'] ?? 5173);
 const MCP_ENDPOINT = process.env['CARECIRCLE_URL'] ?? 'http://localhost:8787/mcp';
 const REGION = process.env['AWS_REGION'] ?? 'us-east-1';
-const MODEL_ID = process.env['BEDROCK_MODEL_ID'] ?? 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+const provider = providerFromEnv();
+const MODEL_ID = provider.modelId;
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -30,10 +32,31 @@ async function hostFor(memberId: string): Promise<SimulatedAlexa> {
   const token = tokenFor.get(memberId);
   if (!token) throw new Error(`No credential for ${memberId}`);
   const host = await SimulatedAlexa.connect({
-    endpoint: MCP_ENDPOINT, token, region: REGION, modelId: MODEL_ID,
+    endpoint: MCP_ENDPOINT, token, provider,
   });
   hosts.set(memberId, host);
   return host;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Model backends throttle and overload transiently; a demo turn should ride that
+ *  out rather than surface it. Retries 429/503/overload with backoff; other
+ *  failures (bad credentials, a real bug) are returned at once. */
+async function withRetry<T>(fn: () => Promise<T>, tries = 4): Promise<T> {
+  let last: unknown;
+  for (let attempt = 0; attempt < tries; attempt += 1) {
+    try {
+      return await fn();
+    } catch (err) {
+      last = err;
+      const m = (err as Error).message ?? '';
+      const transient = /\b(429|503)\b|overload|high demand|rate.?limit|too many|throttl|RESOURCE_EXHAUSTED|exceeded your current quota/i.test(m);
+      if (!transient || attempt === tries - 1) throw err;
+      await sleep(Math.min(8_000, 1_200 * 2 ** attempt));
+    }
+  }
+  throw last;
 }
 
 const app = express();
@@ -49,7 +72,7 @@ app.post('/api/say', async (req, res) => {
   }
   try {
     const host = await hostFor(memberId);
-    const turn = await host.say(text);
+    const turn = await withRetry(() => host.say(text));
     res.json(turn);
   } catch (err) {
     const message = (err as Error).message;
@@ -58,7 +81,8 @@ app.post('/api/say', async (req, res) => {
     // "you never had one", and Bedrock reports both identically. Ask Service
     // Quotas which, rather than telling the user to wait for a refill that will
     // never come.
-    if (/throttl|too many tokens/i.test(message)) {
+    // Only Bedrock has the zero-quota failure mode this diagnoses.
+    if (provider.name === 'bedrock' && /throttl|too many tokens/i.test(message)) {
       const diagnosis = await diagnoseBedrock({ region: REGION, modelId: MODEL_ID });
       res.status(502).json({
         error: diagnosis.state === 'ok' || diagnosis.state === 'unknown'
@@ -99,7 +123,7 @@ app.post('/api/act', async (req, res) => {
   }
   try {
     const host = await hostFor(memberId);
-    const out = await host.callToolDirect(tool, args ?? {});
+    const out = await withRetry(() => host.callToolDirect(tool, args ?? {}));
     res.json(out);
   } catch (err) {
     res.status(502).json({ error: (err as Error).message });
@@ -159,11 +183,13 @@ app.get('/api/state', async (_req, res) => {
 });
 
 app.get('/api/config', (_req, res) => {
-  res.json({ region: REGION, modelId: MODEL_ID, endpoint: MCP_ENDPOINT });
+  res.json({
+    provider: provider.name, region: REGION, modelId: MODEL_ID, endpoint: MCP_ENDPOINT,
+  });
 });
 
 app.listen(PORT, () => {
   console.log(`Alexa+ simulator on http://localhost:${PORT}`);
   console.log(`  talking to MCP server at ${MCP_ENDPOINT}`);
-  console.log(`  model ${MODEL_ID} in ${REGION}`);
+  console.log(`  planner: ${provider.name} · ${MODEL_ID}`);
 });
