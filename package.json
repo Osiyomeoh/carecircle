@@ -20,7 +20,8 @@
     "demo:reset": "tsx --env-file-if-exists=.env scripts/demo-reset.ts",
     "evals": "tsx --env-file-if-exists=.env scripts/evals.ts",
     "dynamo:check": "tsx --env-file-if-exists=.env scripts/dynamo-check.ts",
-    "preflight": "tsx --env-file-if-exists=.env scripts/preflight.ts"
+    "preflight": "tsx --env-file-if-exists=.env scripts/preflight.ts",
+    "trust-benchmark": "tsx --env-file-if-exists=.env scripts/trust-benchmark.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.1131.0",

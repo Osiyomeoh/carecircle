@@ -73,6 +73,15 @@ assert.doesNotMatch(gap.spoken, /did ?n[o']t take|missed|forgot|failed/i);
 In a domain that runs on family guilt, a system that turns silence into an accusation
 is worse than no system. So ours structurally cannot.
 
+**We measured how much this matters.** Given a care log with a dose that has no record
+and the question "did she take it?", a raw Claude Sonnet 4.5 — the *same* model
+CareCircle plans with — asserted the accusation ("she missed it", "she hasn't taken
+it") in **6 of 12 cases (50%)**. CareCircle's deterministic engine: **0%**, on the same
+scenarios, because it can only say "there's no record." Every answer is printed and
+auditable; reproduce with `npm run trust-benchmark`. The trust model is not a slogan —
+it is a measurable, ~50-point swing on whether a sick, elderly woman gets accused of
+missing her heart medication.
+
 **Inference proposes, humans dispose.** Obligations the system infers enter as
 `PROPOSED` and are excluded from Care Gaps entirely until a person confirms them.
 The system is allowed to notice that an appointment probably needs a ride. It is not

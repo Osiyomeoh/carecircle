@@ -69,6 +69,10 @@ graceful shutdown, DynamoDB persistence, App Runner deployment), runtime onboard
 - **Measured tool selection: 93.3% first-tool accuracy (126/135)** on Claude Sonnet 4.5
   via Bedrock — 68 authored cases at 100% plus **67 held-out cases** (never tuned
   against) at 86.6%. Reproducible: `npm run evals`.
+- **Measured trust model: a raw Sonnet 4.5 turns a missing record into a false
+  accusation ("she missed it") in 50% of absence cases; CareCircle's deterministic
+  engine, 0%** — the same model, the same scenarios, every answer auditable.
+  Reproducible: `npm run trust-benchmark`. This is the differentiator, quantified.
 - **87 automated tests** incl. an adversarial suite (credential swap mid-session,
   cross-household access, prompt-injection through note text), strict TypeScript, CI.
 - Deterministic end-to-end demo over real MCP: `npm run story`.
