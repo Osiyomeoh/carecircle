@@ -135,6 +135,32 @@ household boundary, which is also the auth boundary. *Again?* Yes.
 evidence, never a conclusion). *Needs work:* event types are listed but the payload JSON
 schema is not — had to model defensively. *Again?* Yes.
 
+## Feature requests (concrete, prioritized)
+
+Distinct from the feedback above: specific things that, had they existed, would have
+saved us hours — each one hit while building CareCircle this period.
+
+1. **MCP SDK — a published protocol-version support matrix.** We had to grep compiled
+   source for `LATEST_PROTOCOL_VERSION` to know which spec revision the SDK negotiates.
+   A documented table (SDK version → protocol versions supported) belongs in the README.
+2. **MCP SDK — actionable transport errors.** "Server not initialized" gives no hint that
+   the client skipped the `initialized` notification. Name the missing step in the error.
+3. **MCP SDK — `Transport` assignable under `exactOptionalPropertyTypes`.** Today the
+   built-in transports need a cast to satisfy their own interface in strict TS. Fix the
+   optional-property typing so no cast is required.
+4. **Bedrock — one gate, or two clearly distinct errors, for model access vs.
+   `bedrock:InvokeModel`.** A granted model that still 403s on invoke, with an
+   identical-looking error, cost us the most time of anything in the build.
+5. **Bedrock — surface the required inference-profile id in the access-grant UI.** The
+   newer models reject the plain model id; nothing in the console told us to switch.
+6. **Bedrock — a read-only "can I invoke X right now?" preflight** (quota + IAM + access
+   in one call), so an agent can self-diagnose before the first token is spent.
+7. **App Runner — a role-readiness signal instead of propagation `sleep`s.** Our deploy
+   script sleeps to wait out IAM role propagation; an "IAM ready" wait condition or a
+   clear retryable error would make deploys deterministic.
+8. **Ring — a published payload JSON schema per event type**, not just the event-type
+   list, so integrators stop modeling defensively against undocumented shapes.
+
 ## AWS Builder mini — which services, how, why
 
 - **Bedrock (Sonnet 4.5)** is the planner that turns a spoken sentence into a tool call

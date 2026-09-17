@@ -40,6 +40,22 @@
   .mic.on{background:var(--accent);color:#04222d;border-color:var(--accent);animation:pulse-ring 1.4s ease-out infinite}
   .mic:disabled{opacity:.35;cursor:not-allowed}
   @keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(0,200,255,.55)}70%{box-shadow:0 0 0 14px rgba(0,200,255,0)}100%{box-shadow:0 0 0 0 rgba(0,200,255,0)}}
+  /* The orb — this is a voice device first. It breathes, listens, and answers. */
+  .orb{width:64px;height:64px;border-radius:50%;flex-shrink:0;position:relative;
+    background:radial-gradient(circle at 50% 40%,#0d3a4c,#061620 70%);
+    border:1px solid var(--accent-dim);display:grid;place-items:center;
+    transition:transform .3s ease;margin:2px auto 6px}
+  .orb::before{content:'';position:absolute;inset:-6px;border-radius:50%;
+    background:radial-gradient(circle,rgba(0,200,255,.25),transparent 70%);opacity:.6}
+  .orb .core{width:26px;height:26px;border-radius:50%;background:var(--accent-dim);
+    transition:all .3s ease}
+  .device.listening .orb{transform:scale(1.06)}
+  .device.listening .orb .core{background:var(--accent);animation:breathe 1.3s ease-in-out infinite}
+  .device.speaking .orb .core{background:#7de3ff;animation:breathe 2s ease-in-out infinite}
+  @keyframes breathe{0%,100%{transform:scale(.8);box-shadow:0 0 0 0 rgba(0,200,255,.4)}
+    50%{transform:scale(1.15);box-shadow:0 0 18px 4px rgba(0,200,255,.35)}}
+  .orbcap{text-align:center;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;
+    color:var(--dim);min-height:13px;margin-bottom:8px}
   .heard{font-size:12px;color:var(--accent);min-height:16px;margin-top:7px;font-style:italic}
   .voiceopts{display:flex;gap:12px;align-items:center;margin-top:9px;font-size:11px;color:var(--dim)}
   .voiceopts label{display:flex;gap:5px;align-items:center;cursor:pointer}
@@ -80,6 +96,17 @@
   .pill{font-size:9px;letter-spacing:1px;padding:3px 7px;border-radius:999px;white-space:nowrap;text-transform:uppercase}
   .pill.HIGH{background:#3a1119;color:#ff8b97} .pill.MEDIUM{background:#3a2a10;color:#ffce85}
   .pill.LOW{background:#0f2c1f;color:#8df0bb} .pill.prop{background:#261a3d;color:#cdaaff}
+  /* Provenance chip — the trust model made visible. How we know a thing, never hidden. */
+  .prov{display:inline-flex;align-items:center;gap:5px;font-size:9px;letter-spacing:1px;
+    text-transform:uppercase;padding:3px 8px;border-radius:999px;margin-top:9px;
+    border:1px solid transparent;cursor:default}
+  .prov::before{content:'';width:6px;height:6px;border-radius:50%}
+  .prov.confirmed{background:#0f2c1f;color:#8df0bb;border-color:#1e4a34}
+  .prov.confirmed::before{background:var(--low)}
+  .prov.inferred{background:#241a3d;color:#cdaaff;border-color:#3a2a5c}
+  .prov.inferred::before{background:var(--prop)}
+  .prov.norecord{background:#2a220f;color:#ffce85;border-color:#4a3a15}
+  .prov.norecord::before{background:var(--med)}
   .why{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.5}
   .owner{font-size:11px;margin-top:7px;color:var(--dim)}
   .owner b{color:var(--low);font-weight:600}
@@ -111,11 +138,13 @@
 <div class="wrap">
   <div class="col">
     <div>
-      <h1>CareCircle <span>· simulated Alexa+ device</span></h1>
-      <div class="sub" id="cfg">connecting…</div>
+      <h1>CareCircle <span>· one shared voice for a family caring together</span></h1>
+      <div class="sub" id="cfg">Speak to it like an Echo. Every device below talks to the same record.</div>
     </div>
     <div class="device">
       <div class="who" id="who"></div>
+      <div class="orb"><div class="core"></div></div>
+      <div class="orbcap" id="orbcap">tap the mic and speak</div>
       <div class="screen" id="screen"></div>
       <div class="bar">
         <form id="form">
@@ -137,20 +166,14 @@
     <div class="panel grow">
       <div>
         <h1>Care Gaps <span>· live</span></h1>
-        <div class="sub">Work that is known to be needed and has nobody on it.</div>
+        <div class="sub">What still needs someone. Each card shows how the system knows.</div>
       </div>
       <div class="cards" id="gaps"><div class="none">loading…</div></div>
-      <div class="legend">
-        <b>Rich cards are the ask.</b> Spoken, this list caps out at about three items.
-        On a screen a family reads twelve at a glance and points at the one they mean.
-        Everything shown here — severity, reason, owner — is already in the MCP
-        <code>structuredContent</code>; today it has to be flattened into a sentence.
-      </div>
     </div>
     <div class="panel" style="height:34%">
       <div>
-        <h1>MCP calls <span>· spec 2025-11-25</span></h1>
-        <div class="sub">Chosen by the model from tool descriptions — nothing is scripted.</div>
+        <h1>Behind the voice <span>· live tool calls</span></h1>
+        <div class="sub">The model picks these itself. Nothing here is scripted.</div>
         <div class="chain" id="chain"></div>
       </div>
       <div class="calls" id="calls"><div class="none">no calls yet</div></div>
@@ -176,9 +199,10 @@ const MEMBERS = [
 let current = MEMBERS[1];
 const $ = (id) => document.getElementById(id);
 
-fetch('/api/config').then(r=>r.json()).then(c=>{
-  $('cfg').textContent = `${c.provider} · ${c.modelId} · MCP ${c.endpoint}`;
-}).catch(()=>{ $('cfg').textContent = 'simulator offline'; });
+// Keep the human framing; only surface a problem if the simulator can't be reached.
+fetch('/api/config').then(r=>r.json()).catch(()=>{
+  $('cfg').textContent = 'simulator offline — start the server and reload.';
+});
 
 function renderWho(){
   $('who').innerHTML='';
@@ -210,6 +234,32 @@ function bubble(cls, html){
 }
 const esc = (s)=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 
+/**
+ * The provenance chip — the trust model, visible on every card.
+ * We never let a guess or a silence look like a fact.
+ *   CONFIRMED  a person stated it            (green)
+ *   INFERRED   the system guessed it         (purple) — not counted until confirmed
+ *   NO RECORD  nothing was logged            (amber)  — NOT "it didn't happen"
+ */
+const PROV = {
+  confirmed: ['confirmed','CONFIRMED','A person stated this.'],
+  inferred:  ['inferred','INFERRED','The system guessed this — not counted until someone confirms.'],
+  norecord:  ['norecord','NO RECORD','Nothing was logged. This is not the same as it not happening.'],
+};
+function provChipFor(gap, obById){
+  let key = 'confirmed';
+  if (gap.kind === 'UNCONFIRMED') key = 'norecord';
+  else if (gap.obligationId && obById[gap.obligationId]){
+    const p = obById[gap.obligationId].provenance;
+    key = p === 'INFERRED' ? 'inferred' : p === 'NOT_LOGGED' ? 'norecord' : 'confirmed';
+  }
+  return provChip(key);
+}
+function provChip(key){
+  const [cls,label,title] = PROV[key];
+  return `<span class="prov ${cls}" title="${esc(title)}">${esc(label)}</span>`;
+}
+
 function renderCalls(calls){
   if(!calls.length) return;
   if($('calls').querySelector('.none')) $('calls').innerHTML='';
@@ -235,6 +285,7 @@ async function refreshBoard(force){
     if(!force && fingerprint === lastBoard) return;
     lastBoard = fingerprint;
     const gaps = s.gaps ?? [];
+    const obById = Object.fromEntries((s.obligations ?? []).map(o=>[o.id,o]));
     const proposals = (s.obligations ?? []).filter(o=>o.status==='PROPOSED');
     const owned = (s.obligations ?? []).filter(o=>o.status==='ASSIGNED');
     const box=$('gaps'); box.innerHTML='';
@@ -244,7 +295,8 @@ async function refreshBoard(force){
       d.className='card proposal';
       d.innerHTML=`<div class="top"><div class="what">${esc(p.what)}</div>`
         +`<div class="pill prop">proposed</div></div>`
-        +`<div class="why">Inferred by the system. Not treated as real work until a person confirms it.</div>`;
+        +`<div class="why">Inferred by the system. Not treated as real work until a person confirms it.</div>`
+        +provChip('inferred');
       d.append(actions([
         ['Yes, needed', 'confirm_proposal', { obligationId:p.id, confirmed:true }, false],
         ['Not needed',  'confirm_proposal', { obligationId:p.id, confirmed:false }, true],
@@ -256,9 +308,9 @@ async function refreshBoard(force){
       const d=document.createElement('div');
       d.className='card offer';
       d.innerHTML=`<div class="top"><div class="what">${esc(o.item)}</div>`
-        +`<div class="pill offer">${esc(price)}</div></div>`
-        +`<div class="why">${esc(o.merchant)} · ${esc(o.etaText)}</div>`
-        +`<div class="sandbox">Sandbox — no real payment is taken.</div>`;
+        +`<div class="pill offer">ready to buy</div></div>`
+        +`<div class="why">${esc(o.merchant)} · ${esc(o.etaText)} · <b style="color:var(--text)">${esc(price)}</b></div>`
+        +`<div class="sandbox">One tap to order. Sandbox — no real payment is taken.</div>`;
       d.append(actions([
         [`Confirm · ${price}`, 'confirm_purchase', { offerId:o.offerId, confirmed:true }, false],
         ['Not now', 'confirm_purchase', { offerId:o.offerId, confirmed:false }, true],
@@ -270,7 +322,8 @@ async function refreshBoard(force){
       d.className='card '+g.severity;
       d.innerHTML=`<div class="top"><div class="what">${esc(g.spoken)}</div>`
         +`<div class="pill ${g.severity}">${esc(g.kind)}</div></div>`
-        +`<div class="why">${esc(g.because)}</div>`;
+        +`<div class="why">${esc(g.because)}</div>`
+        +provChipFor(g, obById);
       if(g.obligationId){
         const others = MEMBERS.filter(m=>m.id!==current.id && m.id!=='m_margaret');
         const ask = others[0];
@@ -288,7 +341,8 @@ async function refreshBoard(force){
       d.className='card LOW';
       d.innerHTML=`<div class="top"><div class="what">${esc(o.what)}</div>`
         +`<div class="pill LOW">claimed</div></div>`
-        +`<div class="owner"><b>${esc(o.owner ?? 'someone')}</b> has this.</div>`;
+        +`<div class="owner"><b>${esc(o.owner ?? 'someone')}</b> has this.</div>`
+        +provChip(o.provenance==='INFERRED'?'inferred':o.provenance==='NOT_LOGGED'?'norecord':'confirmed');
       box.append(d);
     }
     for(const n of (s.notifications ?? []).slice(-2)){
@@ -396,6 +450,7 @@ if (!SpeechRec) {
     listening = true;
     $('mic').classList.add('on');
     device.classList.add('listening');
+    $('orbcap').textContent = 'listening';
     $('heard').textContent = 'Listening…';
   };
   recognition.onresult = (event) => {
@@ -417,6 +472,7 @@ if (!SpeechRec) {
     listening = false;
     $('mic').classList.remove('on');
     device.classList.remove('listening');
+    if(!device.classList.contains('speaking')) $('orbcap').textContent = 'tap the mic and speak';
   };
 
   $('mic').onclick = () => {
@@ -437,9 +493,10 @@ function speak(text) {
   const preferred = voices.find((v) => /samantha|google us english|zira|aria/i.test(v.name))
     ?? voices.find((v) => v.lang?.startsWith('en'));
   if (preferred) utterance.voice = preferred;
-  utterance.onstart = () => device.classList.add('speaking');
+  utterance.onstart = () => { device.classList.add('speaking'); $('orbcap').textContent = 'speaking'; };
   utterance.onend = () => {
     device.classList.remove('speaking');
+    $('orbcap').textContent = 'tap the mic and speak';
     if ($('handsfree').checked && recognition && !listening) {
       try { recognition.start(); } catch { /* ignore */ }
     }
