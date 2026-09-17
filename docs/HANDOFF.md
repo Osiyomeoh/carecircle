@@ -74,9 +74,16 @@ harm, `risk = Cost x P(dropped) x Confidence`, all terms in [0,1]:
   INFERRED 0.6, multiplied in so an assumption can never outrank a fact. This is
   the "Known != Assumed" trust model expressed as arithmetic.
 
-HIGH/MEDIUM/LOW are risk tertiles of `score` (0-100), not magic cutoffs. Two
-invariants are locked by tests: confidence dominance and imminence monotonicity.
+HIGH/MEDIUM/LOW are risk tertiles of `score` (0-100), not magic cutoffs.
 When a judge asks "why 85?", the answer is a derivation, not a vibe.
+
+The model's laws are proven, not just exemplified: `src/domain/gaps.props.test.ts`
+uses fast-check to assert boundedness, determinism, confidence dominance
+(Known >= Assumed), imminence monotonicity, and cost ordering over thousands of
+generated states. And each gap carries `factors {cost, pDrop, confidence}`, so
+the care board renders "why this ranks here" (harm x drop-risk x confidence) on
+every card - the severity explains itself on screen instead of being an opaque
+verdict.
 
 ## What's built vs. adapter-ready
 
