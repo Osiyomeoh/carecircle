@@ -74,16 +74,23 @@ board (simulator), 87 tests + adversarial suite + CI.
 (Ring's payload schema is unpublished — see FRICTION-LOG.md); Bee → `ingest_signal`
 (deliberately gated); Fire TV → the web board would render there.
 
-## Front-end (judge-facing UI)
+## Front-end (judge-facing UI) — React + Vite + Tailwind + R3F
 
-- **Root `/` = the 3D hero landing** (`public/index.html`) — a Three.js scene of the four
-  surfaces (Echo/Ring/Bee/Fire TV) streaming evidence into a central responsibility core,
-  live Care-Gap count pulled from `/api/state`. Responsive: scene sits right-half on
-  desktop, dimmed backdrop on mobile (scrim keeps copy readable). CTA → the console.
-- **`/console.html` = the working console** (was the old index) — real browser voice in
-  (`SpeechRecognition`) and out (`SpeechSynthesis`), provenance chips
-  (CONFIRMED/INFERRED/NO RECORD), gap/proposal/purchase cards wired to `/api/say`,
-  `/api/act`, `/api/state`. This is where the live demo happens.
+The UI was migrated off vanilla HTML to a real build in **`sim-ui/`** (React 18 + Vite +
+Tailwind + React Three Fiber). One design system (tokens in `tailwind.config.js`), three
+client routes served as an SPA by the sim Express server (`src/sim/app.ts` serves
+`sim-ui/dist` with a non-`/api` GET fallback to `index.html`):
+- **`/`** — Hero: R3F scene (distorted core + four evidence surfaces + bezier evidence
+  streams + drei `Html` labels), live Care-Gap badge from `/api/state`.
+- **`/console`** — voice console: `SpeechRecognition` in + `SpeechSynthesis` out, member
+  selector, device orb, live board with real `claim_obligation` / `confirm_proposal` /
+  `confirm_purchase` actions via `/api/act`, tool-call log.
+- **`/tv`** — 10-foot care board.
+- Dev: `cd sim-ui && npm run dev` (Vite :5174 proxies `/api` → sim :5173). Build: the
+  Dockerfile runs `cd sim-ui && npm ci && npm run build` and ships `sim-ui/dist`.
+- **Legacy** `public/*.html` (old `index.html`/`console.html`/`tv.html`) are still served
+  as static fallbacks — the Fire TV APK loads `public/tv.html`, so keep it until the APK
+  is repointed to the React `/tv` route.
 
 ## Live resources
 
