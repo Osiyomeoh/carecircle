@@ -147,6 +147,33 @@ test('withinDays filters dated gaps but keeps undated ones', () => {
   assert.deepEqual(ids, ['o_undated']);
 });
 
+test('a confirmed gap outranks the identical gap when only inferred (Known != Assumed)', () => {
+  // The trust model as arithmetic: lower confidence can only lower risk, never raise
+  // it, so an assumption can never outrank the same fact.
+  const shared = { dueAt: '2026-10-16T14:00:00Z' as const };
+  const confirmed = detectCareGaps(
+    baseState({ obligations: [obligation({ id: 'o_c', ...shared,
+      provenance: { kind: 'CONFIRMED', byMemberId: 'm_renee', at: '2026-10-13T12:00:00Z' } })] }),
+    { now: NOW },
+  )[0]!;
+  const inferred = detectCareGaps(
+    baseState({ obligations: [obligation({ id: 'o_i', ...shared,
+      provenance: { kind: 'INFERRED', rule: 'r', from: 'x' } })] }),
+    { now: NOW },
+  )[0]!;
+  assert.ok(confirmed.score > inferred.score, `${confirmed.score} !> ${inferred.score}`);
+});
+
+test('a nearer deadline never lowers the score (imminence is monotone)', () => {
+  const scoreAt = (dueAt: string) => detectCareGaps(
+    baseState({ obligations: [obligation({ dueAt })] }), { now: NOW },
+  )[0]!.score;
+  const week = scoreAt('2026-10-22T18:00:00Z');
+  const tomorrow = scoreAt('2026-10-16T18:00:00Z');
+  const soon = scoreAt('2026-10-15T20:00:00Z');
+  assert.ok(week <= tomorrow && tomorrow <= soon, `${week} <= ${tomorrow} <= ${soon}`);
+});
+
 test('gap detection is deterministic for a fixed now', () => {
   const state = baseState({
     obligations: [obligation({ dueAt: '2026-10-16T14:00:00Z' })],

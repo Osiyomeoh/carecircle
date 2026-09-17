@@ -13,12 +13,61 @@ import type {
 
 const HOUR = 3_600_000;
 
-/** How much each consequence class contributes to urgency. Medical dominates. */
-const CONSEQUENCE_WEIGHT: Record<ConsequenceClass, number> = {
-  medical: 50,
-  logistical: 25,
-  social: 10,
+/**
+ * Severity is not a bag of hand-tuned points. It is an estimate of *expected harm*:
+ *
+ *     risk = Cost(harm) x P(the work is dropped) x Confidence(the gap is real)
+ *
+ * Each term is a real quantity in [0,1], so the final risk is a probability-weighted
+ * cost in [0,1] and the HIGH/MEDIUM/LOW thresholds are risk tertiles, not magic
+ * numbers. `score` is that risk x 100, kept for backward-compatible ranking.
+ *
+ * The three terms map one-to-one to the project's three beliefs:
+ *  - Cost      -> "medical harm dominates logistical dominates social"
+ *  - P(drop)   -> "work due sooner, or already overdue, is likelier to fall through"
+ *  - Confidence-> "Known != Assumed": an inferred gap is discounted, never inflated.
+ */
+
+/** Cost(harm): normalized magnitude of harm if the work is dropped. Ratio 1 : 0.5 : 0.2. */
+const HARM_COST: Record<ConsequenceClass, number> = {
+  medical: 1.0,
+  logistical: 0.5,
+  social: 0.2,
 };
+
+/**
+ * Time constants (hours) for the exponential hazards below. A time constant tau is
+ * the horizon over which a failure probability relaxes by a factor of e; smaller
+ * tau = urgency concentrates closer to the deadline.
+ */
+const TAU_DEADLINE = 48; // how fast drop-risk rises as a due time approaches
+const TAU_STALE = 72;    // how fast unowned work accrues risk purely by aging
+const TAU_DOSE = 240;    // how fast an unlogged dose looks truly missed (minutes)
+
+/**
+ * Confidence(the gap is real), a Bayesian posterior in (0,1]. This is the trust
+ * model expressed as arithmetic: a CONFIRMED need is fact; an INFERRED one is a
+ * named-rule guess we deliberately down-weight; a silence (NOT_LOGGED) sits between.
+ * We multiply by confidence so an uncertain gap ranks *below* the same certain gap,
+ * never above it - the engine can never let an assumption outrank a known fact.
+ */
+function confidenceOf(kind: 'CONFIRMED' | 'INFERRED' | 'NOT_LOGGED'): number {
+  switch (kind) {
+    case 'CONFIRMED': return 1.0;
+    case 'NOT_LOGGED': return 0.75;
+    case 'INFERRED': return 0.6;
+  }
+}
+
+/** Probability at least one of two independent failure modes fires. */
+function probOr(a: number, b: number): number {
+  return 1 - (1 - a) * (1 - b);
+}
+
+/** Map a risk in [0,1] to the exposed 0-100 score. */
+function toScore(risk: number): number {
+  return Math.round(Math.max(0, Math.min(1, risk)) * 100);
+}
 
 /** Local wall-clock parts for an instant, in the household's timezone. */
 function localParts(at: Date, timezone: string): { date: string; minutes: number } {
@@ -46,30 +95,37 @@ function parseHHMM(hhmm: string): number | null {
 }
 
 /**
- * Imminence score: work due soon, or already overdue, outranks distant work.
- * Undated work sits in the middle - it has no deadline but it is still unowned.
+ * P(dropped) from imminence, as a survival hazard rather than a staircase.
+ *
+ * Model the time a due task survives unattended as exponential: the probability it
+ * has slipped by `now` is exp(-hoursUntilDue / TAU_DEADLINE) for future work, rising
+ * smoothly to 1 as the deadline nears, and clamped at 1 once overdue. This is
+ * monotone and continuous, so ranking never jumps at an arbitrary bucket edge.
+ * Undated work has no deadline pressure but is not zero-risk: it sits at a fixed mid
+ * hazard, because an unowned task with no due date can still be quietly forgotten.
  */
-function imminenceScore(dueAt: string | undefined, now: Date): number {
-  if (!dueAt) return 15;
+function imminenceHazard(dueAt: string | undefined, now: Date): number {
+  if (!dueAt) return 0.35;
   const hoursUntil = (new Date(dueAt).getTime() - now.getTime()) / HOUR;
-  if (hoursUntil < 0) return 45;      // overdue
-  if (hoursUntil <= 24) return 40;    // today or tonight
-  if (hoursUntil <= 72) return 30;    // within three days
-  if (hoursUntil <= 168) return 20;   // this week
-  return 5;
+  if (hoursUntil <= 0) return 1; // overdue: it has already slipped
+  return Math.exp(-hoursUntil / TAU_DEADLINE);
 }
 
-/** Work nobody has picked up gains urgency the longer it sits. */
-function staleness(createdAt: string, now: Date): number {
+/**
+ * P(dropped) contribution from age: unowned work accrues risk the longer it sits
+ * with no one on it. 1 - exp(-age / TAU_STALE): 0 when fresh, approaching 1 as it
+ * ages past several time constants.
+ */
+function stalenessHazard(createdAt: string, now: Date): number {
   const hours = (now.getTime() - new Date(createdAt).getTime()) / HOUR;
-  if (hours >= 72) return 15;
-  if (hours >= 24) return 8;
-  return 0;
+  if (hours <= 0) return 0;
+  return 1 - Math.exp(-hours / TAU_STALE);
 }
 
+/** HIGH/MEDIUM/LOW as risk tertiles of the 0-100 score, not tuned cutoffs. */
 function severityFor(score: number): Severity {
-  if (score >= 85) return 'HIGH';
-  if (score >= 50) return 'MEDIUM';
+  if (score >= 66) return 'HIGH';
+  if (score >= 33) return 'MEDIUM';
   return 'LOW';
 }
 
@@ -94,9 +150,10 @@ function spokenDue(dueAt: string | undefined, timezone: string, now: Date): stri
 }
 
 function unclaimedGap(o: Obligation, timezone: string, now: Date): CareGap {
-  const score = CONSEQUENCE_WEIGHT[o.consequence]
-    + imminenceScore(o.dueAt, now)
-    + staleness(o.createdAt, now);
+  // P(dropped) = deadline hazard OR aging hazard (either failure mode suffices).
+  const pDrop = probOr(imminenceHazard(o.dueAt, now), stalenessHazard(o.createdAt, now));
+  const confidence = confidenceOf(o.provenance.kind);
+  const score = toScore(HARM_COST[o.consequence] * pDrop * confidence);
   const due = spokenDue(o.dueAt, timezone, now);
   return {
     id: `gap_unclaimed_${o.id}`,
@@ -113,7 +170,11 @@ function unclaimedGap(o: Obligation, timezone: string, now: Date): CareGap {
 }
 
 function followUpGap(o: Obligation, timezone: string, now: Date): CareGap {
-  const score = CONSEQUENCE_WEIGHT[o.consequence] + imminenceScore(o.dueAt, now);
+  // Assigned but past due: it has slipped (hazard -> 1). Still weighted by how bad
+  // dropping it is, and by how sure we are the underlying need was real.
+  const pDrop = imminenceHazard(o.dueAt, now);
+  const confidence = confidenceOf(o.provenance.kind);
+  const score = toScore(HARM_COST[o.consequence] * pDrop * confidence);
   const due = spokenDue(o.dueAt, timezone, now);
   return {
     id: `gap_followup_${o.id}`,
@@ -162,7 +223,12 @@ function unconfirmedMedicationGaps(state: CareState, now: Date): CareGap[] {
       if (logged) continue;
 
       const minutesLate = nowLocal.minutes - expectedMinutes;
-      const score = CONSEQUENCE_WEIGHT.medical + (minutesLate > 240 ? 35 : 20);
+      // The longer a due dose goes unlogged, the likelier it truly slipped:
+      // P = 1 - exp(-minutesLate / TAU_DOSE). Weighted by medical cost, and by the
+      // NOT_LOGGED confidence - a silence is real evidence, but weaker than a
+      // human confirmation, which is exactly why we never phrase it as "missed".
+      const pMissed = 1 - Math.exp(-minutesLate / TAU_DOSE);
+      const score = toScore(HARM_COST.medical * pMissed * confidenceOf('NOT_LOGGED'));
       gaps.push({
         id: `gap_unconfirmed_${med.id}_${nowLocal.date}_${time}`,
         kind: 'UNCONFIRMED',
