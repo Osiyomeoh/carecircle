@@ -105,12 +105,18 @@ client routes served as an SPA by the sim Express server (`src/sim/app.ts` serve
 - **Git author must be `Osiyomeoh <samuelaleonomoh5@gmail.com>` - no Co-Authored-By
   lines, no Claude as a contributor.** (Git config already set correctly.)
 - **Deploy uses the `conductor` AWS profile** (the default session identity lacks App
-  Runner permissions). Both services run on one shared ECR image; `AutoDeployments` is
-  off, so the sim needs a separate `start-deployment`:
+  Runner permissions). Both services run on one shared ECR image tagged `:latest`;
+  `AutoDeployments` is off. **CRITICAL: BOTH services need an explicit `start-deployment`
+  after a build.** `deploy-mcp.sh` calls `update-service` on `carecircle-mcp`, but because
+  the image URI (`:latest`) is unchanged that call is a no-op and App Runner does NOT pull
+  the new image - so `carecircle-mcp` silently keeps serving the old code (this bit us:
+  live `/api/state` gap text lagged the repo by a day). Full sequence:
   - `AWS_REGION=us-east-1 AWS_PROFILE=conductor ./infra/deploy-mcp.sh` (builds+pushes
-    image via CodeBuild, updates `carecircle-mcp`)
-  - then: `AWS_PROFILE=conductor aws apprunner start-deployment --service-arn <sim-arn> --region us-east-1`
-    (sim ARN: `arn:aws:apprunner:us-east-1:287977321648:service/carecircle-sim/399940e7f6f54ef9a02e7d39cf93addf`)
+    image via CodeBuild)
+  - MCP: `AWS_PROFILE=conductor aws apprunner start-deployment --service-arn arn:aws:apprunner:us-east-1:287977321648:service/carecircle-mcp/26c6192211474f7fa04ff8d8cb759424 --region us-east-1`
+  - sim: `AWS_PROFILE=conductor aws apprunner start-deployment --service-arn arn:aws:apprunner:us-east-1:287977321648:service/carecircle-sim/399940e7f6f54ef9a02e7d39cf93addf --region us-east-1`
+  - `/api/state` is proxied by the sim to the MCP server's `carecircle://household/state`
+    resource, so gap/obligation TEXT changes only go live once **carecircle-mcp** redeploys.
   - Deploy builds from committed `HEAD` (`git archive HEAD`), so **commit before deploying.**
 
 ## DONE (2026-09-17): Fire TV app - the "shared display" surface
