@@ -74,6 +74,17 @@ board (simulator), 87 tests + adversarial suite + CI.
 (Ring's payload schema is unpublished — see FRICTION-LOG.md); Bee → `ingest_signal`
 (deliberately gated); Fire TV → the web board would render there.
 
+## Front-end (judge-facing UI)
+
+- **Root `/` = the 3D hero landing** (`public/index.html`) — a Three.js scene of the four
+  surfaces (Echo/Ring/Bee/Fire TV) streaming evidence into a central responsibility core,
+  live Care-Gap count pulled from `/api/state`. Responsive: scene sits right-half on
+  desktop, dimmed backdrop on mobile (scrim keeps copy readable). CTA → the console.
+- **`/console.html` = the working console** (was the old index) — real browser voice in
+  (`SpeechRecognition`) and out (`SpeechSynthesis`), provenance chips
+  (CONFIRMED/INFERRED/NO RECORD), gap/proposal/purchase cards wired to `/api/say`,
+  `/api/act`, `/api/state`. This is where the live demo happens.
+
 ## Live resources
 
 - MCP server: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/mcp` (health: `/health`)

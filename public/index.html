@@ -1,513 +1,226 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CareCircle — Alexa+ simulator</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CareCircle</title>
 <style>
   :root{
-    --bg:#0b0f14; --panel:#121821; --panel-2:#182030; --line:#243044;
-    --text:#e8edf5; --dim:#8b9bb4; --accent:#00c8ff; --accent-dim:#0a4c63;
-    --high:#ff5c6c; --med:#ffb648; --low:#6ee7a8; --prop:#b98bff;
-    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --bg:#07090f; --ink:#e8ecf6; --muted:#8b93a7;
+    --alexa:#4ea1ff; --ring:#25d3c2; --bee:#ffb020; --tv:#b46bff; --core:#7cf0c8;
+    --panel:rgba(18,22,33,.72); --line:rgba(255,255,255,.08);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
   }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;overflow:hidden}
-  .wrap{display:grid;grid-template-columns:minmax(380px,1fr) minmax(420px,1.15fr);gap:18px;padding:18px;height:100vh}
-  .col{display:flex;flex-direction:column;gap:14px;min-height:0}
-  h1{font-size:15px;margin:0;letter-spacing:.3px}
-  h1 span{color:var(--dim);font-weight:400}
-  .sub{font-size:11px;color:var(--dim);margin-top:3px}
-
-  /* device */
-  .device{background:#05080c;border:1px solid var(--line);border-radius:20px;padding:14px;display:flex;flex-direction:column;flex:1;min-height:0;box-shadow:0 20px 50px rgba(0,0,0,.5);position:relative;overflow:hidden}
-  /* The ring an Echo shows while it is listening. Sits behind the transcript. */
-  .device::after{
-    content:'';position:absolute;left:0;right:0;bottom:0;height:3px;
-    background:linear-gradient(90deg,transparent,var(--accent),transparent);
-    opacity:0;transition:opacity .25s;pointer-events:none;
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--ink);overflow:hidden}
+  #scene{position:fixed;inset:0;display:block;z-index:0}
+  /* Scrim keeps copy readable over the 3D on every width. */
+  .scrim{position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:linear-gradient(105deg, rgba(7,9,15,.94) 0%, rgba(7,9,15,.78) 32%, rgba(7,9,15,.2) 58%, transparent 78%)}
+  .overlay{position:fixed;inset:0;pointer-events:none;z-index:2;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(20px,4vw,56px)}
+  @media (max-width:900px){
+    .scrim{background:linear-gradient(180deg, rgba(7,9,15,.92) 0%, rgba(7,9,15,.7) 40%, rgba(7,9,15,.55) 70%, rgba(7,9,15,.85) 100%)}
   }
-  .device.listening::after{opacity:1;animation:sweep 1.6s linear infinite}
-  .device.speaking::after{opacity:.55;background:linear-gradient(90deg,transparent,#7de3ff,transparent);animation:sweep 2.4s linear infinite}
-  @keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
-
-  .mic{
-    width:46px;height:46px;border-radius:50%;border:1px solid var(--line);
-    background:var(--panel-2);color:var(--dim);cursor:pointer;flex-shrink:0;
-    display:grid;place-items:center;font-size:17px;transition:all .2s;
-  }
-  .mic:hover{border-color:var(--accent);color:var(--text)}
-  .mic.on{background:var(--accent);color:#04222d;border-color:var(--accent);animation:pulse-ring 1.4s ease-out infinite}
-  .mic:disabled{opacity:.35;cursor:not-allowed}
-  @keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(0,200,255,.55)}70%{box-shadow:0 0 0 14px rgba(0,200,255,0)}100%{box-shadow:0 0 0 0 rgba(0,200,255,0)}}
-  /* The orb — this is a voice device first. It breathes, listens, and answers. */
-  .orb{width:64px;height:64px;border-radius:50%;flex-shrink:0;position:relative;
-    background:radial-gradient(circle at 50% 40%,#0d3a4c,#061620 70%);
-    border:1px solid var(--accent-dim);display:grid;place-items:center;
-    transition:transform .3s ease;margin:2px auto 6px}
-  .orb::before{content:'';position:absolute;inset:-6px;border-radius:50%;
-    background:radial-gradient(circle,rgba(0,200,255,.25),transparent 70%);opacity:.6}
-  .orb .core{width:26px;height:26px;border-radius:50%;background:var(--accent-dim);
-    transition:all .3s ease}
-  .device.listening .orb{transform:scale(1.06)}
-  .device.listening .orb .core{background:var(--accent);animation:breathe 1.3s ease-in-out infinite}
-  .device.speaking .orb .core{background:#7de3ff;animation:breathe 2s ease-in-out infinite}
-  @keyframes breathe{0%,100%{transform:scale(.8);box-shadow:0 0 0 0 rgba(0,200,255,.4)}
-    50%{transform:scale(1.15);box-shadow:0 0 18px 4px rgba(0,200,255,.35)}}
-  .orbcap{text-align:center;font-size:10px;letter-spacing:1.2px;text-transform:uppercase;
-    color:var(--dim);min-height:13px;margin-bottom:8px}
-  .heard{font-size:12px;color:var(--accent);min-height:16px;margin-top:7px;font-style:italic}
-  .voiceopts{display:flex;gap:12px;align-items:center;margin-top:9px;font-size:11px;color:var(--dim)}
-  .voiceopts label{display:flex;gap:5px;align-items:center;cursor:pointer}
-  .voiceopts input{accent-color:var(--accent)}
-  .who{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-  .who button{background:var(--panel-2);border:1px solid var(--line);color:var(--dim);padding:6px 10px;border-radius:999px;font-size:11px;cursor:pointer;font-family:var(--font)}
-  .who button.on{background:var(--accent-dim);border-color:var(--accent);color:var(--text)}
-  .screen{flex:1;overflow-y:auto;padding:6px 2px;display:flex;flex-direction:column;gap:12px;min-height:0}
-  .bubble{max-width:88%;padding:10px 13px;border-radius:14px;font-size:13px;line-height:1.5;animation:rise .25s ease}
-  .me{align-self:flex-end;background:var(--panel-2);border:1px solid var(--line)}
-  .alexa{align-self:flex-start;background:linear-gradient(180deg,#0d2a38,#0a1f2b);border:1px solid var(--accent-dim)}
-  .alexa .tag{font-size:9px;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase;display:block;margin-bottom:5px}
-  .err{align-self:flex-start;background:#2a1216;border:1px solid #5a2530;color:#ffb3bd;font-size:12px}
-  @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-
-  .bar{border-top:1px solid var(--line);padding-top:11px;margin-top:8px}
-  .bar form{display:flex;gap:8px}
-  input[type=text]{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px 13px;font-size:13px;font-family:var(--font)}
-  input[type=text]:focus{outline:none;border-color:var(--accent)}
-  .go{background:var(--accent);color:#04222d;border:none;border-radius:10px;padding:0 16px;font-weight:600;cursor:pointer;font-size:13px}
-  .go:disabled{opacity:.45;cursor:default}
-  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-  .chips button{background:transparent;border:1px dashed var(--line);color:var(--dim);font-size:11px;padding:5px 9px;border-radius:8px;cursor:pointer;font-family:var(--font);text-align:left}
-  .chips button:hover{border-color:var(--accent);color:var(--text)}
-
-  /* board */
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;min-height:0}
-  .panel.grow{flex:1;overflow:hidden}
-  .cards{overflow-y:auto;display:flex;flex-direction:column;gap:9px;margin-top:11px;min-height:0}
-  .card{background:var(--panel-2);border:1px solid var(--line);border-left-width:3px;border-radius:10px;padding:11px 13px;animation:rise .3s ease}
-  .card.HIGH{border-left-color:var(--high)} .card.MEDIUM{border-left-color:var(--med)} .card.LOW{border-left-color:var(--low)}
-  .card.proposal{border-left-color:var(--prop);border-style:dashed}
-  .card.offer{border-left-color:var(--accent)}
-  .pill.offer{background:var(--accent-dim);color:var(--text);border:1px solid var(--accent)}
-  .card .sandbox{font-size:10px;color:var(--dim);margin-top:5px;opacity:.8}
-  .card .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
-  .card .what{font-size:13px;font-weight:500;line-height:1.4}
-  .pill{font-size:9px;letter-spacing:1px;padding:3px 7px;border-radius:999px;white-space:nowrap;text-transform:uppercase}
-  .pill.HIGH{background:#3a1119;color:#ff8b97} .pill.MEDIUM{background:#3a2a10;color:#ffce85}
-  .pill.LOW{background:#0f2c1f;color:#8df0bb} .pill.prop{background:#261a3d;color:#cdaaff}
-  /* Provenance chip — the trust model made visible. How we know a thing, never hidden. */
-  .prov{display:inline-flex;align-items:center;gap:5px;font-size:9px;letter-spacing:1px;
-    text-transform:uppercase;padding:3px 8px;border-radius:999px;margin-top:9px;
-    border:1px solid transparent;cursor:default}
-  .prov::before{content:'';width:6px;height:6px;border-radius:50%}
-  .prov.confirmed{background:#0f2c1f;color:#8df0bb;border-color:#1e4a34}
-  .prov.confirmed::before{background:var(--low)}
-  .prov.inferred{background:#241a3d;color:#cdaaff;border-color:#3a2a5c}
-  .prov.inferred::before{background:var(--prop)}
-  .prov.norecord{background:#2a220f;color:#ffce85;border-color:#4a3a15}
-  .prov.norecord::before{background:var(--med)}
-  .why{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.5}
-  .owner{font-size:11px;margin-top:7px;color:var(--dim)}
-  .owner b{color:var(--low);font-weight:600}
-  .none{color:var(--dim);font-size:12px;padding:16px 2px;text-align:center}
-  .acts{display:flex;gap:7px;margin-top:10px;flex-wrap:wrap}
-  .acts button{background:var(--accent-dim);border:1px solid var(--accent);color:var(--text);font-size:11px;padding:5px 11px;border-radius:7px;cursor:pointer;font-family:var(--font)}
-  .acts button.ghost{background:transparent;border-color:var(--line);color:var(--dim)}
-  .acts button:hover{filter:brightness(1.25)}
-  .acts button:disabled{opacity:.4;cursor:default}
-  .notif{background:#0f1d17;border:1px solid #1e4034;border-radius:9px;padding:8px 11px;font-size:11px;color:#9fe6c2;margin-top:9px}
-  .notif b{color:#d6ffe9}
-
-  /* tool calls */
-  .calls{overflow-y:auto;margin-top:10px;display:flex;flex-direction:column;gap:6px;min-height:0}
-  .call{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;background:#0a0f16;border:1px solid var(--line);border-radius:8px;padding:8px 10px;animation:rise .2s ease}
-  .call .n{color:var(--accent)} .call.bad .n{color:var(--high)}
-  .call .a{color:var(--dim);word-break:break-all;margin-top:3px;line-height:1.45}
-  .chain{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--dim);margin:9px 0 3px;flex-wrap:wrap}
-  .chain span{background:#0a0f16;border:1px solid var(--line);border-radius:6px;padding:3px 8px;white-space:nowrap}
-  .chain span.on{border-color:var(--accent);color:var(--accent)}
-  .chain i{font-style:normal;color:#3d4d66}
-  .call .ms{float:right;color:#54657f}
-  .legend{font-size:10px;color:var(--dim);margin-top:9px;border-top:1px solid var(--line);padding-top:9px;line-height:1.6}
-  .thinking{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);animation:pulse 1s infinite}
-  @keyframes pulse{0%,100%{opacity:.25}50%{opacity:1}}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .dot{width:12px;height:12px;border-radius:50%;background:var(--core);box-shadow:0 0 18px var(--core)}
+  .brand b{font-size:19px;letter-spacing:.02em}
+  .live{pointer-events:auto;display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);
+    padding:9px 14px;border-radius:999px;backdrop-filter:blur(10px);font-size:13px;color:var(--muted)}
+  .live b{color:var(--ink)}
+  .live .beat{width:8px;height:8px;border-radius:50%;background:#ff5d6c;box-shadow:0 0 10px #ff5d6c;animation:beat 1.6s infinite}
+  @keyframes beat{0%,100%{opacity:1}50%{opacity:.3}}
+  .hero{max-width:680px}
+  .kicker{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+  .hero h1{font-size:clamp(30px,5.4vw,58px);line-height:1.04;letter-spacing:-.02em;font-weight:600}
+  .hero h1 .g{background:linear-gradient(90deg,var(--core),var(--alexa));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{margin-top:20px;font-size:clamp(15px,1.9vw,19px);line-height:1.55;color:#c3cad9;max-width:560px}
+  .cta{pointer-events:auto;margin-top:28px;display:inline-flex;align-items:center;gap:10px;
+    background:linear-gradient(90deg,var(--core),#57c6ff);color:#04120d;font-weight:650;font-size:15px;
+    padding:13px 22px;border-radius:12px;text-decoration:none;box-shadow:0 10px 40px rgba(124,240,200,.28);transition:transform .15s}
+  .cta:hover{transform:translateY(-2px)}
+  .legend{pointer-events:auto;display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+  .chip{display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);
+    padding:9px 13px;border-radius:11px;backdrop-filter:blur(10px);font-size:13px;min-width:0}
+  .chip .sw{width:9px;height:9px;border-radius:50%;flex:none}
+  .chip .k{color:var(--muted)}
+  .chip .v{color:var(--ink);font-weight:600}
+  .chip .st{margin-left:6px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+    padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
+  .chip .st.live{color:var(--core);border-color:rgba(124,240,200,.4)}
+  .lbl{position:fixed;transform:translate(-50%,-50%);pointer-events:none;font-size:12px;letter-spacing:.04em;
+    color:var(--ink);background:rgba(7,9,15,.6);border:1px solid var(--line);padding:4px 9px;border-radius:8px;white-space:nowrap;backdrop-filter:blur(4px);opacity:0;transition:opacity .4s}
+  .lbl small{display:block;color:var(--muted);font-size:10px;letter-spacing:.02em}
+  @media (max-width:720px){ .legend .st{display:none} .live{font-size:12px} }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="col">
-    <div>
-      <h1>CareCircle <span>· one shared voice for a family caring together</span></h1>
-      <div class="sub" id="cfg">Speak to it like an Echo. Every device below talks to the same record.</div>
-    </div>
-    <div class="device">
-      <div class="who" id="who"></div>
-      <div class="orb"><div class="core"></div></div>
-      <div class="orbcap" id="orbcap">tap the mic and speak</div>
-      <div class="screen" id="screen"></div>
-      <div class="bar">
-        <form id="form">
-          <button class="mic" id="mic" type="button" title="Hold a conversation out loud">&#127908;</button>
-          <input type="text" id="utt" placeholder="Say something, or press the mic…" autocomplete="off">
-          <button class="go" id="go" type="submit">Send</button>
-        </form>
-        <div class="heard" id="heard"></div>
-        <div class="voiceopts">
-          <label><input type="checkbox" id="speak" checked> Alexa speaks replies</label>
-          <label><input type="checkbox" id="handsfree"> Hands-free (keep listening)</label>
-        </div>
-        <div class="chips" id="chips"></div>
-      </div>
-    </div>
+<canvas id="scene"></canvas>
+<div class="scrim"></div>
+<div class="overlay">
+  <div class="top">
+    <div class="brand"><span class="dot"></span><b>CareCircle</b></div>
+    <div class="live"><span class="beat"></span><span id="livetext">connecting to care circle…</span></div>
   </div>
-
-  <div class="col">
-    <div class="panel grow">
-      <div>
-        <h1>Care Gaps <span>· live</span></h1>
-        <div class="sub">What still needs someone. Each card shows how the system knows.</div>
-      </div>
-      <div class="cards" id="gaps"><div class="none">loading…</div></div>
-    </div>
-    <div class="panel" style="height:34%">
-      <div>
-        <h1>Behind the voice <span>· live tool calls</span></h1>
-        <div class="sub">The model picks these itself. Nothing here is scripted.</div>
-        <div class="chain" id="chain"></div>
-      </div>
-      <div class="calls" id="calls"><div class="none">no calls yet</div></div>
-    </div>
+  <div class="hero">
+    <div class="kicker">The responsibility layer for family care</div>
+    <h1>Four surfaces. Four kinds of evidence.<br><span class="g">One system that never guesses.</span></h1>
+    <p>Margaret's Echo, her Ring doorbell, a Bee wearable, the living-room Fire TV — each sees something different. CareCircle turns that evidence into shared obligations, finds the gaps nobody owns, and lets the family resolve them by voice. It never turns a missing record into an accusation.</p>
+    <a class="cta" href="/console.html">Open the live demo →</a>
+  </div>
+  <div class="legend">
+    <div class="chip"><span class="sw" style="background:var(--alexa)"></span><span class="k">Alexa+</span><span class="v">declared</span><span class="st live">live</span></div>
+    <div class="chip"><span class="sw" style="background:var(--ring)"></span><span class="k">Ring</span><span class="v">physical</span><span class="st">seam</span></div>
+    <div class="chip"><span class="sw" style="background:var(--bee)"></span><span class="k">Bee</span><span class="v">ambient</span><span class="st">seam</span></div>
+    <div class="chip"><span class="sw" style="background:var(--tv)"></span><span class="k">Fire TV</span><span class="v">shared display</span><span class="st">seam</span></div>
   </div>
 </div>
+<div class="lbl" id="lbl-alexa"><span></span></div>
 
-<script type="module">
-const MEMBERS = [
-  { id:'m_margaret', label:'Margaret · kitchen Echo', chips:[
-      'I took my heart pill','I took my thyroid tablet' ] },
-  { id:'m_david', label:'David · phone', chips:[
-      "What's going to fall through the cracks this week?",
-      "How's Mom doing today?", "I'll take the cardiology one" ] },
-  { id:'m_renee', label:'Renee · sister', chips:[
-      'Mom has cardiology on Thursday at 10am',
-      'Mom sounded tired on the phone',
-      'Assign the pharmacy run to David' ] },
-  { id:'m_aide', label:'Tasha · paid aide', chips:[
-      'What do I need to know today?', "What's going on with the family?" ] },
-];
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x07090f, 0.055);
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+camera.position.set(0, 4.2, 9.5);
 
-let current = MEMBERS[1];
-const $ = (id) => document.getElementById(id);
+const COL = { alexa:0x4ea1ff, ring:0x25d3c2, bee:0xffb020, tv:0xb46bff, core:0x7cf0c8 };
 
-// Keep the human framing; only surface a problem if the simulator can't be reached.
-fetch('/api/config').then(r=>r.json()).catch(()=>{
-  $('cfg').textContent = 'simulator offline — start the server and reload.';
+// lights
+scene.add(new THREE.AmbientLight(0x334, 0.7));
+const key = new THREE.PointLight(0x9fd8ff, 1.1, 40); key.position.set(4,8,6); scene.add(key);
+const coreLight = new THREE.PointLight(COL.core, 1.4, 30); scene.add(coreLight);
+
+// floor grid
+const grid = new THREE.GridHelper(40, 40, 0x1b2334, 0x121826);
+grid.position.y = -1.6; scene.add(grid);
+
+// Root rig: on wide screens the whole scene sits in the right half, clear of the copy.
+const root = new THREE.Group(); scene.add(root);
+let narrow = false;
+function layout(){
+  narrow = innerWidth <= 900;
+  if(narrow){ root.position.set(0,-1.4,-1.5); root.scale.setScalar(0.82); }
+  else { root.position.set(3.0,0,0); root.scale.setScalar(1); }
+}
+layout();
+coreLight.position.set(0,0,0); root.add(coreLight);
+
+// ---- the responsibility core ----
+const coreGroup = new THREE.Group(); root.add(coreGroup);
+const coreGeo = new THREE.IcosahedronGeometry(1.15, 1);
+const core = new THREE.Mesh(coreGeo, new THREE.MeshStandardMaterial({
+  color:COL.core, emissive:COL.core, emissiveIntensity:0.6, metalness:.3, roughness:.25, flatShading:true}));
+coreGroup.add(core);
+const wire = new THREE.Mesh(new THREE.IcosahedronGeometry(1.35,1),
+  new THREE.MeshBasicMaterial({color:COL.core, wireframe:true, transparent:true, opacity:.22}));
+coreGroup.add(wire);
+
+// ---- device nodes ----
+function node(color){
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(.5,.6,.28,24),
+    new THREE.MeshStandardMaterial({color:0x141a28, metalness:.4, roughness:.5}));
+  g.add(base);
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(.34,20,20),
+    new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:.9, roughness:.3}));
+  glow.position.y=.42; g.add(glow);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.5,.03,12,40),
+    new THREE.MeshBasicMaterial({color, transparent:true, opacity:.5}));
+  ring.rotation.x=Math.PI/2; ring.position.y=.16; g.add(ring);
+  g.userData.glow = glow;
+  return g;
+}
+const R = 4.2;
+const devices = [
+  {key:'alexa', name:'Alexa+ Echo', sub:'declared', color:COL.alexa, a:0},
+  {key:'ring',  name:'Ring doorbell', sub:'physical', color:COL.ring, a:Math.PI/2},
+  {key:'bee',   name:'Bee wearable', sub:'ambient', color:COL.bee, a:Math.PI},
+  {key:'tv',    name:'Fire TV', sub:'shared display', color:COL.tv, a:3*Math.PI/2},
+].map(d=>{
+  const g = node(d.color);
+  g.position.set(Math.cos(d.a)*R, -1.4, Math.sin(d.a)*R);
+  root.add(g); d.group=g; d.pos=g.position.clone(); d.pos.y=0;
+  return d;
 });
 
-function renderWho(){
-  $('who').innerHTML='';
-  for(const m of MEMBERS){
-    const b=document.createElement('button');
-    b.textContent=m.label;
-    if(m.id===current.id) b.className='on';
-    b.onclick=()=>{
-      window.speechSynthesis?.cancel();
-      current=m; renderWho(); renderChips();
-    };
-    $('who').append(b);
-  }
+// ---- evidence particles: travel device -> core along a bezier arc ----
+const particles = [];
+const pGeo = new THREE.SphereGeometry(.08,8,8);
+function spawn(d){
+  const m = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({color:d.color}));
+  const mid = d.pos.clone().multiplyScalar(.5); mid.y = 2.2; // arc up
+  root.add(m);
+  particles.push({m, from:d.pos.clone(), mid, to:new THREE.Vector3(0,0,0), t:0, sp:.006+Math.random()*.004, color:d.color});
 }
-function renderChips(){
-  $('chips').innerHTML='';
-  for(const c of current.chips){
-    const b=document.createElement('button');
-    b.textContent=c;
-    b.onclick=()=>{ $('utt').value=c; $('form').requestSubmit(); };
-    $('chips').append(b);
-  }
+function bez(a,b,c,t){
+  const u=1-t;
+  return a.clone().multiplyScalar(u*u).add(b.clone().multiplyScalar(2*u*t)).add(c.clone().multiplyScalar(t*t));
 }
-function bubble(cls, html){
-  const d=document.createElement('div');
-  d.className='bubble '+cls; d.innerHTML=html;
-  $('screen').append(d); $('screen').scrollTop=$('screen').scrollHeight;
-  return d;
-}
-const esc = (s)=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+setInterval(()=>{ devices.forEach(d=>{ if(Math.random()<.6) spawn(d); }); }, 420);
 
-/**
- * The provenance chip — the trust model, visible on every card.
- * We never let a guess or a silence look like a fact.
- *   CONFIRMED  a person stated it            (green)
- *   INFERRED   the system guessed it         (purple) — not counted until confirmed
- *   NO RECORD  nothing was logged            (amber)  — NOT "it didn't happen"
- */
-const PROV = {
-  confirmed: ['confirmed','CONFIRMED','A person stated this.'],
-  inferred:  ['inferred','INFERRED','The system guessed this — not counted until someone confirms.'],
-  norecord:  ['norecord','NO RECORD','Nothing was logged. This is not the same as it not happening.'],
-};
-function provChipFor(gap, obById){
-  let key = 'confirmed';
-  if (gap.kind === 'UNCONFIRMED') key = 'norecord';
-  else if (gap.obligationId && obById[gap.obligationId]){
-    const p = obById[gap.obligationId].provenance;
-    key = p === 'INFERRED' ? 'inferred' : p === 'NOT_LOGGED' ? 'norecord' : 'confirmed';
-  }
-  return provChip(key);
-}
-function provChip(key){
-  const [cls,label,title] = PROV[key];
-  return `<span class="prov ${cls}" title="${esc(title)}">${esc(label)}</span>`;
-}
+// ---- label projection for the Alexa node (the live one) ----
+const lbl = document.getElementById('lbl-alexa');
+lbl.querySelector('span').innerHTML = 'Alexa+ · <b>live</b><small>declared evidence</small>';
 
-function renderCalls(calls){
-  if(!calls.length) return;
-  if($('calls').querySelector('.none')) $('calls').innerHTML='';
-  for(const c of calls){
-    const d=document.createElement('div');
-    d.className='call'+(c.isError?' bad':'');
-    d.innerHTML=`<span class="ms">${c.ms}ms</span><span class="n">${esc(c.name)}</span>`
-      + `<div class="a">${esc(JSON.stringify(c.arguments))}</div>`;
-    $('calls').prepend(d);
-  }
-}
-
-/**
- * Re-render only when the state actually changed.
- * A blind interval re-render destroys card buttons mid-tap — on a live demo that
- * silently drops the click, which is the worst possible moment to lose one.
- */
-let lastBoard = '';
-async function refreshBoard(force){
+// ---- live care-gap count from the real MCP resource ----
+const liveText = document.getElementById('livetext');
+async function poll(){
   try{
     const s = await (await fetch('/api/state')).json();
-    const fingerprint = JSON.stringify([s.gaps, s.obligations, s.notifications]);
-    if(!force && fingerprint === lastBoard) return;
-    lastBoard = fingerprint;
-    const gaps = s.gaps ?? [];
-    const obById = Object.fromEntries((s.obligations ?? []).map(o=>[o.id,o]));
-    const proposals = (s.obligations ?? []).filter(o=>o.status==='PROPOSED');
-    const owned = (s.obligations ?? []).filter(o=>o.status==='ASSIGNED');
-    const box=$('gaps'); box.innerHTML='';
+    const gaps = (s.gaps||[]).length;
+    const owned = (s.obligations||[]).filter(o=>o.status==='ASSIGNED').length;
+    liveText.innerHTML = gaps
+      ? `<b>${gaps}</b> care gap${gaps>1?'s':''} open · <b>${owned}</b> owned`
+      : `all clear · <b>${owned}</b> owned`;
+    core.material.emissiveIntensity = 0.5 + Math.min(gaps,4)*0.25;
+  }catch{ liveText.textContent = 'care board offline — start the server'; }
+}
+poll(); setInterval(poll, 4000);
 
-    for(const p of proposals){
-      const d=document.createElement('div');
-      d.className='card proposal';
-      d.innerHTML=`<div class="top"><div class="what">${esc(p.what)}</div>`
-        +`<div class="pill prop">proposed</div></div>`
-        +`<div class="why">Inferred by the system. Not treated as real work until a person confirms it.</div>`
-        +provChip('inferred');
-      d.append(actions([
-        ['Yes, needed', 'confirm_proposal', { obligationId:p.id, confirmed:true }, false],
-        ['Not needed',  'confirm_proposal', { obligationId:p.id, confirmed:false }, true],
-      ]));
-      box.append(d);
-    }
-    for(const o of (s.offers ?? [])){
-      const price = '$'+((o.amountCents||0)/100).toFixed(2);
-      const d=document.createElement('div');
-      d.className='card offer';
-      d.innerHTML=`<div class="top"><div class="what">${esc(o.item)}</div>`
-        +`<div class="pill offer">ready to buy</div></div>`
-        +`<div class="why">${esc(o.merchant)} · ${esc(o.etaText)} · <b style="color:var(--text)">${esc(price)}</b></div>`
-        +`<div class="sandbox">One tap to order. Sandbox — no real payment is taken.</div>`;
-      d.append(actions([
-        [`Confirm · ${price}`, 'confirm_purchase', { offerId:o.offerId, confirmed:true }, false],
-        ['Not now', 'confirm_purchase', { offerId:o.offerId, confirmed:false }, true],
-      ]));
-      box.append(d);
-    }
-    for(const g of gaps){
-      const d=document.createElement('div');
-      d.className='card '+g.severity;
-      d.innerHTML=`<div class="top"><div class="what">${esc(g.spoken)}</div>`
-        +`<div class="pill ${g.severity}">${esc(g.kind)}</div></div>`
-        +`<div class="why">${esc(g.because)}</div>`
-        +provChipFor(g, obById);
-      if(g.obligationId){
-        const others = MEMBERS.filter(m=>m.id!==current.id && m.id!=='m_margaret');
-        const ask = others[0];
-        d.append(actions([
-          ["I'll take it", 'claim_obligation', { obligationId:g.obligationId }, false],
-          ...(ask ? [[`Ask ${ask.label.split(' ·')[0]}`, 'notify_member',
-             { recipientName: ask.label.split(' ·')[0],
-               message: `Can you take this? ${g.spoken}` }, true]] : []),
-        ]));
-      }
-      box.append(d);
-    }
-    for(const o of owned){
-      const d=document.createElement('div');
-      d.className='card LOW';
-      d.innerHTML=`<div class="top"><div class="what">${esc(o.what)}</div>`
-        +`<div class="pill LOW">claimed</div></div>`
-        +`<div class="owner"><b>${esc(o.owner ?? 'someone')}</b> has this.</div>`
-        +provChip(o.provenance==='INFERRED'?'inferred':o.provenance==='NOT_LOGGED'?'norecord':'confirmed');
-      box.append(d);
-    }
-    for(const n of (s.notifications ?? []).slice(-2)){
-      const d=document.createElement('div');
-      d.className='notif';
-      d.innerHTML=`<b>${esc(n.from)} → ${esc(n.to)}:</b> ${esc(n.message)}`;
-      box.append(d);
-    }
-    if(!box.children.length) box.innerHTML='<div class="none">Nothing outstanding. Everything recorded has an owner.</div>';
-  }catch{
-    $('gaps').innerHTML='<div class="none">care board unavailable — is the MCP server running?</div>';
+// ---- resize + render loop ----
+function resize(){
+  const w=innerWidth,h=innerHeight;
+  renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', ()=>{ resize(); layout(); }); resize();
+
+let clock = new THREE.Clock();
+function project(v){
+  const p = v.clone().project(camera);
+  return { x:(p.x*.5+.5)*innerWidth, y:(-p.y*.5+.5)*innerHeight, vis:p.z<1 };
+}
+function frame(){
+  const t = clock.getElapsedTime();
+  // slow orbit
+  const rad = 9.8, sp = 0.12;
+  camera.position.x = Math.sin(t*sp)*rad;
+  camera.position.z = Math.cos(t*sp)*rad;
+  camera.position.y = 4.2 + Math.sin(t*.4)*.5;
+  camera.lookAt(0,0,0);
+  coreGroup.rotation.y = t*.3; wire.rotation.x = t*.2;
+  core.material.emissiveIntensity += (Math.sin(t*2)*.06);
+  coreLight.intensity = 1.3 + Math.sin(t*2)*.3;
+  devices.forEach(d=>{ d.group.userData.glow.material.emissiveIntensity = .7 + Math.sin(t*2+d.a)*.3; });
+
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i]; p.t+=p.sp;
+    if(p.t>=1){ scene.remove(p.m); particles.splice(i,1); continue; }
+    p.m.position.copy(bez(p.from,p.mid,p.to,p.t));
+    p.m.material.opacity = 1-p.t*.3;
   }
+  // position the alexa label (world position = local + root offset)
+  const wp = new THREE.Vector3(); devices[0].group.getWorldPosition(wp); wp.y=1.0;
+  const sc = project(wp);
+  lbl.style.left=sc.x+'px'; lbl.style.top=sc.y+'px'; lbl.style.opacity = (sc.vis && !narrow)?1:0;
+
+  renderer.render(scene,camera);
+  requestAnimationFrame(frame);
 }
-
-/** A card button: a bound tool call, invoked with no model in the loop. */
-function actions(specs){
-  const row=document.createElement('div'); row.className='acts';
-  for(const [label, tool, args, ghost] of specs){
-    const b=document.createElement('button');
-    b.textContent=label; if(ghost) b.className='ghost';
-    b.onclick=async()=>{
-      row.querySelectorAll('button').forEach(x=>x.disabled=true);
-      try{
-        const res=await fetch('/api/act',{method:'POST',headers:{'content-type':'application/json'},
-          body:JSON.stringify({memberId:current.id, tool, args})});
-        const data=await res.json();
-        if(res.ok){
-          bubble('alexa',`<span class="tag">Alexa · tapped</span>${esc(data.result)}`);
-          renderCalls([data]);
-          speak(data.result);
-        } else bubble('err', esc(data.error));
-      }catch(err){ bubble('err', String(err)); }
-      refreshBoard();
-    };
-    row.append(b);
-  }
-  return row;
-}
-
-function renderChain(calls){
-  const el=$('chain'); if(!el) return;
-  const steps=['utterance','tool choice',...calls.map(c=>c.name),'state updated'];
-  el.innerHTML=steps.map((s,i)=>
-    `<span class="${i>0&&i<steps.length-1?'on':''}">${esc(s)}</span>`).join('<i>→</i>');
-}
-
-$('form').onsubmit = async (e)=>{
-  e.preventDefault();
-  const text=$('utt').value.trim();
-  if(!text) return;
-  $('utt').value=''; $('go').disabled=true;
-  bubble('me', esc(text));
-  const pending = bubble('alexa','<span class="tag">Alexa</span><span class="thinking"></span>');
-  try{
-    const res = await fetch('/api/say',{
-      method:'POST', headers:{'content-type':'application/json'},
-      body: JSON.stringify({ memberId: current.id, text }),
-    });
-    const data = await res.json();
-    if(!res.ok){
-      pending.className='bubble err';
-      let msg = typeof data.error==='string' ? data.error : JSON.stringify(data.error||{});
-      // Model backends occasionally overload; say so in plain words, not raw JSON.
-      if(/503|overload|high demand/i.test(msg)) msg='The model is busy right now — try that again in a moment.';
-      else if(/429|rate.?limit|quota/i.test(msg)) msg='Hit a rate limit — give it a few seconds and retry.';
-      pending.textContent = msg || 'Something went wrong with that turn.';
-    }
-    else{
-      pending.innerHTML=`<span class="tag">Alexa</span>${esc(data.spoken)}`;
-      renderCalls(data.toolCalls ?? []);
-      renderChain(data.toolCalls ?? []);
-      speak(data.spoken);
-    }
-  }catch(err){
-    pending.className='bubble err'; pending.textContent=String(err);
-  }
-  $('go').disabled=false; $('utt').focus();
-  refreshBoard();
-};
-
-/* ---------------------------------------------------------------------------
-   Voice.
-
-   A judge should hear this working, not read it. Speech in and out both come
-   from the browser, so the demo needs no hardware — which matters for a product
-   whose whole point is several people talking to one shared record: two devices
-   in one frame is something a single physical Echo could not show.
---------------------------------------------------------------------------- */
-const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-const device = document.querySelector('.device');
-let recognition = null;
-let listening = false;
-
-if (!SpeechRec) {
-  $('mic').disabled = true;
-  $('mic').title = 'Speech recognition needs Chrome. Typing still works.';
-  $('heard').textContent = 'Voice input needs Chrome — typing works everywhere.';
-} else {
-  recognition = new SpeechRec();
-  recognition.lang = 'en-US';
-  recognition.interimResults = true;
-  recognition.continuous = false;
-
-  recognition.onstart = () => {
-    listening = true;
-    $('mic').classList.add('on');
-    device.classList.add('listening');
-    $('orbcap').textContent = 'listening';
-    $('heard').textContent = 'Listening…';
-  };
-  recognition.onresult = (event) => {
-    let text = '';
-    for (const result of event.results) text += result[0].transcript;
-    $('utt').value = text;
-    // Show the partial transcript, the way a device does while you speak.
-    $('heard').textContent = event.results[event.results.length - 1].isFinal ? '' : text;
-    if (event.results[event.results.length - 1].isFinal && text.trim()) {
-      $('form').requestSubmit();
-    }
-  };
-  recognition.onerror = (event) => {
-    $('heard').textContent = event.error === 'not-allowed'
-      ? 'Microphone blocked — allow access, or type instead.'
-      : `Could not hear that (${event.error}).`;
-  };
-  recognition.onend = () => {
-    listening = false;
-    $('mic').classList.remove('on');
-    device.classList.remove('listening');
-    if(!device.classList.contains('speaking')) $('orbcap').textContent = 'tap the mic and speak';
-  };
-
-  $('mic').onclick = () => {
-    if (listening) { recognition.stop(); return; }
-    try { recognition.start(); } catch { /* already starting */ }
-  };
-}
-
-/** Read a reply aloud, then optionally listen again — a real back-and-forth. */
-function speak(text) {
-  if (!$('speak').checked || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 1.02;
-  utterance.pitch = 1.0;
-  // Prefer a natural English voice when the browser offers one.
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find((v) => /samantha|google us english|zira|aria/i.test(v.name))
-    ?? voices.find((v) => v.lang?.startsWith('en'));
-  if (preferred) utterance.voice = preferred;
-  utterance.onstart = () => { device.classList.add('speaking'); $('orbcap').textContent = 'speaking'; };
-  utterance.onend = () => {
-    device.classList.remove('speaking');
-    $('orbcap').textContent = 'tap the mic and speak';
-    if ($('handsfree').checked && recognition && !listening) {
-      try { recognition.start(); } catch { /* ignore */ }
-    }
-  };
-  window.speechSynthesis.speak(utterance);
-}
-// Voices load asynchronously in some browsers.
-window.speechSynthesis?.addEventListener?.('voiceschanged', () => {});
-
-renderWho(); renderChips(); refreshBoard();
-setInterval(refreshBoard, 4000);
+frame();
 </script>
 </body>
 </html>
