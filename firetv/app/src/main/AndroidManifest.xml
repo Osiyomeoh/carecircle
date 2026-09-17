@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Post care-gap heads-up notifications over whatever is on the TV. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- TV app, but keep it installable on non-TV too. -->
     <uses-feature android:name="android.software.leanback" android:required="false" />

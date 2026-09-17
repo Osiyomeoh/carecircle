@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useBoard } from '../lib/useBoard';
 import { ProvChip, provFromGap } from '../components/ProvChip';
 import type { Provenance } from '../lib/api';
@@ -5,6 +6,14 @@ import type { Provenance } from '../lib/api';
 const SEV_BORDER: Record<string, string> = {
   HIGH: 'border-l-sevHigh', MEDIUM: 'border-l-sevMed', LOW: 'border-l-sevLow',
 };
+
+/**
+ * On Fire TV the WebView exposes a native bridge (AndroidBridge.notify). When the
+ * most urgent gap is more than routine, raise it as a real heads-up notification so
+ * it slides in over whatever is on the TV. No-op in a normal browser (no bridge).
+ */
+interface AndroidBridge { notify(title: string, body: string): void; }
+declare global { interface Window { AndroidBridge?: AndroidBridge } }
 
 /** Most cards that fit one no-scroll 1080p TV screen (2 rows x 3 columns). */
 const TV_MAX_CARDS = 6;
@@ -31,6 +40,20 @@ export default function TVBoard() {
   ];
   const shown = items.slice(0, TV_MAX_CARDS);
   const hidden = items.length - shown.length;
+
+  // Fire a Fire TV heads-up notification for the top gap when it is not routine
+  // (severity above LOW), once per distinct gap so it never spams. gaps[0] is the
+  // highest-ranked by the risk model.
+  const notified = useRef<Set<string>>(new Set());
+  const top = gaps[0];
+  useEffect(() => {
+    const bridge = typeof window !== 'undefined' ? window.AndroidBridge : undefined;
+    if (!bridge || !top || top.severity === 'LOW') return;
+    const key = top.obligationId ?? top.spoken;
+    if (notified.current.has(key)) return;
+    notified.current.add(key);
+    try { bridge.notify('CareCircle', top.spoken); } catch { /* bridge absent */ }
+  }, [top?.obligationId, top?.spoken, top?.severity]);
 
   return (
     <div className="flex h-screen flex-col gap-7 bg-[radial-gradient(120%_100%_at_80%_0%,#0d1424_0%,#07090f_60%)] p-10 md:p-14 2xl:gap-6 2xl:px-16 2xl:py-10">
