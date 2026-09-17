@@ -146,6 +146,19 @@ export interface CareGap {
   dueAt?: string;
   /** Ranking score; higher sorts first. Exposed so the ordering is auditable. */
   score: number;
+  /**
+   * The score's derivation: score = round(cost * pDrop * confidence * 100). Each
+   * term is in [0,1]. Exposed so the UI can show *why* a gap ranks where it does -
+   * the number explains itself instead of being an opaque verdict.
+   */
+  factors: {
+    /** Normalized harm magnitude if dropped (medical 1.0, logistical 0.5, social 0.2). */
+    cost: number;
+    /** Probability the work is dropped, from deadline/aging hazards. */
+    pDrop: number;
+    /** Confidence the gap is real (CONFIRMED 1.0, NOT_LOGGED 0.75, INFERRED 0.6). */
+    confidence: number;
+  };
 }
 
 /** A medication the household expects to be taken on a schedule. */

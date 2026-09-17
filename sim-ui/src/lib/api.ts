@@ -3,12 +3,20 @@
 export type Provenance = 'CONFIRMED' | 'INFERRED' | 'NOT_LOGGED';
 export type Severity = 'HIGH' | 'MEDIUM' | 'LOW';
 
+/** The score's derivation: score = round(cost * pDrop * confidence * 100). */
+export interface GapFactors {
+  cost: number;
+  pDrop: number;
+  confidence: number;
+}
 export interface Gap {
   spoken: string;
   because: string;
   kind: string;
   severity: Severity;
   obligationId?: string;
+  score?: number;
+  factors?: GapFactors;
 }
 export interface Obligation {
   id: string;

@@ -151,9 +151,10 @@ function spokenDue(dueAt: string | undefined, timezone: string, now: Date): stri
 
 function unclaimedGap(o: Obligation, timezone: string, now: Date): CareGap {
   // P(dropped) = deadline hazard OR aging hazard (either failure mode suffices).
+  const cost = HARM_COST[o.consequence];
   const pDrop = probOr(imminenceHazard(o.dueAt, now), stalenessHazard(o.createdAt, now));
   const confidence = confidenceOf(o.provenance.kind);
-  const score = toScore(HARM_COST[o.consequence] * pDrop * confidence);
+  const score = toScore(cost * pDrop * confidence);
   const due = spokenDue(o.dueAt, timezone, now);
   return {
     id: `gap_unclaimed_${o.id}`,
@@ -166,15 +167,17 @@ function unclaimedGap(o: Obligation, timezone: string, now: Date): CareGap {
     obligationId: o.id,
     ...(o.dueAt ? { dueAt: o.dueAt } : {}),
     score,
+    factors: { cost, pDrop, confidence },
   };
 }
 
 function followUpGap(o: Obligation, timezone: string, now: Date): CareGap {
   // Assigned but past due: it has slipped (hazard -> 1). Still weighted by how bad
   // dropping it is, and by how sure we are the underlying need was real.
+  const cost = HARM_COST[o.consequence];
   const pDrop = imminenceHazard(o.dueAt, now);
   const confidence = confidenceOf(o.provenance.kind);
-  const score = toScore(HARM_COST[o.consequence] * pDrop * confidence);
+  const score = toScore(cost * pDrop * confidence);
   const due = spokenDue(o.dueAt, timezone, now);
   return {
     id: `gap_followup_${o.id}`,
@@ -185,6 +188,7 @@ function followUpGap(o: Obligation, timezone: string, now: Date): CareGap {
     obligationId: o.id,
     ...(o.dueAt ? { dueAt: o.dueAt } : {}),
     score,
+    factors: { cost, pDrop, confidence },
   };
 }
 
@@ -228,7 +232,8 @@ function unconfirmedMedicationGaps(state: CareState, now: Date): CareGap[] {
       // NOT_LOGGED confidence - a silence is real evidence, but weaker than a
       // human confirmation, which is exactly why we never phrase it as "missed".
       const pMissed = 1 - Math.exp(-minutesLate / TAU_DOSE);
-      const score = toScore(HARM_COST.medical * pMissed * confidenceOf('NOT_LOGGED'));
+      const confidence = confidenceOf('NOT_LOGGED');
+      const score = toScore(HARM_COST.medical * pMissed * confidence);
       gaps.push({
         id: `gap_unconfirmed_${med.id}_${nowLocal.date}_${time}`,
         kind: 'UNCONFIRMED',
@@ -238,6 +243,7 @@ function unconfirmedMedicationGaps(state: CareState, now: Date): CareGap[] {
         because: `A dose was expected at ${time} and nothing has been logged. `
           + `This means no one has confirmed it - not that it was missed.`,
         score,
+        factors: { cost: HARM_COST.medical, pDrop: pMissed, confidence },
       });
     }
   }

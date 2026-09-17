@@ -1,6 +1,6 @@
 import { useBoard } from '../lib/useBoard';
 import { ProvChip, provFromGap } from '../components/ProvChip';
-import type { Provenance } from '../lib/api';
+import type { GapFactors, Provenance } from '../lib/api';
 
 const SEV_BORDER: Record<string, string> = {
   HIGH: 'border-l-sevHigh', MEDIUM: 'border-l-sevMed', LOW: 'border-l-sevLow',
@@ -52,6 +52,7 @@ export default function TVBoard() {
             <Card key={i} border={SEV_BORDER[g.severity] ?? 'border-l-muted'} pill={g.kind}>
               <div className="text-2xl font-semibold leading-snug">{g.spoken}</div>
               <div className="mt-3 text-lg leading-snug text-[#c3cad9]">{g.because}</div>
+              {g.factors && <ScoreMath factors={g.factors} score={g.score} />}
               <div className="mt-4"><ProvChip kind={key} /></div>
             </Card>
           );
@@ -85,4 +86,36 @@ function Card({ children, border, pill }: { children: React.ReactNode; border: s
 }
 function Legend({ color, text }: { color: string; text: string }) {
   return <span className="flex items-center gap-2.5"><span className={`h-3 w-3 rounded-full ${color}`} />{text}</span>;
+}
+
+/**
+ * The score, shown as its own derivation. Severity is not a verdict handed down -
+ * it is expected harm = cost x drop-risk x confidence, and the card shows the work.
+ */
+function ScoreMath({ factors, score }: { factors: GapFactors; score?: number }) {
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  const shown = score ?? Math.round(factors.cost * factors.pDrop * factors.confidence * 100);
+  return (
+    <div className="mt-4 rounded-xl border border-line bg-black/20 px-4 py-3">
+      <div className="flex items-center justify-between text-[13px] uppercase tracking-wider text-muted">
+        <span>why this ranks here</span>
+        <span className="text-ink"><b>{shown}</b> risk</span>
+      </div>
+      <div className="mt-2 flex items-center gap-2 font-mono text-base text-[#c3cad9]">
+        <Term label="harm" value={pct(factors.cost)} />
+        <span className="text-muted">×</span>
+        <Term label="drop-risk" value={pct(factors.pDrop)} />
+        <span className="text-muted">×</span>
+        <Term label="confidence" value={pct(factors.confidence)} />
+      </div>
+    </div>
+  );
+}
+function Term({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="flex flex-col items-center">
+      <span className="text-ink">{value}</span>
+      <span className="text-[11px] uppercase tracking-wide text-muted">{label}</span>
+    </span>
+  );
 }
