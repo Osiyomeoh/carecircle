@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path android:fillColor="#07090F" android:pathData="M0,0h320v180h-320z" />
+    <!-- responsibility core -->
+    <path android:fillColor="#7CF0C8"
+        android:pathData="M60,90a26,26 0 1,0 0.01,0z M60,104a12,12 0 1,1 -0.01,0z" />
+    <!-- four evidence dots -->
+    <path android:fillColor="#4EA1FF" android:pathData="M60,44a5,5 0 1,0 0.01,0z" />
+    <path android:fillColor="#25D3C2" android:pathData="M106,90a5,5 0 1,0 0.01,0z" />
+    <path android:fillColor="#FFB020" android:pathData="M60,136a5,5 0 1,0 0.01,0z" />
+    <path android:fillColor="#B46BFF" android:pathData="M14,90a5,5 0 1,0 0.01,0z" />
+    <!-- board bars -->
+    <path android:fillColor="#1B2334" android:pathData="M150,52h150v18h-150z" />
+    <path android:fillColor="#1B2334" android:pathData="M150,82h150v18h-150z" />
+    <path android:fillColor="#1B2334" android:pathData="M150,112h110v18h-110z" />
+    <path android:fillColor="#7CF0C8" android:pathData="M150,52h6v18h-6z" />
+    <path android:fillColor="#FFB020" android:pathData="M150,82h6v18h-6z" />
+    <path android:fillColor="#4EA1FF" android:pathData="M150,112h6v18h-6z" />
+</vector>

@@ -1,0 +1,37 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.carecircle.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.carecircle.tv"
+        minSdk 22
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('CARECIRCLE_KEYSTORE') ?: 'carecircle-release.keystore')
+            storePassword System.getenv('CARECIRCLE_KEYSTORE_PASS') ?: 'carecircle'
+            keyAlias System.getenv('CARECIRCLE_KEY_ALIAS') ?: 'carecircle'
+            keyPassword System.getenv('CARECIRCLE_KEY_PASS') ?: 'carecircle'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

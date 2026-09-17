@@ -4,3 +4,11 @@ dist/
 *.log
 carecircle.db*
 evals-results.json
+
+# Fire TV (Android) app build artifacts + signing
+firetv/local.properties
+firetv/.gradle/
+firetv/build/
+firetv/app/build/
+firetv/**/*.keystore
+firetv/app/release/

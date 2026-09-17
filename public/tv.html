@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CareCircle · Care Board</title>
+<style>
+  :root{
+    --bg:#07090f; --ink:#eef2fb; --muted:#8b93a7; --line:rgba(255,255,255,.08);
+    --confirmed:#7cf0c8; --inferred:#b46bff; --norecord:#ffb020;
+    --HIGH:#ff5d6c; --MED:#ffb020; --LOW:#7cf0c8;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:radial-gradient(120% 100% at 80% 0%, #0d1424 0%, #07090f 60%);color:var(--ink);overflow:hidden}
+  /* 10-foot layout: fixed 1920x1080 design, scaled to fit any TV. */
+  .safe{padding:56px 72px;height:100vh;display:flex;flex-direction:column;gap:28px}
+  header{display:flex;justify-content:space-between;align-items:center}
+  .brand{display:flex;align-items:center;gap:16px}
+  .brand .dot{width:18px;height:18px;border-radius:50%;background:var(--confirmed);box-shadow:0 0 22px var(--confirmed)}
+  .brand h1{font-size:34px;font-weight:600;letter-spacing:.01em}
+  .brand small{display:block;color:var(--muted);font-size:17px;font-weight:400;letter-spacing:.04em}
+  .status{display:flex;align-items:center;gap:14px;font-size:20px;color:var(--muted)}
+  .status b{color:var(--ink)}
+  .status .beat{width:11px;height:11px;border-radius:50%;background:var(--confirmed);box-shadow:0 0 12px var(--confirmed);animation:beat 2s infinite}
+  @keyframes beat{0%,100%{opacity:1}50%{opacity:.3}}
+  .grid{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));grid-auto-rows:min-content;gap:22px;overflow:hidden;align-content:start}
+  .card{background:rgba(18,22,33,.72);border:1px solid var(--line);border-left:6px solid var(--muted);
+    border-radius:18px;padding:26px 28px;backdrop-filter:blur(8px)}
+  .card.HIGH{border-left-color:var(--HIGH)} .card.MED{border-left-color:var(--MED)} .card.LOW{border-left-color:var(--LOW)}
+  .card.proposal{border-left-color:var(--inferred)} .card.owned{border-left-color:var(--confirmed)}
+  .card .what{font-size:27px;line-height:1.25;font-weight:600}
+  .card .why{margin-top:12px;font-size:19px;line-height:1.4;color:#c3cad9}
+  .card .owner{margin-top:12px;font-size:19px;color:#c3cad9}
+  .card .owner b{color:var(--confirmed)}
+  .prov{display:inline-flex;align-items:center;gap:9px;margin-top:18px;font-size:15px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--muted);border:1px solid var(--line);padding:7px 13px;border-radius:9px}
+  .prov .sw{width:11px;height:11px;border-radius:50%}
+  .prov.confirmed .sw{background:var(--confirmed)} .prov.inferred .sw{background:var(--inferred)} .prov.norecord .sw{background:var(--norecord)}
+  .empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--muted);gap:14px}
+  .empty .big{font-size:30px;color:var(--ink)}
+  footer{display:flex;gap:28px;align-items:center;color:var(--muted);font-size:17px;border-top:1px solid var(--line);padding-top:22px}
+  footer .k{display:flex;align-items:center;gap:9px}
+  footer .sw{width:12px;height:12px;border-radius:50%}
+  .pill{float:right;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);padding:6px 12px;border-radius:999px}
+</style>
+</head>
+<body>
+<div class="safe">
+  <header>
+    <div class="brand">
+      <span class="dot"></span>
+      <div><h1>Margaret's care circle</h1><small>THE SHARED CARE BOARD</small></div>
+    </div>
+    <div class="status"><span class="beat"></span><span id="status">connecting…</span></div>
+  </header>
+  <div class="grid" id="grid"></div>
+  <footer>
+    <span class="k"><span class="sw" style="background:var(--confirmed)"></span>Confirmed — a person stated it</span>
+    <span class="k"><span class="sw" style="background:var(--inferred)"></span>Inferred — the system guessed, awaiting confirmation</span>
+    <span class="k"><span class="sw" style="background:var(--norecord)"></span>No record — not the same as it not happening</span>
+  </footer>
+</div>
+<script>
+const API = '/api/state';
+const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const PROV = { CONFIRMED:['confirmed','Confirmed'], INFERRED:['inferred','Inferred'], NOT_LOGGED:['norecord','No record'] };
+function prov(key){ const [cls,label]=PROV[key]||PROV.CONFIRMED; return `<div class="prov ${cls}"><span class="sw"></span>${label}</div>`; }
+
+async function refresh(){
+  const grid = document.getElementById('grid'), status = document.getElementById('status');
+  try{
+    const s = await (await fetch(API)).json();
+    const gaps = s.gaps ?? [];
+    const obById = Object.fromEntries((s.obligations ?? []).map(o=>[o.id,o]));
+    const proposals = (s.obligations ?? []).filter(o=>o.status==='PROPOSED');
+    const owned = (s.obligations ?? []).filter(o=>o.status==='ASSIGNED');
+    status.innerHTML = gaps.length
+      ? `<b>${gaps.length}</b> open · <b>${owned.length}</b> owned`
+      : `all clear · <b>${owned.length}</b> owned`;
+
+    let html = '';
+    for(const p of proposals){
+      html += `<div class="card proposal"><span class="pill">proposed</span>`
+        + `<div class="what">${esc(p.what)}</div>`
+        + `<div class="why">Inferred by the system — not treated as real work until a person confirms it.</div>`
+        + prov('INFERRED') + `</div>`;
+    }
+    for(const g of gaps){
+      const key = g.kind==='UNCONFIRMED' ? 'NOT_LOGGED'
+        : (g.obligationId && obById[g.obligationId] ? obById[g.obligationId].provenance : 'CONFIRMED');
+      html += `<div class="card ${esc(g.severity)}"><span class="pill">${esc(g.kind)}</span>`
+        + `<div class="what">${esc(g.spoken)}</div>`
+        + `<div class="why">${esc(g.because)}</div>`
+        + prov(key) + `</div>`;
+    }
+    for(const o of owned){
+      html += `<div class="card owned"><span class="pill">claimed</span>`
+        + `<div class="what">${esc(o.what)}</div>`
+        + `<div class="owner"><b>${esc(o.owner ?? 'someone')}</b> has this.</div>`
+        + prov(o.provenance||'CONFIRMED') + `</div>`;
+    }
+    grid.innerHTML = html || `<div class="empty"><div class="big">Nothing outstanding.</div><div>Everything recorded has an owner.</div></div>`;
+  }catch{
+    status.textContent = 'care board offline';
+    grid.innerHTML = `<div class="empty"><div class="big">Care board unavailable</div><div>Reconnecting…</div></div>`;
+  }
+}
+refresh(); setInterval(refresh, 4000);
+</script>
+</body>
+</html>
