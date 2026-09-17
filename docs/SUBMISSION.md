@@ -47,6 +47,28 @@ The judges' own advice is to beware glossy vapor. CareCircle is the opposite:
   it" **50%** of the time; CareCircle **0%** — `npm run trust-benchmark`.
 - Reproduce the whole one-day story end-to-end with **no AWS or keys**: `npm ci && npm run story`.
 
+## What's built vs. what's an adapter seam (no overclaiming)
+
+The architecture is bigger than any one surface — but we are precise about the line
+between running code and a designed contract. MCP is the seam: it is what lets entirely
+different surfaces feed one shared responsibility system.
+
+**Built and tested (live code):**
+- Alexa+ MCP server — Streamable HTTP, spec 2025-11-25, **18 tools**, session-bound identity.
+- The Care Gap engine — `EVENTS → OBLIGATIONS → OWNERSHIP`, deterministic, never narrated by a model.
+- The trust / provenance model — `CONFIRMED` / `INFERRED` / `NOT_LOGGED`, enforced in the type system and tests (**Known ≠ Assumed**).
+- `ingest_signal` — the generic external-signal tool: any physical or wearable event becomes an `INFERRED` proposal a human must confirm. **This is the Ring and Bee seam, and it runs today.**
+- Ownership / claiming / assignment, purchase-in-place (`reorder_prescription` / `confirm_purchase`), multi-person identity, SNS notifications (record-only fallback), DynamoDB persistence, App Runner deployment.
+- The shared multi-device board (the simulator) — the same view a Fire TV would render.
+- **87 tests**, adversarial suite, CI.
+
+**Adapter-ready (seam built, no live third-party wiring):**
+- **Ring** → `ingest_signal`. The contract is designed and the ingestion path runs; the live Ring webhook is not wired, because Ring publishes event *types* without payload *schemas* (see [FRICTION-LOG.md](FRICTION-LOG.md)).
+- **Bee** (wearable context) → `ingest_signal`. Same seam; deliberately gated to keep the demo focused.
+- **Fire TV** → the web board is the presentation surface; there is no Fire-TV-specific app.
+
+Everything a device contributes crosses the same contract: `CareEvent → engine → Obligation → Care Gap`. `Evidence ≠ Obligation ≠ Ownership` — a Ring event never auto-becomes "Mom got her prescription," and an absent record never becomes "Mom didn't take it."
+
 ## Who it's for, and how many (market)
 
 **~53 million** adults in the U.S. were unpaid family caregivers as of 2020, about
@@ -63,8 +85,11 @@ hackathon is concrete: an Alexa+ add-on, distributed the way Amazon distributes 
 ## How it works — Build / Ship / Shape
 
 - **Build** — the record builds itself. A spoken sentence ("I took my heart pill"), a
-  constraint ("I can't drive Thursday" — which silently orphans the ride), and a Ring
-  doorbell delivery all become one shared record. Nobody types a task.
+  constraint ("I can't drive Thursday" — which silently orphans the ride), and a
+  physical-world delivery event (a Ring package, ingested through the `ingest_signal`
+  tool) all become one shared record. Nobody types a task. Crucially, a delivery enters
+  as *evidence* — "a package arrived," an `INFERRED` proposal — never as the asserted
+  fact "the prescription came"; a human confirms before it counts.
 - **Ship** — the work gets done. "What's going to fall through the cracks this week?"
   surfaces the unowned items; a caregiver claims one by voice, and reorders a
   prescription with a **rich purchase card confirmed in place** — the Care Gap closes
