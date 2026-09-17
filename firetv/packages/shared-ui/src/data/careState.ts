@@ -2,7 +2,12 @@
 // This is the fourth surface: the ambient care board on the living-room TV.
 // No new backend; we poll the live sim's /api/state, exactly like public/console.html.
 
-export const CARE_API_BASE = 'https://krqi2tpsif.us-east-1.awsapprunner.com';
+// Live sim URL by default. On the web dev target a CORS proxy can be supplied via
+// EXPO_PUBLIC_CARE_API_BASE (the deployed sim allows same-origin; the TV app is same
+// live URL). This has no effect on the Android/Fire OS build.
+export const CARE_API_BASE =
+  (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_CARE_API_BASE) ||
+  'https://krqi2tpsif.us-east-1.awsapprunner.com';
 
 export type Provenance = 'CONFIRMED' | 'INFERRED' | 'NOT_LOGGED';
 

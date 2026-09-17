@@ -1,7 +1,7 @@
 # CareCircle — session handoff
 
 A self-contained brief to resume work in a new session. Last updated 2026-09-17
-(added the "four surfaces / four kinds of evidence" framing + canonical user story).
+(Fire TV app BUILT — CareBoard shipped, debug APK green, live board seeded).
 
 ## What CareCircle is (updated positioning)
 
@@ -106,9 +106,47 @@ board (simulator), 87 tests + adversarial suite + CI.
     (sim ARN: `arn:aws:apprunner:us-east-1:287977321648:service/carecircle-sim/399940e7f6f54ef9a02e7d39cf93addf`)
   - Deploy builds from committed `HEAD` (`git archive HEAD`), so **commit before deploying.**
 
-## NEXT BUILD (dedicated session): Fire TV app — the "shared display" surface
+## DONE (2026-09-17): Fire TV app — the "shared display" surface
 
-**Decision:** build the **Fire OS (Android) React Native** app, NOT Vega. Reason: the
+**Status: built and verified.** The Fire OS (Android) React Native app ships as
+`firetv/` (clone of `AmazonAppDev/react-native-multi-tv-app-sample`, nested `.git`
+removed so it tracks as normal source). What was done:
+
+- **CareBoard screen** replaces the sample movie home screen:
+  `firetv/packages/shared-ui/src/screens/HomeScreen.tsx`, backed by
+  `firetv/packages/shared-ui/src/data/careState.ts`. Polls the SAME live
+  `/api/state` every 4s (no new backend) and renders three columns — **Care Gaps**,
+  **Owned**, **Proposed** — at 10-foot scale, each card carrying the
+  CONFIRMED / INFERRED / NO RECORD provenance chip. D-pad focusable via
+  `react-tv-space-navigation`. Drawer label renamed to "Care Board".
+- **Debug APK built green:** `firetv/apps/expo-multi-tv/android/app/build/outputs/apk/debug/app-debug.apk`
+  (~128 MB, package `com.anonymous.MultiTVSample`). `aapt2` confirms it is a real TV
+  app — `leanback-launchable-activity`, `touchscreen` not-required — i.e. exactly the
+  APK the Amazon Appstore submission form wants. Rebuild:
+  `cd firetv/apps/expo-multi-tv && EXPO_TV=1 npx expo prebuild --platform android --clean && cd android && ./gradlew assembleDebug`
+  (the generated `android/`, `ios/`, `node_modules/` are gitignored by the starter).
+- **Verified rendering** via the Expo web target (same shared-ui code) at 1280×720
+  against the live seeded state: all 3 gaps, both amber NO RECORD chips + the purple
+  INFERRED ride, and the INFERRED proposal render correctly. `careState.ts` honors
+  `EXPO_PUBLIC_CARE_API_BASE` so a local CORS proxy can front the live sim for web dev
+  (the deployed sim serves `/api/state` without CORS headers); no effect on the APK.
+- **Live board seeded** (pending item #4, done): via the sanctioned `/api/act` API —
+  `record_appointment` cardiology (Renee) → 2 INFERRED proposals; `confirm_proposal`
+  the ride (David) → OPEN unowned Care Gap. Combined with the already-seeded meds,
+  the board now opens on 3 Care Gaps (2 NO RECORD, 1 INFERRED) + 1 INFERRED proposal.
+  Matches the video's opening state (ride confirmed but unclaimed — claimed on camera).
+
+**Emulator note (blocker, not fixed):** the pre-existing `Medium_Phone_API_35` AVD's
+system image is corrupt (metadata only, no `system.img`) and there is no `sdkmanager`
+installed (no `cmdline-tools/`), so the emulator won't boot to screenshot the APK live.
+To fix when a real Fire TV/emulator capture is wanted: install cmdline-tools, then
+`sdkmanager "system-images;android-35;google_apis_playstore;arm64-v8a"` (arm64 for this
+Apple-Silicon Mac; the `android-tv` images are x86-only and slow here), recreate the AVD,
+`adb install` the APK above. The APK itself is done and correct.
+
+---
+
+**Original decision (kept for context):** build the **Fire OS (Android) React Native** app, NOT Vega. Reason: the
 Android toolchain is already installed on this machine (Java 17, Android SDK at
 `~/Library/Android/sdk`, adb, emulator, ndk, watchman, Node 24) and it yields a real
 **APK** — the exact file the Amazon Appstore "New App Submission" form wants. Vega would
