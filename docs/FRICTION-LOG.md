@@ -241,6 +241,12 @@ Template:
 ### Gemini free tier - multi-turn tool loops are unusable under rate limits
 - **Task attempted:** Drive the simulated Alexa+ agent loop with Gemini while the
   Bedrock account quota is being restored, to iterate on tool descriptions.
+- **Steps taken:** Pointed the host's provider at Gemini (`gemini-2.5-flash`, then
+  `gemini-2.0-flash`) on the free tier and ran ordinary conversational turns - the ones
+  that chain more than one tool call per turn - against the live MCP server.
+- **Expected:** A multi-turn turn (a handful of model calls in a few seconds, e.g.
+  get_care_gaps then claim_obligation) to complete under the free-tier limits the way a
+  single-tool turn does.
 - **Actual:** Single-turn requests (one tool call) succeed. Multi-turn requests - e.g.
   "I'll take the cardiology one", which needs get_care_gaps then claim_obligation -
   issue several model calls in seconds and reliably trip 429/503 partway through. With
@@ -250,6 +256,12 @@ Template:
   a stopgap for description iteration), but worth recording as cross-provider friction.
 - **Workaround:** Retry transient errors with backoff at the turn boundary; pace eval
   cases ~6s apart. A paid tier removes it.
+- **Suggestion:** Rate an agentic turn by its whole call burst, not per request - a
+  free tier that allows one call but throttles the 3-4 calls a single tool loop makes in
+  a few seconds is effectively closed to agent workloads, which is the headline use case.
+  And keep `models.list()` in sync with what is actually invokable: advertising
+  `gemini-2.5-flash` / `gemini-2.0-flash` ids that 404 on use sends developers debugging
+  their own code for a catalogue bug.
 - **Date:** 2026-09-16
 
 
@@ -326,6 +338,10 @@ Template:
   even when invocation works. Diagnosing the *quota=0* failure mode needs a permission
   you are unlikely to have granted just to run inference.
 - **Severity:** minor - the app degrades to "unknown" rather than a clear readiness line.
+- **Workaround:** Treat "quota state unknown" as non-blocking - the preflight still
+  attempts a real invoke and reports on that - and, when a true readiness figure is
+  wanted, run the check under a principal that already carries Service Quotas read (our
+  `conductor` profile), rather than granting the inference role that permission.
 - **Suggestion:** Expose a lightweight, invoke-scoped readiness signal (e.g. remaining
   daily tokens) on the Bedrock runtime API itself, so an app can self-report headroom
   without granting Service Quotas read access to its inference role.

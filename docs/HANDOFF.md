@@ -253,7 +253,9 @@ Amazon device-app IDs above. Once the triplet arrives, wire `ingest_signal` (`se
 ## Pending / next moves
 
 1. Push commit `97b0f7a` (SUBMISSION Built-vs-seam section) to origin if not already.
-2. Audit `FRICTION-LOG.md` for the 6 required fields per tool (protect the 10% bonus).
+2. ~~Audit `FRICTION-LOG.md` for the 6 required fields per tool~~ **DONE** - all 14
+   entries carry Task/Steps/Expected/Actual/Severity/Workaround/Suggestion (verified
+   programmatically). The Gemini and preflight entries were completed.
 3. Write the ≤3-min demo script matched to the live UI, Ring/Bee framed honestly.
 4. Optional: seed the live board so judges land on populated Care Gaps + chips (right
    now it reads "nothing outstanding"). Changes what every visitor sees - confirm first.
