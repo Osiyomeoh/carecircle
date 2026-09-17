@@ -106,6 +106,57 @@ board (simulator), 87 tests + adversarial suite + CI.
     (sim ARN: `arn:aws:apprunner:us-east-1:287977321648:service/carecircle-sim/399940e7f6f54ef9a02e7d39cf93addf`)
   - Deploy builds from committed `HEAD` (`git archive HEAD`), so **commit before deploying.**
 
+## NEXT BUILD (dedicated session): Fire TV app — the "shared display" surface
+
+**Decision:** build the **Fire OS (Android) React Native** app, NOT Vega. Reason: the
+Android toolchain is already installed on this machine (Java 17, Android SDK at
+`~/Library/Android/sdk`, adb, emulator, ndk, watchman, Node 24) and it yields a real
+**APK** — the exact file the Amazon Appstore "New App Submission" form wants. Vega would
+need the large, login-gated Vega SDK + Vega Virtual Device; skip unless we specifically
+want Vega OS.
+
+**What the app IS:** the ambient care board on the living-room TV — the fourth surface in
+"four surfaces, one system." No new backend. It fetches the SAME MCP resource the web
+console reads and renders it 10-foot / glanceable: today's Care Gaps, who owns what, and
+the CONFIRMED / INFERRED / NO RECORD provenance chips. This makes Fire TV a *real entered
+track*, not a seam.
+
+**Data source (already live, no auth):**
+`GET https://krqi2tpsif.us-east-1.awsapprunner.com/api/state` →
+`{ gaps:[{spoken, because, kind, severity, obligationId}],
+   obligations:[{id, what, status:'ASSIGNED'|'PROPOSED', owner, provenance:'CONFIRMED'|'INFERRED'|'NOT_LOGGED'}],
+   offers:[{offerId, item, merchant, etaText, amountCents}],
+   notifications:[{from, to, message}] }`
+(Poll every ~4s, exactly like `public/console.html` does.)
+
+**Starter:** `github.com/AmazonAppDev/react-native-multi-tv-app-sample` — a yarn@4 workspaces
+monorepo (`apps/expo-multi-tv` = Android/iOS/web via Expo RN-for-TV; `apps/vega` = Vega).
+For Fire OS we only need the Android/Expo workspace.
+
+**Build steps for the fresh session:**
+1. Clone the starter into the repo as `firetv/` (or `apps/firetv/`).
+2. `yarn install` (large — RN/Expo deps; ~1GB). Use the Android/Expo workspace only.
+3. Replace the sample home screen with a `CareBoard` screen: fetch `/api/state` from the
+   live sim URL above, render Gap/owned/proposal cards + provenance chips, TV-sized type,
+   focus-navigable with the D-pad (use the sample's existing focus patterns).
+4. Create an Android **TV** AVD (need an `android-tv` system image via `sdkmanager
+   "system-images;android-34;android-tv;x86_64"`; only `android-35` phone image is
+   installed today) OR run on the existing `Medium_Phone_API_35` emulator for a quick check.
+5. Build a debug APK (`./gradlew assembleDebug` under the Android project, or
+   `expo run:android`). The APK is the artifact for the Appstore form / the demo.
+6. Screenshot it running for the video.
+
+**Amazon app registration** (already captured in `.env`, gitignored, non-secret):
+`AMZN_APP_ID`, `AMZN_APP_RELEASE_ID`, `AMZN_APP_PUBLIC_KEY` — the Fire TV/Appstore app.
+NOTE: for the hackathon a *demo-ready* app + video is enough; do NOT complete the Appstore
+publication/certification flow unless we decide to. The store form needs the built APK.
+
+**Ring (separate, user action pending):** Ring API needs the Ring Developer Portal triplet
+(**Client ID, Client Secret, HMAC key**) after gov-ID identity verification — NOT the
+Amazon device-app IDs above. Once the triplet arrives, wire `ingest_signal` (`server.ts:594`,
+`source` enum currently `'ring'|'other'`) to the real Ring API (sandbox has synthetic data).
+"Care-taking" is a named Ring priority category → this earns the Ring track.
+
 ## What we learned this session
 
 - **The rules make honesty mandatory.** "Not just a mention in the README" for Alexa+/
