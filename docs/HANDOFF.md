@@ -1,0 +1,98 @@
+# CareCircle — session handoff
+
+A self-contained brief to resume work in a new session. Last updated 2026-09-17.
+
+## What CareCircle is (updated positioning)
+
+CareCircle is an **Alexa+ MCP server** that turns ordinary spoken care signals into a
+shared family responsibility system. The one-sentence thesis:
+
+> **Different devices produce different evidence. CareCircle turns that evidence into
+> shared obligations, finds the Care Gaps nobody owns, and lets a family resolve them
+> by voice — without ever turning a guess into a fact.**
+
+The technical spine is `EVENTS → OBLIGATIONS → OWNERSHIP`. A **Care Gap** is the failure
+state of the third stage (work is known to be needed and nobody owns it).
+
+Positioning we're leaning into (not "AI for elderly care", not "Alexa for caregivers"):
+**the responsibility layer for family care**, with **MCP as the seam** that lets
+entirely different surfaces participate in one responsibility system.
+
+Two product principles, both enforced in the type system and tests — not just copy:
+- **Known ≠ Assumed** — a missing record is surfaced as *"there's no record,"* never
+  *"she missed it."* (`CONFIRMED` / `INFERRED` / `NOT_LOGGED` provenance.)
+- **Evidence ≠ Obligation ≠ Ownership** — a Ring package becomes "a package arrived"
+  (an `INFERRED` proposal a human confirms), never "the prescription came."
+
+## Track strategy (locked, per the official rules)
+
+- **Primary track: Alexa+ (MCP).** We qualify cleanly — self-hosted MCP server, spec
+  2025-11-25, Streamable HTTP, called in code (18 tools), live URL. Top-prize track.
+- **Mini challenges: AWS Builder + Open Source.** Both qualify (Bedrock/DynamoDB/App
+  Runner/SNS documented; `@carecircle/care-events` MIT package). A project can **win
+  only one mini prize**, but entering both is allowed.
+- **Ring and Bee are NOT enterable — this is a hard rule, not a choice.** To enter Ring
+  you must show it working through a Ring simulator/device; to enter Bee you must show
+  live Bee data in code + video. We do neither. `ingest_signal` is a **generic seam**,
+  not a Ring API call or live Bee feed. So Ring/Bee stay framed as *architecturally-
+  ready adapter seams*, never as track entries or live integrations.
+- **Fire TV** is not entered either; the web board is the presentation surface, no
+  Fire-TV-specific app.
+
+## What's built vs. adapter-ready
+
+**Built + tested (live code):** Alexa+ MCP server (18 tools, session-bound identity),
+Care Gap engine (deterministic), trust/provenance model, `ingest_signal` (the real
+Ring/Bee seam — any external signal → INFERRED proposal), ownership/claiming,
+purchase-in-place (`reorder_prescription` / `confirm_purchase`), SNS notifications
+(record-only fallback), DynamoDB persistence, App Runner deploy, the multi-device web
+board (simulator), 87 tests + adversarial suite + CI.
+
+**Adapter-ready (seam only, no live third-party wiring):** Ring → `ingest_signal`
+(Ring's payload schema is unpublished — see FRICTION-LOG.md); Bee → `ingest_signal`
+(deliberately gated); Fire TV → the web board would render there.
+
+## Live resources
+
+- MCP server: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/mcp` (health: `/health`)
+- Simulator (judge-facing UI): `https://krqi2tpsif.us-east-1.awsapprunner.com`
+- Reproduce end-to-end with no AWS/keys: `npm ci && npm run story`
+- Measured claims: `npm run evals` (93.3% tool selection), `npm run trust-benchmark`
+  (raw LLM 50% false accusation vs CareCircle 0%)
+
+## Operational rules (important)
+
+- **Git author must be `Osiyomeoh <samuelaleonomoh5@gmail.com>` — no Co-Authored-By
+  lines, no Claude as a contributor.** (Git config already set correctly.)
+- **Deploy uses the `conductor` AWS profile** (the default session identity lacks App
+  Runner permissions). Both services run on one shared ECR image; `AutoDeployments` is
+  off, so the sim needs a separate `start-deployment`:
+  - `AWS_REGION=us-east-1 AWS_PROFILE=conductor ./infra/deploy-mcp.sh` (builds+pushes
+    image via CodeBuild, updates `carecircle-mcp`)
+  - then: `AWS_PROFILE=conductor aws apprunner start-deployment --service-arn <sim-arn> --region us-east-1`
+    (sim ARN: `arn:aws:apprunner:us-east-1:287977321648:service/carecircle-sim/399940e7f6f54ef9a02e7d39cf93addf`)
+  - Deploy builds from committed `HEAD` (`git archive HEAD`), so **commit before deploying.**
+
+## What we learned this session
+
+- **The rules make honesty mandatory.** "Not just a mention in the README" for Alexa+/
+  Ring/Bee. Overclaiming Ring/Bee would hurt the Alexa+ "Tech Implementation" score when
+  a judge cross-checks the repo. Keep the seam framing.
+- **Friction logs earn up to a 10% judging bonus** — `docs/FRICTION-LOG.md` should have a
+  complete entry (task → steps → expected vs actual → severity → workaround →
+  suggestion) for every tool. High leverage; verify completeness.
+- **Feature requests are optional-but-scored** — added to SUBMISSION.md.
+- **The demo video is the live risk.** Never imply Ring/Bee is wired. When the Ring
+  delivery appears, show it as an ingested signal → INFERRED proposal.
+- **UI shipped this session:** provenance chips (CONFIRMED/INFERRED/NO RECORD), a
+  voice-first breathing orb, a richer one-tap purchase card, dev-meta text removed.
+
+## Pending / next moves
+
+1. Push commit `97b0f7a` (SUBMISSION Built-vs-seam section) to origin if not already.
+2. Audit `FRICTION-LOG.md` for the 6 required fields per tool (protect the 10% bonus).
+3. Write the ≤3-min demo script matched to the live UI, Ring/Bee framed honestly.
+4. Optional: seed the live board so judges land on populated Care Gaps + chips (right
+   now it reads "nothing outstanding"). Changes what every visitor sees — confirm first.
+5. Consider the top-line positioning rewrite ("responsibility layer for family care")
+   across README/SUBMISSION openers — bigger, subjective; confirm before doing.
