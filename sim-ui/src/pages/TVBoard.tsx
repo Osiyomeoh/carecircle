@@ -3,7 +3,7 @@ import { ProvChip, provFromGap } from '../components/ProvChip';
 import type { Provenance } from '../lib/api';
 
 const SEV_BORDER: Record<string, string> = {
-  HIGH: 'border-l-sevHigh', MED: 'border-l-sevMed', LOW: 'border-l-sevLow',
+  HIGH: 'border-l-sevHigh', MEDIUM: 'border-l-sevMed', LOW: 'border-l-sevLow',
 };
 
 export default function TVBoard() {

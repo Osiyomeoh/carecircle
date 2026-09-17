@@ -190,7 +190,7 @@ export default function Console() {
 
           {gaps.map((g, i) => {
             const key: Provenance = provFromGap(g.kind, g.obligationId ? obById[g.obligationId]?.provenance : undefined);
-            const sev = g.severity === 'HIGH' ? 'border-l-sevHigh' : g.severity === 'MED' ? 'border-l-sevMed' : 'border-l-sevLow';
+            const sev = g.severity === 'HIGH' ? 'border-l-sevHigh' : g.severity === 'MEDIUM' ? 'border-l-sevMed' : 'border-l-sevLow';
             return (
               <BoardCard key={i} accent={sev} pill={g.kind}>
                 <div className="text-lg font-semibold">{g.spoken}</div>

@@ -35,7 +35,7 @@ function Core({ intensity }: { intensity: number }) {
   );
 }
 
-function DeviceNode({ color, angle, name, sub, status }: (typeof SURFACES)[number]) {
+function DeviceNode({ color, angle, name, sub, status }: Omit<(typeof SURFACES)[number], 'key'>) {
   const pos = useMemo(() => new THREE.Vector3(Math.cos(angle) * R, 0, Math.sin(angle) * R), [angle]);
   return (
     <group position={pos}>
@@ -110,7 +110,7 @@ function Scene({ intensity }: { intensity: number }) {
       <pointLight position={[6, 8, 6]} intensity={1.1} color="#9fd8ff" />
       <group ref={rig}>
         <Core intensity={intensity} />
-        {SURFACES.map((s) => <DeviceNode key={s.key} {...s} />)}
+        {SURFACES.map(({ key, ...s }) => <DeviceNode key={key} {...s} />)}
         {SURFACES.map((s) => <Stream key={s.key} angle={s.angle} color={s.color} />)}
       </group>
       <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.6}

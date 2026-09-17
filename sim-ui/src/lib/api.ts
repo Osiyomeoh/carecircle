@@ -1,7 +1,7 @@
 // Thin client over the sim server's real endpoints (src/sim/app.ts).
 
 export type Provenance = 'CONFIRMED' | 'INFERRED' | 'NOT_LOGGED';
-export type Severity = 'HIGH' | 'MED' | 'LOW';
+export type Severity = 'HIGH' | 'MEDIUM' | 'LOW';
 
 export interface Gap {
   spoken: string;
