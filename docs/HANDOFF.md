@@ -114,8 +114,11 @@ client routes served as an SPA by the sim Express server (`src/sim/app.ts` serve
 - Dev: `cd sim-ui && npm run dev` (Vite :5174 proxies `/api` → sim :5173). Build: the
   Dockerfile runs `cd sim-ui && npm ci && npm run build` and ships `sim-ui/dist`.
 - **Legacy** `public/*.html` (old `index.html`/`console.html`/`tv.html`) are still served
-  as static fallbacks - the Fire TV APK loads `public/tv.html`, so keep it until the APK
-  is repointed to the React `/tv` route.
+  as static fallbacks. The Fire TV APK now loads the React `/tv` route (repointed in
+  `firetv/app/src/main/java/com/carecircle/tv/MainActivity.java`), so it shows the
+  current board with the score decomposition, not the legacy static page. Rebuild the
+  signed APK with `cd firetv && ./gradlew :app:assembleRelease`
+  (-> `app/build/outputs/apk/release/app-release.apk`).
 
 ## Live resources
 

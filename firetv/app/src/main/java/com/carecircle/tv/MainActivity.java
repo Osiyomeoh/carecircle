@@ -18,7 +18,9 @@ import android.webkit.WebViewClient;
 public class MainActivity extends Activity {
 
     // The live care board, served by the CareCircle simulator (backed by the MCP server).
-    private static final String BOARD_URL = "https://krqi2tpsif.us-east-1.awsapprunner.com/tv.html";
+    // Points at the React /tv route (the current board with the risk-model score
+    // decomposition), not the legacy static tv.html.
+    private static final String BOARD_URL = "https://krqi2tpsif.us-east-1.awsapprunner.com/tv";
 
     private WebView web;
 
