@@ -6,6 +6,5 @@ dist
 carecircle.db*
 evals-results.json
 docs
-public
 scripts
 **/*.test.ts
