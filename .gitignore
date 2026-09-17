@@ -12,3 +12,8 @@ firetv/build/
 firetv/app/build/
 firetv/**/*.keystore
 firetv/app/release/
+*.apk
+
+# Vite React sim UI
+sim-ui/node_modules/
+sim-ui/dist/

@@ -61,6 +61,10 @@ async function withRetry<T>(fn: () => Promise<T>, tries = 4): Promise<T> {
 
 const app = express();
 app.use(express.json());
+// The built React UI (Vite) is the primary front-end; public/ still holds legacy
+// static pages (e.g. tv.html the Fire TV APK points at) and is served as a fallback.
+const uiDir = join(here, '../../sim-ui/dist');
+app.use(express.static(uiDir));
 app.use(express.static(join(here, '../../public')));
 
 /** One spoken turn from one member's device. */
@@ -186,6 +190,13 @@ app.get('/api/config', (_req, res) => {
   res.json({
     provider: provider.name, region: REGION, modelId: MODEL_ID, endpoint: MCP_ENDPOINT,
   });
+});
+
+// SPA fallback: any non-API GET that isn't a static file serves the React app,
+// so client-side routes (/console, /tv) work on direct load and refresh.
+app.use((req, res, next) => {
+  if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
+  res.sendFile(join(uiDir, 'index.html'));
 });
 
 app.listen(PORT, () => {

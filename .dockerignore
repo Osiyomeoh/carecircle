@@ -8,3 +8,7 @@ evals-results.json
 docs
 scripts
 **/*.test.ts
+sim-ui/node_modules
+sim-ui/dist
+firetv
+*.apk

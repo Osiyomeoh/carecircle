@@ -7,6 +7,9 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
+# Build the React (Vite) sim UI as a separate workspace.
+COPY sim-ui ./sim-ui
+RUN cd sim-ui && npm ci && npm run build
 
 FROM public.ecr.aws/docker/library/node:22-slim AS runtime
 WORKDIR /app
@@ -14,6 +17,7 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/sim-ui/dist ./sim-ui/dist
 COPY public ./public
 # AgentCore expects 0.0.0.0:8000/mcp; App Runner health-checks the same port.
 ENV PORT=8000
