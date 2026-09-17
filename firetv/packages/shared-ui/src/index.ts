@@ -12,6 +12,7 @@ export { MenuProvider, useMenuContext } from './components/MenuContext';
 export { default as CustomDrawerContent } from './components/CustomDrawerContent';
 
 // Screens
+export { default as CareCircleScreen } from './screens/CareCircleScreen';
 export { default as HomeScreen } from './screens/HomeScreen';
 export { default as DetailsScreen } from './screens/DetailsScreen';
 export { default as PlayerScreen } from './screens/PlayerScreen';

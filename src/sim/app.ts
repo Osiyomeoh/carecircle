@@ -61,6 +61,14 @@ async function withRetry<T>(fn: () => Promise<T>, tries = 4): Promise<T> {
 
 const app = express();
 app.use(express.json());
+// The read-only board endpoints are also consumed by the React Native TV app's
+// web build (a different origin), so allow cross-origin GETs. No credentials, no
+// cookies - this is public demo state.
+app.use((_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'content-type');
+  next();
+});
 // The built React UI (Vite) is the primary front-end; public/ still holds legacy
 // static pages (e.g. tv.html the Fire TV APK points at) and is served as a fallback.
 const uiDir = join(here, '../../sim-ui/dist');
