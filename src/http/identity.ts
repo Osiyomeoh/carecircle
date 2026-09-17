@@ -101,6 +101,10 @@ export interface JwtIdentityOptions {
   members: Map<string, string>;
   /** Persisted subject -> member fallback, for members provisioned at runtime. */
   lookup?: IdentityLookup;
+  /** Whether a validated-but-unmapped subject may bootstrap a household. Off unless
+   *  explicitly enabled, so switching to JWT identity does not silently allow anyone
+   *  behind the gateway to self-provision. */
+  selfSignup?: boolean;
 }
 
 /**
@@ -111,7 +115,7 @@ export interface JwtIdentityOptions {
  * validated-yet-unmapped subject IS a bootstrap `principal` — it may create a new
  * household and, in doing so, become that household's first member.
  */
-export function jwtClaims({ claim, members, lookup }: JwtIdentityOptions): IdentityResolver {
+export function jwtClaims({ claim, members, lookup, selfSignup }: JwtIdentityOptions): IdentityResolver {
   const subjectOf = (req: Request): string | null => {
     const token = bearer(req);
     if (!token) return null;
@@ -126,6 +130,7 @@ export function jwtClaims({ claim, members, lookup }: JwtIdentityOptions): Ident
       return members.get(subject) ?? lookup?.(subject) ?? null;
     },
     principal(req) {
+      if (!selfSignup) return null;
       const subject = subjectOf(req);
       // Authenticated but not yet a member of any circle.
       if (!subject || members.get(subject) || lookup?.(subject)) return null;
@@ -151,10 +156,12 @@ export function resolverFromEnv(fallbackTokens: Map<string, string>, lookup?: Id
   } catch {
     throw new Error('CARECIRCLE_MEMBER_MAP is not valid JSON; refusing to start with an unusable identity map.');
   }
-  // An empty env map is fine when members can be provisioned at runtime (lookup):
-  // the first household is created by a validated-but-unmapped principal.
-  if (members.size === 0 && !lookup) {
-    throw new Error('CARECIRCLE_JWT_CLAIM is set but CARECIRCLE_MEMBER_MAP is empty and no runtime lookup is configured; nobody could authenticate.');
+  // An empty env map is only viable if self-signup is on, so a validated-but-unmapped
+  // principal can bootstrap the first household. Without either, nobody could ever
+  // authenticate — refuse to start rather than boot a server no one can use.
+  const selfSignup = process.env['CARECIRCLE_ALLOW_SELF_SIGNUP'] === 'true';
+  if (members.size === 0 && !selfSignup) {
+    throw new Error('CARECIRCLE_JWT_CLAIM is set but CARECIRCLE_MEMBER_MAP is empty and CARECIRCLE_ALLOW_SELF_SIGNUP is not enabled; nobody could authenticate.');
   }
-  return jwtClaims({ claim, members, ...(lookup ? { lookup } : {}) });
+  return jwtClaims({ claim, members, selfSignup, ...(lookup ? { lookup } : {}) });
 }

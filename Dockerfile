@@ -14,6 +14,7 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
+COPY public ./public
 # AgentCore expects 0.0.0.0:8000/mcp; App Runner health-checks the same port.
 ENV PORT=8000
 EXPOSE 8000

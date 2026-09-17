@@ -62,6 +62,17 @@ export interface ServerContext {
   notifier?: Notifier;
 }
 
+/** A timezone the runtime can actually format in — the IANA name must be valid, or
+ *  gap detection (which reads the household timezone) throws on every later call. */
+function isValidTimeZone(tz: string): boolean {
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; }
+}
+
+/** Every entry must be a 24-hour "HH:MM"; a malformed time is silently un-checkable. */
+function validMedicationTimes(times: string[]): boolean {
+  return times.length > 0 && times.every((t) => /^([01]\d|2[0-3]):[0-5]\d$/.test(t));
+}
+
 export function createCareCircleServer(ctx: ServerContext): McpServer {
   const { store, actorId } = ctx;
   const now = ctx.now ?? (() => new Date());
@@ -674,7 +685,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   }, async ({ medicationName, obligationId }) => {
     try {
       const me = actor();
-      requireCap(me, 'create_obligation');
+      requireCap(me, 'make_purchase');
       const offer = offerFor('prescription_refill', {
         offerId: `off_${randomUUID()}`,
         ...(medicationName ? { itemName: medicationName } : {}),
@@ -705,7 +716,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   }, async ({ offerId, confirmed }) => {
     try {
       const me = actor();
-      requireCap(me, 'create_obligation');
+      requireCap(me, 'make_purchase');
       const s = state();
       const offered = s.events.find(
         (e) => e.kind === 'purchase_offered'
@@ -776,6 +787,9 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       if (!subject) {
         return guidance('You already belong to a care circle, so I can\'t start a new one for you here.');
       }
+      if (!isValidTimeZone(timezone)) {
+        return guidance(`"${timezone}" isn't a timezone I recognise. Use an IANA name like "America/New_York".`);
+      }
       const householdId = `h_${randomUUID()}`;
       const memberId = `m_${randomUUID()}`;
       await store.addHousehold({ id: householdId, name, timezone });
@@ -838,6 +852,9 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     try {
       const me = actor();
       requireCap(me, 'manage_circle');
+      if (!validMedicationTimes(times)) {
+        return guidance('I need the dose times as 24-hour "HH:MM" — for example ["08:00","20:00"]. Say them again that way.');
+      }
       const forId = forMemberId ?? state().members.find((m) => m.role === 'care_recipient')?.id;
       if (!forId) return guidance('I don\'t know who this medication is for. Tell me which member.');
       const id = `med_${randomUUID()}`;

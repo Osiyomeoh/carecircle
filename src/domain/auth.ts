@@ -20,7 +20,8 @@ export type Capability =
   | 'confirm_proposal'   // turn an inference into real work
   | 'resolve_obligation'
   | 'escalate'           // pull a human in urgently
-  | 'manage_circle';     // add or remove members, edit medication schedules
+  | 'manage_circle'      // add or remove members, edit medication schedules
+  | 'make_purchase';     // offer and confirm a purchase that commits money
 
 const CAPABILITIES: Record<Role, ReadonlySet<Capability>> = {
   // The person being cared for: full authority over their own life, and they can
@@ -32,11 +33,12 @@ const CAPABILITIES: Record<Role, ReadonlySet<Capability>> = {
     'log_own_event', 'log_others_event', 'read_full_state', 'read_shift',
     'create_obligation', 'claim_obligation', 'assign_obligation',
     'confirm_proposal', 'resolve_obligation', 'escalate', 'manage_circle',
+    'make_purchase',
   ]),
   caregiver: new Set([
     'log_own_event', 'log_others_event', 'read_full_state', 'read_shift',
     'create_obligation', 'claim_obligation', 'confirm_proposal',
-    'resolve_obligation',
+    'resolve_obligation', 'make_purchase',
   ]),
   // A paid helper: scoped to the work in front of them.
   helper: new Set([
@@ -64,6 +66,8 @@ const DENIAL: Partial<Record<Capability, string>> = {
     'Only a family caregiver can confirm whether this is really needed.',
   log_others_event:
     'You can log things about yourself here.',
+  make_purchase:
+    'Placing an order is something a family caregiver does. I can tell one of them it is needed.',
 };
 
 export class NotPermittedError extends Error {

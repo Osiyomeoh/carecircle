@@ -16,8 +16,8 @@ test('an offer names its Care Gap when given one', () => {
 });
 
 test('the spoken line always says nothing is charged until confirmed', () => {
-  const offer = offerFor('medical_ride', { offerId: 'off_3', whenText: 'Thursday at 10' });
+  const offer = offerFor('prescription_refill', { offerId: 'off_3', itemName: 'blood thinner' });
   const spoken = offerSpoken(offer);
-  assert.match(spoken, /\$28\.00/);
+  assert.match(spoken, /\$12\.00/);
   assert.match(spoken, /confirm/i);
 });
