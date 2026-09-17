@@ -121,7 +121,7 @@ export default function Console() {
             <div className={`h-16 w-16 rounded-full bg-gradient-to-br ${speaking ? 'from-core to-alexa' : 'from-alexa to-[#2f6fd0]'} shadow-glow`} />
           </div>
           <div className="text-[13px] text-muted">
-            {listening ? 'listening…' : speaking ? 'speaking…' : SpeechRec ? 'tap the mic and speak' : 'voice needs Chrome — typing works'}
+            {listening ? 'listening…' : speaking ? 'speaking…' : SpeechRec ? 'tap the mic and speak' : 'voice needs Chrome - typing works'}
           </div>
           <div className="flex gap-2">
             <button disabled={!SpeechRec} onClick={() => { const r = recRef.current; if (!r) return; listening ? r.stop() : (() => { try { r.start(); } catch { /* */ } })(); }}
@@ -167,7 +167,7 @@ export default function Console() {
           {proposals.map((p) => (
             <BoardCard key={p.id} accent="border-l-inferred" pill="proposed">
               <div className="text-lg font-semibold">{p.what}</div>
-              <div className="mt-1.5 text-sm text-[#c3cad9]">Inferred — not real work until a person confirms it.</div>
+              <div className="mt-1.5 text-sm text-[#c3cad9]">Inferred - not real work until a person confirms it.</div>
               <div className="mt-3 flex items-center gap-2">
                 <ProvChip kind="INFERRED" />
                 <button onClick={() => act('confirm_proposal', { obligationId: p.id, confirmed: true })} className="btn-primary">Yes, needed</button>
@@ -180,7 +180,7 @@ export default function Console() {
             <BoardCard key={o.offerId} accent="border-l-alexa" pill="ready to buy">
               <div className="text-lg font-semibold">{o.item}</div>
               <div className="mt-1.5 text-sm text-[#c3cad9]">{o.merchant} · {o.etaText} · <b className="text-ink">${(o.amountCents / 100).toFixed(2)}</b></div>
-              <div className="mt-2 text-[12px] text-muted">Sandbox — no real payment is taken.</div>
+              <div className="mt-2 text-[12px] text-muted">Sandbox - no real payment is taken.</div>
               <div className="mt-3 flex items-center gap-2">
                 <button onClick={() => act('confirm_purchase', { offerId: o.offerId, confirmed: true })} className="btn-primary">Confirm · ${(o.amountCents / 100).toFixed(2)}</button>
                 <button onClick={() => act('confirm_purchase', { offerId: o.offerId, confirmed: false })} className="btn-ghost">Not now</button>

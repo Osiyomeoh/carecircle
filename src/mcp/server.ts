@@ -36,7 +36,7 @@ function reply(spoken: string, structured?: Record<string, unknown>) {
  * An error the model should act on rather than report.
  *
  * The text is phrased as guidance ("ask which one", "you can claim it yourself")
- * because the model is the audience — it is deciding what to do next, and a stack
+ * because the model is the audience - it is deciding what to do next, and a stack
  * trace tells it nothing useful.
  */
 function guidance(text: string) {
@@ -62,7 +62,7 @@ export interface ServerContext {
   notifier?: Notifier;
 }
 
-/** A timezone the runtime can actually format in — the IANA name must be valid, or
+/** A timezone the runtime can actually format in - the IANA name must be valid, or
  *  gap detection (which reads the household timezone) throws on every later call. */
 function isValidTimeZone(tz: string): boolean {
   try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return true; } catch { return false; }
@@ -84,7 +84,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       capabilities: { tools: {}, resources: {}, prompts: {} },
       instructions:
         'CareCircle tracks what needs to happen for someone being cared for, and who is '
-        + 'responsible for it. Speak results as written — they are phrased for a voice '
+        + 'responsible for it. Speak results as written - they are phrased for a voice '
         + 'assistant. Never say that someone did not take a medication or did not do '
         + 'something: the system only knows what has been recorded, and an absent record '
         + 'is not evidence. When a tool returns an error, follow the instruction in it.',
@@ -106,7 +106,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   server.registerTool('log_care_event', {
     title: 'Log something that happened',
     description:
-      'Record that something happened — a medication taken, a meal eaten, a check-in, '
+      'Record that something happened - a medication taken, a meal eaten, a check-in, '
       + 'how someone is feeling. Use this for things that ALREADY happened. For something '
       + 'scheduled in the future use record_appointment instead; for an observation or '
       + 'concern with no action attached use add_note.',
@@ -158,7 +158,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         },
       });
 
-      // A dose logged against a medication we don't know about is still recorded —
+      // A dose logged against a medication we don't know about is still recorded -
       // we just can't use it to clear a scheduled dose, and we say so.
       const unknownMed = kind === 'medication_taken' && medicationName && !medicationId;
       const spoken = kind === 'medication_taken'
@@ -175,10 +175,10 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     title: 'Record an appointment',
     description:
       'Record a scheduled appointment or any future dated commitment the person mentions '
-      + '— a doctor\'s visit, a haircut, book club on Wednesday, a birthday. It does not '
+      + '- a doctor\'s visit, a haircut, book club on Wednesday, a birthday. It does not '
       + 'have to be medical: use this, not add_note, whenever there is a date and time. '
-      + 'It also works out what the appointment probably requires — only a MEDICAL one '
-      + 'proposes a ride or a companion — and PROPOSES that work for a human to confirm. '
+      + 'It also works out what the appointment probably requires - only a MEDICAL one '
+      + 'proposes a ride or a companion - and PROPOSES that work for a human to confirm. '
       + 'Proposals are guesses and are never treated as real until confirmed with '
       + 'confirm_proposal. Tell the person what was proposed and ask.',
     inputSchema: {
@@ -223,8 +223,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       })));
 
       const spoken = proposed.length === 0
-        ? `Noted — ${kind} for ${subject}.`
-        : `Noted — ${kind} for ${subject}. ${seeds[0]!.ask}`;
+        ? `Noted - ${kind} for ${subject}.`
+        : `Noted - ${kind} for ${subject}. ${seeds[0]!.ask}`;
       return reply(spoken, {
         eventId: event.id,
         proposals: proposed.map((o, i) => ({ id: o.id, what: o.what, ask: seeds[i]!.ask })),
@@ -237,11 +237,11 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     title: 'Add a note to the care record',
     description:
       'Record an observation, concern, or piece of context that the rest of the family '
-      + 'should see — "Mom sounded tired", "the doctor changed her dose". Use this when '
+      + 'should see - "Mom sounded tired", "the doctor changed her dose". Use this when '
       + 'there is something to SAY but nothing specific that must be DONE. If someone needs '
       + 'to take an action, use record_appointment or let the note stand and let them claim it.\n\n'
-      + 'IMPORTANT: if the person says they (or someone) will be UNAVAILABLE — "I can\'t drive '
-      + 'Thursday", "I won\'t be able to make Friday after all", "Renee is away next week" — '
+      + 'IMPORTANT: if the person says they (or someone) will be UNAVAILABLE - "I can\'t drive '
+      + 'Thursday", "I won\'t be able to make Friday after all", "Renee is away next week" - '
       + 'this is still an add_note, with `unavailable` filled in. It is never "nothing to do": '
       + 'work that person was covering may quietly stop being covered, and that silence is '
       + 'exactly what this system exists to catch.',
@@ -273,7 +273,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         return reply("I've added that to the care record.", { eventId: event.id });
       }
 
-      // A constraint does not create work — it can orphan work that already has an
+      // A constraint does not create work - it can orphan work that already has an
       // owner. Nobody says "create a task"; somebody says they can't make Thursday.
       const person = store.findMemberByName(me.householdId, unavailable.memberName);
       if (!person) {
@@ -285,7 +285,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         (id) => nameOf(id) ?? 'They',
       );
       if (orphaned.length === 0) {
-        return reply("Noted — I'll keep that in mind.", { eventId: event.id, orphaned: [] });
+        return reply("Noted - I'll keep that in mind.", { eventId: event.id, orphaned: [] });
       }
 
       // Reopen the orphaned work rather than silently reassigning it: CareCircle
@@ -305,7 +305,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   server.registerTool('get_care_gaps', {
     title: 'Find what nobody has taken responsibility for',
     description:
-      'THE core tool. Returns everything that needs attention and has no owner — unclaimed '
+      'THE core tool. Returns everything that needs attention and has no owner - unclaimed '
       + 'work, expected records that are missing, and things past their due time. Use this '
       + 'for "what needs doing", "what\'s unassigned", "what might fall through the cracks", '
       + 'or "is anything being missed". Also use it to resolve an implicit reference: when '
@@ -341,8 +341,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     description:
       'The speaker takes on a piece of work themselves ("I\'ll do it", "I\'ve got Thursday", '
       + '"I can take that one", "leave it with me"). To give work to someone ELSE, use '
-      + 'assign_obligation instead. If you are unsure which item they mean — "that one", "it" '
-      + '— call get_care_gaps to find it, then claim it, rather than doing nothing.',
+      + 'assign_obligation instead. If you are unsure which item they mean - "that one", "it" '
+      + '- call get_care_gaps to find it, then claim it, rather than doing nothing.',
     inputSchema: { obligationId: z.string().describe('Which piece of work. From get_care_gaps.') },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
   }, async ({ obligationId }) => {
@@ -362,7 +362,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         );
       }
       const updated = await store.transition(obligationId, me.householdId, 'ASSIGNED', me.id, { ownerId: me.id });
-      return reply(`Done — ${o.what} is yours.`, { obligationId: updated.id, ownerId: me.id });
+      return reply(`Done - ${o.what} is yours.`, { obligationId: updated.id, ownerId: me.id });
     } catch (err) { return guidance(describeError(err)); }
   });
 
@@ -394,7 +394,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         obligationId, me.householdId, 'ASSIGNED', me.id, { ownerId: assignee.id },
       );
       const who = assignee.spokenAs ?? assignee.name;
-      return reply(`Done — ${o.what} is assigned to ${who}.`, {
+      return reply(`Done - ${o.what} is assigned to ${who}.`, {
         obligationId: updated.id, ownerId: assignee.id,
       });
     } catch (err) { return guidance(describeError(err)); }
@@ -406,10 +406,10 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     description:
       'The system infers work from appointments (a ride to cardiology, someone to take notes) '
       + 'but never treats a guess as real. This turns a guess into actual work, or dismisses '
-      + 'it. A short affirmation of a suggested need — "yes", "that\'s right", "she will need '
-      + 'that", "someone should drive her" — is a confirmation: call this. If you do not know '
+      + 'it. A short affirmation of a suggested need - "yes", "that\'s right", "she will need '
+      + 'that", "someone should drive her" - is a confirmation: call this. If you do not know '
       + 'which proposal they mean, call get_care_gaps first to find it, then confirm. Always '
-      + 'ask a person before calling this — the confirmation must come from them, not from '
+      + 'ask a person before calling this - the confirmation must come from them, not from '
       + 'your own judgement about what seems sensible.',
     inputSchema: {
       obligationId: z.string().describe('The proposal being answered.'),
@@ -422,12 +422,12 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       requireCap(me, 'confirm_proposal');
       const o = store.getObligation(obligationId, me.householdId);
       if (o.status !== 'PROPOSED') {
-        return guidance(`"${o.what}" has already been settled — it's ${o.status.toLowerCase()}.`);
+        return guidance(`"${o.what}" has already been settled - it's ${o.status.toLowerCase()}.`);
       }
       await store.transition(obligationId, me.householdId, confirmed ? 'OPEN' : 'DISMISSED', me.id);
       return reply(
         confirmed
-          ? `Right — ${o.what}. Nobody's taken it yet. Do you want it?`
+          ? `Right - ${o.what}. Nobody's taken it yet. Do you want it?`
           : `Okay, I'll leave that out.`,
         { obligationId, status: confirmed ? 'OPEN' : 'DISMISSED' },
       );
@@ -439,7 +439,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     title: 'Mark something as done',
     description:
       'Record that a piece of work has been completed. Use this when someone says a task '
-      + 'is handled — "that\'s sorted now", "taken care of", "I dropped it off", "done". If '
+      + 'is handled - "that\'s sorted now", "taken care of", "I dropped it off", "done". If '
       + 'they do not name which task, call get_care_gaps first to find which one they mean, '
       + 'then resolve it.',
     inputSchema: {
@@ -463,7 +463,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         occurredAt: now().toISOString(), ...(note ? { detail: note } : {}),
         data: { obligationId },
       });
-      return reply(`Marked done — ${o.what}.`, { obligationId });
+      return reply(`Marked done - ${o.what}.`, { obligationId });
     } catch (err) { return guidance(describeError(err)); }
   });
 
@@ -515,7 +515,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       'A short handoff brief for whoever is on duty: what is due, what they own, and any '
       + 'recent notes that change how today should go. Use it when a helper or aide asks '
       + 'what they need to know, what is happening today, or what medications the person is '
-      + 'on today — for the aide this is how they see the day. Scoped deliberately — it does '
+      + 'on today - for the aide this is how they see the day. Scoped deliberately - it does '
       + 'not expose the whole family record.',
     inputSchema: {},
     annotations: { readOnlyHint: true, idempotentHint: true },
@@ -545,7 +545,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   server.registerTool('notify_member', {
     title: 'Let someone in the care circle know something',
     description:
-      'Send a short message to another member of the care circle — "tell Renee I\'m '
+      'Send a short message to another member of the care circle - "tell Renee I\'m '
       + 'taking Mom Thursday", "let David know the pharmacy called", "message Renee about '
       + 'the appointment change", "text Renee". Any of tell / message / text / let-know a '
       + 'named person maps here. Use this when the speaker wants a specific PERSON told '
@@ -582,7 +582,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       // only recorded it, do not imply a phone buzzed.
       const spoken = delivery.delivered
         ? `I've sent that to ${who}.`
-        : `I've noted that for ${who} — they'll see it on the care record.`;
+        : `I've noted that for ${who} - they'll see it on the care record.`;
       return reply(spoken, {
         eventId: event.id, recipientId: recipient.id,
         delivered: delivery.delivered, channel: delivery.channel,
@@ -594,8 +594,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   server.registerTool('ingest_signal', {
     title: 'Record something a device observed',
     description:
-      'Take an observation from a device in the home — a Ring doorbell, a camera, a '
-      + 'sensor — and fold it into the care record. Use this for physical-world events '
+      'Take an observation from a device in the home - a Ring doorbell, a camera, a '
+      + 'sensor - and fold it into the care record. Use this for physical-world events '
       + 'nobody typed: a delivery arriving at the door, activity or the absence of it. '
       + 'A signal is EVIDENCE, not a conclusion: a delivery is grounds to ASK whether the '
       + 'prescription was picked up, not to mark it done; no activity is grounds to ASK '
@@ -629,7 +629,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       const event = await store.appendEvent({ ...outcome.event, householdId: me.householdId });
 
       // If the signal is evidence toward open work, name the match so the model can
-      // ask about the specific item — it does not resolve anything itself.
+      // ask about the specific item - it does not resolve anything itself.
       let candidate: string | null = null;
       if (outcome.resolvesObligationLike) {
         const needle = outcome.resolvesObligationLike.match.toLowerCase();
@@ -654,7 +654,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         proposalId = created.id;
       }
 
-      // The ask, when present, already carries the observation — speak it alone to
+      // The ask, when present, already carries the observation - speak it alone to
       // avoid repeating the same fact twice.
       const ask = outcome.resolvesObligationLike?.ask ?? outcome.proposeObligation?.ask;
       return reply(ask ?? outcome.spoken, {
@@ -665,12 +665,12 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     } catch (err) { return guidance(describeError(err)); }
   });
 
-  // --- 13. "Reorder Mom's prescription." — the purchase, as an offer -----
+  // --- 13. "Reorder Mom's prescription." - the purchase, as an offer -----
   server.registerTool('reorder_prescription', {
     title: 'Offer to reorder a prescription',
     description:
       'Some work is closed by buying the thing, not by doing it. When a prescription '
-      + 'needs refilling — often the same one a delivery or a pickup gap is about — this '
+      + 'needs refilling - often the same one a delivery or a pickup gap is about - this '
       + 'prepares a priced OFFER from a pharmacy and presents it. It does NOT buy '
       + 'anything: like every inference here, a purchase is a proposal until a person '
       + 'confirms it with confirm_purchase. Tell them the item, the price and the ETA, '
@@ -700,14 +700,14 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
     } catch (err) { return guidance(describeError(err)); }
   });
 
-  // --- 14. "Yes, place it." — the in-place confirmation ------------------
+  // --- 14. "Yes, place it." - the in-place confirmation ------------------
   server.registerTool('confirm_purchase', {
     title: 'Place or decline a prepared purchase',
     description:
       'Confirm a purchase that was offered, or decline it. This is the only step that '
       + 'commits money. On confirmation the order is placed and, if the purchase closes '
       + 'a Care Gap (a prescription pickup), that work is marked done. Only call this '
-      + 'when a person has said yes to a specific offer — never on your own judgement.',
+      + 'when a person has said yes to a specific offer - never on your own judgement.',
     inputSchema: {
       offerId: z.string().describe('The offer being answered, from reorder_prescription.'),
       confirmed: z.boolean().describe('True to place the order, false to decline it.'),
@@ -760,13 +760,13 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
 
       const price = formatPrice(offer.amountCents, offer.currency);
       const spoken = closed
-        ? `Done — ${offer.item} is ordered for ${price}, and that takes "${closed}" off the list.`
-        : `Done — ${offer.item} is ordered for ${price}. You'll get a confirmation from ${offer.merchant}.`;
+        ? `Done - ${offer.item} is ordered for ${price}, and that takes "${closed}" off the list.`
+        : `Done - ${offer.item} is ordered for ${price}. You'll get a confirmation from ${offer.merchant}.`;
       return reply(spoken, { offerId, placed: true, amountCents: offer.amountCents, closedObligation: closed });
     } catch (err) { return guidance(describeError(err)); }
   });
 
-  // --- 15. "Set up a care circle for my mother." — onboarding bootstrap --
+  // --- 15. "Set up a care circle for my mother." - onboarding bootstrap --
   server.registerTool('create_household', {
     title: 'Create a new care circle',
     description:
@@ -799,7 +799,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       });
       await store.mapIdentity({ subject, memberId, householdId });
       return reply(
-        `Done — "${name}" is set up, and you're its primary caregiver. Add the rest of the family with add_member.`,
+        `Done - "${name}" is set up, and you're its primary caregiver. Add the rest of the family with add_member.`,
         { householdId, memberId },
       );
     } catch (err) { return guidance(describeError(err)); }
@@ -853,7 +853,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       const me = actor();
       requireCap(me, 'manage_circle');
       if (!validMedicationTimes(times)) {
-        return guidance('I need the dose times as 24-hour "HH:MM" — for example ["08:00","20:00"]. Say them again that way.');
+        return guidance('I need the dose times as 24-hour "HH:MM" - for example ["08:00","20:00"]. Say them again that way.');
       }
       const forId = forMemberId ?? state().members.find((m) => m.role === 'care_recipient')?.id;
       if (!forId) return guidance('I don\'t know who this medication is for. Tell me which member.');
@@ -867,7 +867,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   server.registerTool('remove_member', {
     title: 'Remove someone from the care circle',
     description:
-      'Remove a member. Their open work is not deleted — it is released back to the '
+      'Remove a member. Their open work is not deleted - it is released back to the '
       + 'circle as unowned, so it resurfaces as a Care Gap rather than vanishing. Only '
       + 'a primary caregiver can do this, and the last primary caregiver cannot be '
       + 'removed.',
@@ -883,7 +883,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       const target = store.getMember(memberId);
       if (target.role === 'primary_caregiver'
         && store.membersWithRole(me.householdId, 'primary_caregiver').length <= 1) {
-        return guidance('That\'s the only primary caregiver — add another before removing this one.');
+        return guidance('That\'s the only primary caregiver - add another before removing this one.');
       }
       const { released } = await store.removeMember(me.householdId, memberId);
       const tail = released > 0 ? ` ${countPhrase(released, 'piece')} of their work is back on the board.` : '';
@@ -911,7 +911,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
             provenance: o.provenance.kind,
           })),
           gaps: detectCareGaps(s, { now: now() }),
-          // Purchase offers still awaiting a decision — the in-place buy moment.
+          // Purchase offers still awaiting a decision - the in-place buy moment.
           offers: (() => {
             const settled = new Set(s.events
               .filter((e) => e.kind === 'purchase_completed')
@@ -947,7 +947,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         type: 'text' as const,
         text: 'Give me today\'s care summary, then tell me anything that still has no owner. '
           + 'Read the results as they are written. If something was only expected and not '
-          + 'logged, say it has no record — do not say it was missed.',
+          + 'logged, say it has no record - do not say it was missed.',
       },
     }],
   }));

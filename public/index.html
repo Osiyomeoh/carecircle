@@ -65,7 +65,7 @@
   <div class="hero">
     <div class="kicker">The responsibility layer for family care</div>
     <h1>Four surfaces. Four kinds of evidence.<br><span class="g">One system that never guesses.</span></h1>
-    <p>Margaret's Echo, her Ring doorbell, a Bee wearable, the living-room Fire TV — each sees something different. CareCircle turns that evidence into shared obligations, finds the gaps nobody owns, and lets the family resolve them by voice. It never turns a missing record into an accusation.</p>
+    <p>Margaret's Echo, her Ring doorbell, a Bee wearable, the living-room Fire TV - each sees something different. CareCircle turns that evidence into shared obligations, finds the gaps nobody owns, and lets the family resolve them by voice. It never turns a missing record into an accusation.</p>
     <a class="cta" href="/console.html">Open the live demo →</a>
   </div>
   <div class="legend">
@@ -177,7 +177,7 @@ async function poll(){
       ? `<b>${gaps}</b> care gap${gaps>1?'s':''} open · <b>${owned}</b> owned`
       : `all clear · <b>${owned}</b> owned`;
     core.material.emissiveIntensity = 0.5 + Math.min(gaps,4)*0.25;
-  }catch{ liveText.textContent = 'care board offline — start the server'; }
+  }catch{ liveText.textContent = 'care board offline - start the server'; }
 }
 poll(); setInterval(poll, 4000);
 

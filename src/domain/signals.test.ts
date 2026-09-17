@@ -7,7 +7,7 @@ const ctx = { recipientId: 'm_margaret', recipientName: 'Mom', now: new Date('20
 const sig = (over: Partial<CareSignal>): CareSignal =>
   ({ source: 'ring', kind: 'motion', at: '2026-10-15T18:00:00Z', ...over });
 
-test('a delivery is evidence toward the prescription, and asks — never auto-resolves', () => {
+test('a delivery is evidence toward the prescription, and asks - never auto-resolves', () => {
   // The beat: "Was Mom's prescription picked up?" answered by the doorbell.
   const out = interpretSignal(sig({ kind: 'delivery_arrived' }), ctx);
   assert.ok(out.resolvesObligationLike);
@@ -50,9 +50,9 @@ const signalEvent = (kind: string, at: string): CareEvent => ({
 
 test('no-activity concern only after enough of the day has passed', () => {
   const tz = 'America/New_York';
-  // 09:00 New York — too early to be notable.
+  // 09:00 New York - too early to be notable.
   assert.equal(noActivityWarranted([], new Date('2026-10-15T13:00:00Z'), tz), false);
-  // 14:00 New York — warranted when nothing was seen.
+  // 14:00 New York - warranted when nothing was seen.
   assert.equal(noActivityWarranted([], new Date('2026-10-15T18:00:00Z'), tz), true);
 });
 

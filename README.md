@@ -1,19 +1,19 @@
 # CareCircle
 
-### Margaret is 78 and lives alone. Her two kids and a paid aide share her care. Nobody is in charge — so the work that falls through the cracks is the work nobody realised was anyone's job.
+### Margaret is 78 and lives alone. Her two kids and a paid aide share her care. Nobody is in charge - so the work that falls through the cracks is the work nobody realised was anyone's job.
 
 *"Nobody knew a ride to cardiology was needed until Thursday morning."* That sentence
 is the whole problem. Every family-care tool assumes someone already **noticed** the
 work and typed a task. That is exactly the step that fails.
 
-**CareCircle is an Alexa+ MCP server that starts one step earlier — and it does two
+**CareCircle is an Alexa+ MCP server that starts one step earlier - and it does two
 things no other assistant does.** The person being cared for is a **participant, not a
 patient on a dashboard**: Margaret, who has never used a smartphone, logs her own care
-by *talking*. And it **refuses to lie** — a missing record is surfaced as *"there's no
+by *talking*. And it **refuses to lie** - a missing record is surfaced as *"there's no
 record,"* never *"she missed it."*
 
 Ordinary spoken sentences become structured events, events imply obligations, and the
-obligations nobody owns are **Care Gaps** — surfaced before they fail, closed by voice,
+obligations nobody owns are **Care Gaps** - surfaced before they fail, closed by voice,
 or fixed by **buying the thing in place** (reorder the prescription, right in the
 conversation).
 
@@ -24,7 +24,7 @@ what happened        what must happen        who has it
  Thursday at 10"     drive her                has claimed it
 ```
 
-**And it is real — not a mockup.** Live MCP server you can hit right now, **87 tests**,
+**And it is real - not a mockup.** Live MCP server you can hit right now, **87 tests**,
 **93.3%** measured tool-selection accuracy on Amazon Bedrock, and a trust model
 **measured at 0% false accusations where a raw LLM hits 50%**. See it end-to-end in ~60
 seconds, no AWS or keys required:
@@ -40,7 +40,7 @@ Live server: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/health`
 
 ## The interaction
 
-**Margaret, 78, to her kitchen Echo** — she has never used a smartphone:
+**Margaret, 78, to her kitchen Echo** - she has never used a smartphone:
 
 > "Alexa, I have cardiology Thursday at ten."
 
@@ -53,12 +53,12 @@ CareCircle records the appointment, then notices something and says so:
 
 > "Alexa, what's going to fall through the cracks this week?"
 
-> "There are two things that need attention. Drive Mom to cardiology Thursday at 10 —
+> "There are two things that need attention. Drive Mom to cardiology Thursday at 10 -
 > nobody has taken this yet. And **there's no record of** Mom's evening heart pill."
 
 > "I'll take the cardiology one."
 
-> "Done — Drive Mom to cardiology is yours."
+> "Done - Drive Mom to cardiology is yours."
 
 Nobody created a task. Nobody opened an app. Margaret, who cannot use one, is a
 participant rather than a monitored subject.
@@ -92,11 +92,11 @@ In a domain that runs on family guilt, a system that turns silence into an accus
 is worse than no system. So ours structurally cannot.
 
 **We measured how much this matters.** Given a care log with a dose that has no record
-and the question "did she take it?", a raw Claude Sonnet 4.5 — the *same* model
-CareCircle plans with — asserted the accusation ("she missed it", "she hasn't taken
+and the question "did she take it?", a raw Claude Sonnet 4.5 - the *same* model
+CareCircle plans with - asserted the accusation ("she missed it", "she hasn't taken
 it") in **6 of 12 cases (50%)**. CareCircle's deterministic engine: **0%**, on the same
 scenarios, because it can only say "there's no record." Every answer is printed and
-auditable; reproduce with `npm run trust-benchmark`. The trust model is not a slogan —
+auditable; reproduce with `npm run trust-benchmark`. The trust model is not a slogan -
 it is a measurable, ~50-point swing on whether a sick, elderly woman gets accused of
 missing her heart medication.
 
@@ -109,7 +109,7 @@ allowed to decide that on the family's behalf.
 
 ## One record, four relationships
 
-The household — not the individual — is the unit of state. The same server serves
+The household - not the individual - is the unit of state. The same server serves
 everyone in the circle with different authority, and **identity comes from the
 session credential, never from the conversation**: a model can be talked into
 believing anything about who is speaking, and this server assigns responsibility for
@@ -119,7 +119,7 @@ someone's medical care.
 |---|---|---|
 | Margaret, 78 | `care_recipient` | Log her own events; hear her own day |
 | David | `primary_caregiver` | Everything: claim, assign, confirm, escalate |
-| Renee | `caregiver` | Claim, add, confirm — but not assign to others |
+| Renee | `caregiver` | Claim, add, confirm - but not assign to others |
 | Tasha (paid aide) | `helper` | Only her shift, and only work she owns |
 
 Denials are written to be spoken, and say what the person *can* do instead:
@@ -139,7 +139,7 @@ as a subscription Amazon had to operate, with the support and liability that imp
 CareCircle is a **coordination** product: several people sharing one record, with the
 care recipient as a participant. It is an add-on, not a service Amazon runs.
 
-That a company builds something twice — Care Hub in 2020, Alexa Together in 2021 —
+That a company builds something twice - Care Hub in 2020, Alexa Together in 2021 -
 says the customer need is real. What did not work was the shape. Add-ons are a shape
 where the platform does not have to own the vertical in order to serve the customer.
 
@@ -186,21 +186,21 @@ conversation, surfaces the ones nobody owns, and lets a family resolve them by v
 **Care Gap detection is server logic, not a prompt.** The model receives ranked,
 reasoned, structured gaps and speaks them. That keeps the reasoning auditable, makes
 the ordering inspectable (every gap carries its `score` and a plain-language
-`because`), and means the server is useful to any client — not only an LLM.
+`because`), and means the server is useful to any client - not only an LLM.
 
 ---
 
 ## Running it
 
-### Quickstart for judges — no credentials, no AWS, ~60 seconds
+### Quickstart for judges - no credentials, no AWS, ~60 seconds
 
 Either try the deployed server, or clone and run the self-contained demo:
 
 ```bash
-# Option A — hit the live MCP server, nothing to install
+# Option A - hit the live MCP server, nothing to install
 curl https://ypq2dfq2p7.us-east-1.awsapprunner.com/health
 
-# Option B — clone and reproduce locally (no AWS needed)
+# Option B - clone and reproduce locally (no AWS needed)
 git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
 npm ci
 npm test          # 87 tests
@@ -208,7 +208,7 @@ npm run story     # the whole one-day story, end to end, over real MCP
 ```
 
 `npm run story` is the fastest way to see it work: it seeds the demo family, starts
-the real MCP server in-process, and plays every beat through real MCP clients — **no
+the real MCP server in-process, and plays every beat through real MCP clients - **no
 AWS, no API keys, no external services.** Deterministic, so you see exactly what the
 video shows.
 
@@ -238,7 +238,7 @@ with model access enabled is a useful fallback when one is exhausted.
 npm run preflight
 ```
 
-Bedrock reports an exhausted quota and a quota of zero with the same error —
+Bedrock reports an exhausted quota and a quota of zero with the same error -
 `ThrottlingException: Too many tokens per day`. They are opposite situations: a
 budget refills, a zero quota never will. Clients retry `ThrottlingException` by
 default, so an account with no allocation retries forever.
@@ -261,20 +261,20 @@ npm run demo:reset && npm run dev   # in one shell
 npm run evals                       # in another
 ```
 
-**Result: 93.3% first-tool accuracy (126 / 135), 0 errored — Claude Sonnet 4.5 on
+**Result: 93.3% first-tool accuracy (126 / 135), 0 errored - Claude Sonnet 4.5 on
 Amazon Bedrock.**
 
 The corpus is deliberately split so the number cannot be gamed:
 
-- **68 authored cases**, used while tuning the tool descriptions — **100%**.
+- **68 authored cases**, used while tuning the tool descriptions - **100%**.
 - **67 held-out cases**, written afterward and never tuned against (harder phrasings,
   multi-intent, wrong-role attempts, the purchase flow, and out-of-scope lines that
-  name care words on purpose) — **86.6%**.
+  name care words on purpose) - **86.6%**.
 
 The model receives the real tool definitions and one utterance, using the exact
 planner prompt the simulator ships (imported, not a friendlier copy written to
 score well); we record its first tool choice and execute nothing. Cases that never
-reach the model — credentials, throttling — are excluded from the figure rather than
+reach the model - credentials, throttling - are excluded from the figure rather than
 counted as wrong, because a number that can lie is worse than no number.
 
 **Honest limitations** (the nine held-out misses, unfixed on purpose): reschedules
@@ -284,10 +284,10 @@ and cold purchase confirmations with no offer in context. These are the edges a
 larger corpus would harden next.
 
 We went from an early 85.3% to 100% on the authored set by finding the exact failures
-the harness named and rewriting the ambiguous descriptions — then re-measured on the
+the harness named and rewriting the ambiguous descriptions - then re-measured on the
 held-out set to get the honest 93.3%.
 
-Demo credentials (one per member — the identity model in miniature):
+Demo credentials (one per member - the identity model in miniature):
 
 | Member | Token |
 |---|---|
@@ -313,14 +313,14 @@ Every tool exists because a person says a sentence that needs it.
 | `confirm_proposal` | "Yes, she'll need a ride" |
 | `resolve_obligation` | "Picked up the prescription" |
 | `get_shift_brief` | "What do I need to know today?" |
-| `notify_member` | "Tell Renee I'm taking Mom Thursday" — records it, and delivers over SNS when configured |
+| `notify_member` | "Tell Renee I'm taking Mom Thursday" - records it, and delivers over SNS when configured |
 
 Tool design follows four rules, because the model is the user:
 
-- **Descriptions disambiguate near-neighbours** — `log_care_event` vs
+- **Descriptions disambiguate near-neighbours** - `log_care_event` vs
   `record_appointment` vs `add_note`; `claim` vs `assign`.
 - **Errors instruct rather than report.** Two medications match "heart pill"? The tool
-  returns *"ask which one they mean, then call this again"* — it never guesses.
+  returns *"ask which one they mean, then call this again"* - it never guesses.
 - **Ambiguity is a question, not a default.**
 - **Results are written to be spoken verbatim.** No markdown, no ids read aloud, and
   long lists are counted rather than recited.
@@ -333,7 +333,7 @@ Product feedback, written while building. Full detail in
 [`docs/FEATURE-REQUESTS.md`](docs/FEATURE-REQUESTS.md) and
 [`docs/FRICTION-LOG.md`](docs/FRICTION-LOG.md).
 
-1. **Rich cards.** Our core answer is a ranked list with state — severity, owner or
+1. **Rich cards.** Our core answer is a ranked list with state - severity, owner or
    the absence of one, due time, reason. Spoken, the usable ceiling is about three
    items. On a screen a family absorbs twelve and points at the one they mean. We
    compute all of it and discard it at the speech boundary.
@@ -343,7 +343,7 @@ Product feedback, written while building. Full detail in
 3. **Confirmation as a surface.** Before Thursday's hospital run is assigned to Renee,
    Renee's name should be on screen.
 4. **Multi-person identity.** Families are not single users. Speaker identity should be
-   available — and explicitly unknown when it is not, rather than assumed.
+   available - and explicitly unknown when it is not, rather than assumed.
 5. **Ambient state.** The most valuable moment is not a conversation. It is someone
    walking past the kitchen Echo and noticing Thursday still has no driver.
 

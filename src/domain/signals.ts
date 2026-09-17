@@ -6,7 +6,7 @@ import type { CareEvent, CareGap, ConsequenceClass, Obligation } from './types.j
  * CareCircle's premise is that obligations come loose in the real world and nobody
  * notices. A Ring event is the real world noticing on the family's behalf: a
  * delivery that physically arrived, a door that did or did not open. No one typed
- * anything — which is exactly the point.
+ * anything - which is exactly the point.
  *
  * Two rules of the wider system still hold, and shape everything here:
  *
@@ -16,7 +16,7 @@ import type { CareEvent, CareGap, ConsequenceClass, Obligation } from './types.j
  *  - Absence is reported as absence. "No activity recorded at the door today" is a
  *    reason to check in, never a claim that something is wrong. Known != Assumed.
  *
- * A Ring integration is therefore not a new product — it is another way an
+ * A Ring integration is therefore not a new product - it is another way an
  * INFERRED proposal enters the same pipeline, no different in kind from inferring
  * a ride from an appointment. That is what lets it be added without touching the
  * gap engine or the trust model.
@@ -34,12 +34,12 @@ export interface CareSignal {
   raw?: Record<string, unknown>;
 }
 
-/** Something a signal suggests the family might act on — always as a proposal. */
+/** Something a signal suggests the family might act on - always as a proposal. */
 export interface SignalOutcome {
   /** A care event to record: the signal happened, attributed to the device. */
   event: Omit<CareEvent, 'id' | 'recordedAt'>;
   /**
-   * An obligation this signal proposes creating, if any — e.g. "check on Mom".
+   * An obligation this signal proposes creating, if any - e.g. "check on Mom".
    * Enters PROPOSED, like every inference.
    */
   proposeObligation?: {
@@ -49,7 +49,7 @@ export interface SignalOutcome {
   };
   /**
    * An existing obligation this signal is evidence toward resolving, if any.
-   * Never resolved automatically — the caller asks a human.
+   * Never resolved automatically - the caller asks a human.
    */
   resolvesObligationLike?: {
     /** Substring to match against open obligations, e.g. "prescription". */
@@ -89,14 +89,14 @@ export function interpretSignal(
         event: baseEvent,
         resolvesObligationLike: {
           match: 'prescription',
-          ask: `A delivery arrived at ${context.recipientName}'s door. Was that the prescription — should I mark it picked up?`,
+          ask: `A delivery arrived at ${context.recipientName}'s door. Was that the prescription - should I mark it picked up?`,
         },
         spoken: `A delivery just arrived at ${context.recipientName}'s door.`,
       };
     }
     case 'door_activity':
     case 'motion': {
-      // A sign of life. Recorded, not acted on — it clears a "no activity" worry
+      // A sign of life. Recorded, not acted on - it clears a "no activity" worry
       // simply by existing in the log.
       return {
         event: baseEvent,
@@ -105,14 +105,14 @@ export function interpretSignal(
     }
     case 'no_activity': {
       // The inverse beat: an obligation CREATED by an absence. Phrased as absence,
-      // never as alarm — the family decides whether it matters.
+      // never as alarm - the family decides whether it matters.
       return {
         event: baseEvent,
         proposeObligation: {
           what: `Check in on ${context.recipientName}`,
           consequence: 'medical',
           ask: `There's been no activity at ${context.recipientName}'s door today, and nothing logged. `
-            + `I don't know that anything is wrong — do you want someone to check in?`,
+            + `I don't know that anything is wrong - do you want someone to check in?`,
         },
         spoken: `No activity at ${context.recipientName}'s door has been recorded today.`,
       };
@@ -123,7 +123,7 @@ export function interpretSignal(
 /**
  * Whether a "no activity" concern is even warranted yet.
  *
- * Only after a reasonable part of the day has passed with no recorded signal — so
+ * Only after a reasonable part of the day has passed with no recorded signal - so
  * the system does not raise a check-in at 8am because nobody has opened the door
  * at dawn. Mirrors the medication grace period: absence is only notable once
  * presence was genuinely expected.

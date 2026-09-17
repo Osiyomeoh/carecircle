@@ -2,12 +2,12 @@
  * The purchase moment.
  *
  * Some Care Gaps are closed not by a person doing the task but by buying the thing:
- * a prescription that needs reordering. CareCircle turns that into an OFFER — priced,
- * sourced, with an ETA — that a human confirms in place. It never charges on its own:
+ * a prescription that needs reordering. CareCircle turns that into an OFFER - priced,
+ * sourced, with an ETA - that a human confirms in place. It never charges on its own:
  * a purchase follows the same discipline as everything else here, Known != Assumed.
  * The offer is a proposal; only a confirmation makes it real.
  *
- * These are simulated storefronts for the hackathon — no real payment is taken. The
+ * These are simulated storefronts for the hackathon - no real payment is taken. The
  * shape is exactly what a real MCP commerce integration would return, so the seam is
  * honest about what it is and ready for a real merchant behind it. Adding a second
  * purchase kind (e.g. a paid medical ride) is a new OfferKind and one branch here.
@@ -44,12 +44,12 @@ interface OfferContext {
 }
 
 /**
- * Build a priced offer. Deterministic so the demo — and the tests — see the same
+ * Build a priced offer. Deterministic so the demo - and the tests - see the same
  * numbers every time. A real integration swaps this for a live catalogue lookup
  * behind the same return type.
  */
 export function offerFor(kind: OfferKind, ctx: OfferContext): PurchaseOffer {
-  const item = ctx.itemName ? `${ctx.itemName} refill — 30-day supply` : 'Prescription refill — 30-day supply';
+  const item = ctx.itemName ? `${ctx.itemName} refill - 30-day supply` : 'Prescription refill - 30-day supply';
   return {
     offerId: ctx.offerId, kind, item,
     merchant: 'Cornerside Pharmacy',

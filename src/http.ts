@@ -35,7 +35,7 @@ const identity = resolverFromEnv(tokens, (subject) => store.resolveIdentity(subj
 const notifier = notifierFromEnv();
 
 // Bind the port FIRST, then load state. A slow or misconfigured storage backend must
-// not stop the server coming up and answering its health check — otherwise a
+// not stop the server coming up and answering its health check - otherwise a
 // transient DynamoDB problem reads to the platform as "the app is dead" and the whole
 // service fails to deploy. Storage errors are logged, not fatal.
 const app = createCareCircleApp({ store, identity, notifier });
@@ -53,7 +53,7 @@ const server: Server = app.listen(config.port, '0.0.0.0', () => {
 
 try {
   await store.init();
-  // Demo data is never seeded under real identity — see loadConfig.seedDemo.
+  // Demo data is never seeded under real identity - see loadConfig.seedDemo.
   if (config.seedDemo) await seedDemoHousehold(store);
   log.info('care record ready', { households: store.householdCount(), seeded: config.seedDemo });
 } catch (err) {

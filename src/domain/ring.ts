@@ -5,15 +5,15 @@ import type { CareSignal } from './signals.js';
  *
  * Modelled on Ring's published Partner API event contract (JSON:API format,
  * HMAC-SHA256 X-Signature, `request_id` for idempotency). Ring emits *presence*
- * events — motion, a button press — never absence. "No one has been to the door
+ * events - motion, a button press - never absence. "No one has been to the door
  * all day" is therefore not a Ring event: it is an inference CareCircle draws over
  * the absence of these events (see noActivityWarranted in signals.ts). Keeping that
- * distinction honest matters — the doorbell reports what it saw, and the system is
+ * distinction honest matters - the doorbell reports what it saw, and the system is
  * responsible for what it did not.
  *
  * The exact field nesting is not fully published (see docs/FRICTION-LOG.md), so the
- * reader is defensive: it takes what the documented contract guarantees — a type, a
- * device, a timestamp, a motion sub_type — and ignores the rest.
+ * reader is defensive: it takes what the documented contract guarantees - a type, a
+ * device, a timestamp, a motion sub_type - and ignores the rest.
  */
 
 /** The subset of a Ring webhook event this adapter relies on. */
@@ -35,7 +35,7 @@ export interface RingEvent {
  * Map a Ring event to a CareSignal, or null when the event is not one CareCircle
  * acts on (a device coming online, a subscription change).
  *
- * A package/delivery detection is a `motion_detected` with a package sub_type —
+ * A package/delivery detection is a `motion_detected` with a package sub_type -
  * Ring does not have a distinct "delivery" event, so we read it from the sub_type
  * rather than inventing an event that does not exist.
  */
@@ -62,7 +62,7 @@ export function ringEventToSignal(event: RingEvent): CareSignal | null {
     case 'button_press':
       return { source: 'ring', kind: 'door_activity', at, detail: 'Someone pressed the doorbell', raw };
     default:
-      // device_online, subscription_activated, etc. — not care-relevant.
+      // device_online, subscription_activated, etc. - not care-relevant.
       return null;
   }
 }

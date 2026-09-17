@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CareCircle — two voices, one record</title>
+<title>CareCircle - two voices, one record</title>
 <style>
   :root{
     --bg:#0b0f14; --panel:#121821; --panel-2:#182030; --line:#243044;
@@ -166,8 +166,8 @@ async function sendTurn(memberId){
     if(!res.ok){
       pending.className='bubble err';
       let m=typeof data.error==='string'?data.error:JSON.stringify(data.error||{});
-      if(/503|overload|high demand/i.test(m)) m='The model is busy — try again in a moment.';
-      else if(/429|rate.?limit|quota/i.test(m)) m='Rate limited — give it a few seconds.';
+      if(/503|overload|high demand/i.test(m)) m='The model is busy - try again in a moment.';
+      else if(/429|rate.?limit|quota/i.test(m)) m='Rate limited - give it a few seconds.';
       pending.textContent=m;
     } else {
       pending.innerHTML=`<span class="tag">Alexa</span>${esc(data.spoken)}`;
@@ -194,7 +194,7 @@ function setupMic(memberId){
       heard.textContent=fin?'':t;
       if(fin&&t.trim()) sendTurn(memberId);
     };
-    rec.onerror=(e)=>{ heard.textContent=e.error==='not-allowed'?'Mic blocked — allow access.':`(${e.error})`; };
+    rec.onerror=(e)=>{ heard.textContent=e.error==='not-allowed'?'Mic blocked - allow access.':`(${e.error})`; };
     rec.onend=()=>{ on=false; mic.classList.remove('on'); dev.classList.remove('listening'); };
     try{ rec.start(); }catch{}
   };
@@ -223,7 +223,7 @@ async function refreshBoard(force){
       d.innerHTML=`<div class="what">${esc(o.what)}</div><div class="owner"><b>${esc(o.owner??'someone')}</b> has this.</div>`;
       box.append(d);
     }
-    if(!box.children.length) box.innerHTML='<div class="none">Nothing outstanding — everything recorded has an owner.</div>';
+    if(!box.children.length) box.innerHTML='<div class="none">Nothing outstanding - everything recorded has an owner.</div>';
   }catch{ $('gaps').innerHTML='<div class="none">record unavailable</div>'; }
 }
 window.speechSynthesis?.getVoices();

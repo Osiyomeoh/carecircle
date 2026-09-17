@@ -57,7 +57,7 @@ if (asJson) {
   }
 
   if (s.failures.length > 0) {
-    console.log(`\n  Failures (${s.failures.length}) — each one is a tool description to fix`);
+    console.log(`\n  Failures (${s.failures.length}) - each one is a tool description to fix`);
     for (const f of s.failures) {
       console.log(`\n    ${f.case.id}  ${MEMBER_LABEL[f.case.member]}`);
       console.log(`    "${f.case.utterance}"`);

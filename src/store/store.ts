@@ -185,7 +185,7 @@ export class CareStore {
    * Move an obligation to a new status, recording who did it.
    *
    * Returns the updated obligation. Callers are responsible for checking that
-   * the transition is legal for the actor's role — see auth.ts.
+   * the transition is legal for the actor's role - see auth.ts.
    */
   transition(
     id: string,
@@ -244,7 +244,7 @@ export class CareStore {
 
   /**
    * Remove a member and their credential mapping. Their open obligations are not
-   * deleted — they are released back to the circle (owner cleared) so the work
+   * deleted - they are released back to the circle (owner cleared) so the work
    * resurfaces as a Care Gap rather than vanishing with the person. Exactly the
    * silent-orphaning this system exists to catch.
    */

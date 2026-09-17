@@ -1,4 +1,4 @@
-# Open Source mini-challenge — submission
+# Open Source mini-challenge - submission
 
 
 **Published:** https://github.com/Osiyomeoh/care-events (public, MIT). Fields below are filled.
@@ -6,7 +6,7 @@
 
 A new, standalone, MIT-licensed, zero-dependency TypeScript package that extracts
 CareCircle's core idea into something any project can reuse: **one adapter seam that
-turns heterogeneous device signals — voice, wearable, doorbell — into a single
+turns heterogeneous device signals - voice, wearable, doorbell - into a single
 `CareEvent` contract, with a provenance model that never lets a guess become a fact.**
 
 Lives at [`packages/care-events`](../packages/care-events). It builds, typechecks
@@ -23,9 +23,9 @@ device is one adapter and nothing else.
 **How.** Each adapter maps a raw payload to zero or more `CareEvent`s. The contract
 enforces the one rule that makes such a system trustworthy: adapters *classify*, they
 never *assert*. A Ring package delivery enters as `INFERRED` evidence that a package
-arrived — never a conclusion that an errand is done. A Bee conversation fact enters as
+arrived - never a conclusion that an errand is done. A Bee conversation fact enters as
 `INFERRED` until a human confirms it. Downstream, a Bee fact and a Ring doorbell are
-indistinguishable — which is exactly what lets one engine serve every surface.
+indistinguishable - which is exactly what lets one engine serve every surface.
 
 **Why it matters.** Most home-care and household-coordination tools are welded to a
 single device SDK. This package is a reusable integration *pattern*: it lets any
@@ -59,4 +59,4 @@ gh repo create care-events --public --source=. --push   # its own repo, MIT lice
 
 The Open Source rubric calls a "meaningful feature addition with tests" or a "new
 integration pattern" *creative*, versus a README/typo fix as *obvious*. This is a new
-integration pattern with tests and a trust model — squarely the creative end.
+integration pattern with tests and a trust model - squarely the creative end.

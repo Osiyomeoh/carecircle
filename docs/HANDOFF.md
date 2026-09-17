@@ -1,7 +1,7 @@
-# CareCircle — session handoff
+# CareCircle - session handoff
 
 A self-contained brief to resume work in a new session. Last updated 2026-09-17
-(Fire TV app BUILT — CareBoard shipped, debug APK green, live board seeded).
+(Fire TV app BUILT - CareBoard shipped, debug APK green, live board seeded).
 
 ## What CareCircle is (updated positioning)
 
@@ -10,7 +10,7 @@ shared family responsibility system. The one-sentence thesis:
 
 > **Different devices produce different evidence. CareCircle turns that evidence into
 > shared obligations, finds the Care Gaps nobody owns, and lets a family resolve them
-> by voice — without ever turning a guess into a fact.**
+> by voice - without ever turning a guess into a fact.**
 
 The technical spine is `EVENTS → OBLIGATIONS → OWNERSHIP`. A **Care Gap** is the failure
 state of the third stage (work is known to be needed and nobody owns it).
@@ -19,23 +19,23 @@ Positioning we're leaning into (not "AI for elderly care", not "Alexa for caregi
 **the responsibility layer for family care**, with **MCP as the seam** that lets
 entirely different surfaces participate in one responsibility system.
 
-Two product principles, both enforced in the type system and tests — not just copy:
-- **Known ≠ Assumed** — a missing record is surfaced as *"there's no record,"* never
+Two product principles, both enforced in the type system and tests - not just copy:
+- **Known ≠ Assumed** - a missing record is surfaced as *"there's no record,"* never
   *"she missed it."* (`CONFIRMED` / `INFERRED` / `NOT_LOGGED` provenance.)
-- **Evidence ≠ Obligation ≠ Ownership** — a Ring package becomes "a package arrived"
+- **Evidence ≠ Obligation ≠ Ownership** - a Ring package becomes "a package arrived"
   (an `INFERRED` proposal a human confirms), never "the prescription came."
 
 ### The unique idea: four surfaces, four kinds of evidence, one responsibility layer
 
 The devices are NOT four integrations bolted on. They are four *kinds of evidence*
 feeding ONE responsibility layer; MCP is the seam. The value is the seam, not any single
-integration — which is why only Alexa+ is entered and the rest stay adapter-ready.
+integration - which is why only Alexa+ is entered and the rest stay adapter-ready.
 
 | Surface   | Kind of evidence                    | Status                              |
 |-----------|-------------------------------------|-------------------------------------|
-| Alexa+    | DECLARED — someone says it          | LIVE (real MCP host + Bedrock)      |
-| Ring      | PHYSICAL — a sensor observed it     | SEAM (`ingest_signal`, hand-fired)  |
-| Bee       | AMBIENT — overheard, nobody typed it| SEAM (would add `'bee'` source)     |
+| Alexa+    | DECLARED - someone says it          | LIVE (real MCP host + Bedrock)      |
+| Ring      | PHYSICAL - a sensor observed it     | SEAM (`ingest_signal`, hand-fired)  |
+| Bee       | AMBIENT - overheard, nobody typed it| SEAM (would add `'bee'` source)     |
 | Fire TV   | not evidence: the SHARED DISPLAY    | SEAM (the board renders there)      |
 
 The full beat-by-beat user story lives in the `carecircle-demo-story` memory. One-day
@@ -48,12 +48,12 @@ layer can produce; no single device could.
 
 ## Track strategy (locked, per the official rules)
 
-- **Primary track: Alexa+ (MCP).** We qualify cleanly — self-hosted MCP server, spec
+- **Primary track: Alexa+ (MCP).** We qualify cleanly - self-hosted MCP server, spec
   2025-11-25, Streamable HTTP, called in code (18 tools), live URL. Top-prize track.
 - **Mini challenges: AWS Builder + Open Source.** Both qualify (Bedrock/DynamoDB/App
   Runner/SNS documented; `@carecircle/care-events` MIT package). A project can **win
   only one mini prize**, but entering both is allowed.
-- **Ring and Bee are NOT enterable — this is a hard rule, not a choice.** To enter Ring
+- **Ring and Bee are NOT enterable - this is a hard rule, not a choice.** To enter Ring
   you must show it working through a Ring simulator/device; to enter Bee you must show
   live Bee data in code + video. We do neither. `ingest_signal` is a **generic seam**,
   not a Ring API call or live Bee feed. So Ring/Bee stay framed as *architecturally-
@@ -65,31 +65,31 @@ layer can produce; no single device could.
 
 **Built + tested (live code):** Alexa+ MCP server (18 tools, session-bound identity),
 Care Gap engine (deterministic), trust/provenance model, `ingest_signal` (the real
-Ring/Bee seam — any external signal → INFERRED proposal), ownership/claiming,
+Ring/Bee seam - any external signal → INFERRED proposal), ownership/claiming,
 purchase-in-place (`reorder_prescription` / `confirm_purchase`), SNS notifications
 (record-only fallback), DynamoDB persistence, App Runner deploy, the multi-device web
 board (simulator), 87 tests + adversarial suite + CI.
 
 **Adapter-ready (seam only, no live third-party wiring):** Ring → `ingest_signal`
-(Ring's payload schema is unpublished — see FRICTION-LOG.md); Bee → `ingest_signal`
+(Ring's payload schema is unpublished - see FRICTION-LOG.md); Bee → `ingest_signal`
 (deliberately gated); Fire TV → the web board would render there.
 
-## Front-end (judge-facing UI) — React + Vite + Tailwind + R3F
+## Front-end (judge-facing UI) - React + Vite + Tailwind + R3F
 
 The UI was migrated off vanilla HTML to a real build in **`sim-ui/`** (React 18 + Vite +
 Tailwind + React Three Fiber). One design system (tokens in `tailwind.config.js`), three
 client routes served as an SPA by the sim Express server (`src/sim/app.ts` serves
 `sim-ui/dist` with a non-`/api` GET fallback to `index.html`):
-- **`/`** — Hero: R3F scene (distorted core + four evidence surfaces + bezier evidence
+- **`/`** - Hero: R3F scene (distorted core + four evidence surfaces + bezier evidence
   streams + drei `Html` labels), live Care-Gap badge from `/api/state`.
-- **`/console`** — voice console: `SpeechRecognition` in + `SpeechSynthesis` out, member
+- **`/console`** - voice console: `SpeechRecognition` in + `SpeechSynthesis` out, member
   selector, device orb, live board with real `claim_obligation` / `confirm_proposal` /
   `confirm_purchase` actions via `/api/act`, tool-call log.
-- **`/tv`** — 10-foot care board.
+- **`/tv`** - 10-foot care board.
 - Dev: `cd sim-ui && npm run dev` (Vite :5174 proxies `/api` → sim :5173). Build: the
   Dockerfile runs `cd sim-ui && npm ci && npm run build` and ships `sim-ui/dist`.
 - **Legacy** `public/*.html` (old `index.html`/`console.html`/`tv.html`) are still served
-  as static fallbacks — the Fire TV APK loads `public/tv.html`, so keep it until the APK
+  as static fallbacks - the Fire TV APK loads `public/tv.html`, so keep it until the APK
   is repointed to the React `/tv` route.
 
 ## Live resources
@@ -102,7 +102,7 @@ client routes served as an SPA by the sim Express server (`src/sim/app.ts` serve
 
 ## Operational rules (important)
 
-- **Git author must be `Osiyomeoh <samuelaleonomoh5@gmail.com>` — no Co-Authored-By
+- **Git author must be `Osiyomeoh <samuelaleonomoh5@gmail.com>` - no Co-Authored-By
   lines, no Claude as a contributor.** (Git config already set correctly.)
 - **Deploy uses the `conductor` AWS profile** (the default session identity lacks App
   Runner permissions). Both services run on one shared ECR image; `AutoDeployments` is
@@ -113,7 +113,7 @@ client routes served as an SPA by the sim Express server (`src/sim/app.ts` serve
     (sim ARN: `arn:aws:apprunner:us-east-1:287977321648:service/carecircle-sim/399940e7f6f54ef9a02e7d39cf93addf`)
   - Deploy builds from committed `HEAD` (`git archive HEAD`), so **commit before deploying.**
 
-## DONE (2026-09-17): Fire TV app — the "shared display" surface
+## DONE (2026-09-17): Fire TV app - the "shared display" surface
 
 **Status: built and verified.** The Fire OS (Android) React Native app ships as
 `firetv/` (clone of `AmazonAppDev/react-native-multi-tv-app-sample`, nested `.git`
@@ -122,13 +122,13 @@ removed so it tracks as normal source). What was done:
 - **CareBoard screen** replaces the sample movie home screen:
   `firetv/packages/shared-ui/src/screens/HomeScreen.tsx`, backed by
   `firetv/packages/shared-ui/src/data/careState.ts`. Polls the SAME live
-  `/api/state` every 4s (no new backend) and renders three columns — **Care Gaps**,
-  **Owned**, **Proposed** — at 10-foot scale, each card carrying the
+  `/api/state` every 4s (no new backend) and renders three columns - **Care Gaps**,
+  **Owned**, **Proposed** - at 10-foot scale, each card carrying the
   CONFIRMED / INFERRED / NO RECORD provenance chip. D-pad focusable via
   `react-tv-space-navigation`. Drawer label renamed to "Care Board".
 - **Debug APK built green:** `firetv/apps/expo-multi-tv/android/app/build/outputs/apk/debug/app-debug.apk`
   (~128 MB, package `com.anonymous.MultiTVSample`). `aapt2` confirms it is a real TV
-  app — `leanback-launchable-activity`, `touchscreen` not-required — i.e. exactly the
+  app - `leanback-launchable-activity`, `touchscreen` not-required - i.e. exactly the
   APK the Amazon Appstore submission form wants. Rebuild:
   `cd firetv/apps/expo-multi-tv && EXPO_TV=1 npx expo prebuild --platform android --clean && cd android && ./gradlew assembleDebug`
   (the generated `android/`, `ios/`, `node_modules/` are gitignored by the starter).
@@ -137,11 +137,11 @@ removed so it tracks as normal source). What was done:
   INFERRED ride, and the INFERRED proposal render correctly. `careState.ts` honors
   `EXPO_PUBLIC_CARE_API_BASE` so a local CORS proxy can front the live sim for web dev
   (the deployed sim serves `/api/state` without CORS headers); no effect on the APK.
-- **Live board seeded** (pending item #4, done): via the sanctioned `/api/act` API —
+- **Live board seeded** (pending item #4, done): via the sanctioned `/api/act` API -
   `record_appointment` cardiology (Renee) → 2 INFERRED proposals; `confirm_proposal`
   the ride (David) → OPEN unowned Care Gap. Combined with the already-seeded meds,
   the board now opens on 3 Care Gaps (2 NO RECORD, 1 INFERRED) + 1 INFERRED proposal.
-  Matches the video's opening state (ride confirmed but unclaimed — claimed on camera).
+  Matches the video's opening state (ride confirmed but unclaimed - claimed on camera).
 
 **Emulator note (blocker, not fixed):** the pre-existing `Medium_Phone_API_35` AVD's
 system image is corrupt (metadata only, no `system.img`) and there is no `sdkmanager`
@@ -156,11 +156,11 @@ Apple-Silicon Mac; the `android-tv` images are x86-only and slow here), recreate
 **Original decision (kept for context):** build the **Fire OS (Android) React Native** app, NOT Vega. Reason: the
 Android toolchain is already installed on this machine (Java 17, Android SDK at
 `~/Library/Android/sdk`, adb, emulator, ndk, watchman, Node 24) and it yields a real
-**APK** — the exact file the Amazon Appstore "New App Submission" form wants. Vega would
+**APK** - the exact file the Amazon Appstore "New App Submission" form wants. Vega would
 need the large, login-gated Vega SDK + Vega Virtual Device; skip unless we specifically
 want Vega OS.
 
-**What the app IS:** the ambient care board on the living-room TV — the fourth surface in
+**What the app IS:** the ambient care board on the living-room TV - the fourth surface in
 "four surfaces, one system." No new backend. It fetches the SAME MCP resource the web
 console reads and renders it 10-foot / glanceable: today's Care Gaps, who owns what, and
 the CONFIRMED / INFERRED / NO RECORD provenance chips. This makes Fire TV a *real entered
@@ -174,13 +174,13 @@ track*, not a seam.
    notifications:[{from, to, message}] }`
 (Poll every ~4s, exactly like `public/console.html` does.)
 
-**Starter:** `github.com/AmazonAppDev/react-native-multi-tv-app-sample` — a yarn@4 workspaces
+**Starter:** `github.com/AmazonAppDev/react-native-multi-tv-app-sample` - a yarn@4 workspaces
 monorepo (`apps/expo-multi-tv` = Android/iOS/web via Expo RN-for-TV; `apps/vega` = Vega).
 For Fire OS we only need the Android/Expo workspace.
 
 **Build steps for the fresh session:**
 1. Clone the starter into the repo as `firetv/` (or `apps/firetv/`).
-2. `yarn install` (large — RN/Expo deps; ~1GB). Use the Android/Expo workspace only.
+2. `yarn install` (large - RN/Expo deps; ~1GB). Use the Android/Expo workspace only.
 3. Replace the sample home screen with a `CareBoard` screen: fetch `/api/state` from the
    live sim URL above, render Gap/owned/proposal cards + provenance chips, TV-sized type,
    focus-navigable with the D-pad (use the sample's existing focus patterns).
@@ -192,12 +192,12 @@ For Fire OS we only need the Android/Expo workspace.
 6. Screenshot it running for the video.
 
 **Amazon app registration** (already captured in `.env`, gitignored, non-secret):
-`AMZN_APP_ID`, `AMZN_APP_RELEASE_ID`, `AMZN_APP_PUBLIC_KEY` — the Fire TV/Appstore app.
+`AMZN_APP_ID`, `AMZN_APP_RELEASE_ID`, `AMZN_APP_PUBLIC_KEY` - the Fire TV/Appstore app.
 NOTE: for the hackathon a *demo-ready* app + video is enough; do NOT complete the Appstore
 publication/certification flow unless we decide to. The store form needs the built APK.
 
 **Ring (separate, user action pending):** Ring API needs the Ring Developer Portal triplet
-(**Client ID, Client Secret, HMAC key**) after gov-ID identity verification — NOT the
+(**Client ID, Client Secret, HMAC key**) after gov-ID identity verification - NOT the
 Amazon device-app IDs above. Once the triplet arrives, wire `ingest_signal` (`server.ts:594`,
 `source` enum currently `'ring'|'other'`) to the real Ring API (sandbox has synthetic data).
 "Care-taking" is a named Ring priority category → this earns the Ring track.
@@ -207,10 +207,10 @@ Amazon device-app IDs above. Once the triplet arrives, wire `ingest_signal` (`se
 - **The rules make honesty mandatory.** "Not just a mention in the README" for Alexa+/
   Ring/Bee. Overclaiming Ring/Bee would hurt the Alexa+ "Tech Implementation" score when
   a judge cross-checks the repo. Keep the seam framing.
-- **Friction logs earn up to a 10% judging bonus** — `docs/FRICTION-LOG.md` should have a
+- **Friction logs earn up to a 10% judging bonus** - `docs/FRICTION-LOG.md` should have a
   complete entry (task → steps → expected vs actual → severity → workaround →
   suggestion) for every tool. High leverage; verify completeness.
-- **Feature requests are optional-but-scored** — added to SUBMISSION.md.
+- **Feature requests are optional-but-scored** - added to SUBMISSION.md.
 - **The demo video is the live risk.** Never imply Ring/Bee is wired. When the Ring
   delivery appears, show it as an ingested signal → INFERRED proposal.
 - **UI shipped this session:** provenance chips (CONFIRMED/INFERRED/NO RECORD), a
@@ -222,6 +222,6 @@ Amazon device-app IDs above. Once the triplet arrives, wire `ingest_signal` (`se
 2. Audit `FRICTION-LOG.md` for the 6 required fields per tool (protect the 10% bonus).
 3. Write the ≤3-min demo script matched to the live UI, Ring/Bee framed honestly.
 4. Optional: seed the live board so judges land on populated Care Gaps + chips (right
-   now it reads "nothing outstanding"). Changes what every visitor sees — confirm first.
+   now it reads "nothing outstanding"). Changes what every visitor sees - confirm first.
 5. Consider the top-line positioning rewrite ("responsibility layer for family care")
-   across README/SUBMISSION openers — bigger, subjective; confirm before doing.
+   across README/SUBMISSION openers - bigger, subjective; confirm before doing.

@@ -4,7 +4,7 @@
  * Modelled against Ring's real webhook envelope. The important discipline is here:
  * a delivery becomes EVIDENCE that a package arrived, never a conclusion that the
  * prescription was picked up. No activity becomes a presence event with an INFERRED
- * provenance — grounds to ASK whether someone should check in, never a claim that
+ * provenance - grounds to ASK whether someone should check in, never a claim that
  * anything is wrong.
  */
 import { type CareEvent, type SignalAdapter, careEvent } from '../index.js';

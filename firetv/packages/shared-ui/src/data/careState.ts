@@ -1,4 +1,4 @@
-// CareCircle live state — the SAME MCP resource the web console reads.
+// CareCircle live state - the SAME MCP resource the web console reads.
 // This is the fourth surface: the ambient care board on the living-room TV.
 // No new backend; we poll the live sim's /api/state, exactly like public/console.html.
 
@@ -66,10 +66,10 @@ export async function fetchCareState(): Promise<CareState> {
   };
 }
 
-// The provenance chip — the trust model, visible on every card.
+// The provenance chip - the trust model, visible on every card.
 //   CONFIRMED  a person stated it        (green)
-//   INFERRED   the system guessed it     (purple) — not counted until confirmed
-//   NO RECORD  nothing was logged        (amber)  — NOT "it didn't happen"
+//   INFERRED   the system guessed it     (purple) - not counted until confirmed
+//   NO RECORD  nothing was logged        (amber)  - NOT "it didn't happen"
 export type ChipKey = 'confirmed' | 'inferred' | 'norecord';
 
 export const CHIP_META: Record<ChipKey, { label: string; color: string; bg: string }> = {

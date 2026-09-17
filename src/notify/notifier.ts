@@ -3,7 +3,7 @@ import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 /**
  * Delivering a message to a member of the care circle.
  *
- * `notify_member` always records the message in the care log — that is the part
+ * `notify_member` always records the message in the care log - that is the part
  * the family can rely on. Actually pushing it to a phone is a separate concern,
  * behind this interface, so the tool works identically whether or not a delivery
  * channel is configured. That matters: a caregiving system must not appear to have
@@ -25,7 +25,7 @@ export interface Notifier {
 
 /**
  * The default: record-only. The message is in the care log; nothing is pushed.
- * Honest about it — `delivered: false` — so callers never imply a phone buzzed.
+ * Honest about it - `delivered: false` - so callers never imply a phone buzzed.
  */
 export class RecordOnlyNotifier implements Notifier {
   readonly channel = 'none' as const;

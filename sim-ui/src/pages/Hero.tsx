@@ -159,7 +159,7 @@ export default function Hero() {
             <span className="bg-gradient-to-r from-core to-alexa bg-clip-text text-transparent">One system that never guesses.</span>
           </h1>
           <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-[#c3cad9] md:text-lg">
-            Margaret's Echo, her Ring doorbell, a Bee wearable, the living-room Fire TV — each sees something
+            Margaret's Echo, her Ring doorbell, a Bee wearable, the living-room Fire TV - each sees something
             different. CareCircle turns that evidence into shared obligations, finds the gaps nobody owns, and
             lets the family resolve them by voice. It never turns a missing record into an accusation.
           </p>

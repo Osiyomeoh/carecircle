@@ -11,7 +11,7 @@ import { GoogleGenAI, type FunctionDeclaration } from '@google/genai';
  * implementation detail: an MCP server that only works with one vendor's planner
  * would be a poor demonstration of an open protocol.
  *
- * Bedrock is the submission path — the AWS integration is part of what CareCircle
+ * Bedrock is the submission path - the AWS integration is part of what CareCircle
  * claims. Gemini exists so tool descriptions can be iterated on when Bedrock is
  * unavailable, and because being able to swap planners is itself evidence that the
  * server is not coupled to one.

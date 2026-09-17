@@ -2,7 +2,7 @@
  * Round-trip check against real DynamoDB.
  *
  * Seeds a household, saves, reloads through a fresh adapter, and asserts the care
- * record came back identical — then mutates and confirms only the changed rows are
+ * record came back identical - then mutates and confirms only the changed rows are
  * written. Uses a throwaway household id so it never touches demo data.
  */
 import assert from 'node:assert/strict';
@@ -51,7 +51,7 @@ assert.equal(state.medications.length, 1);
 assert.equal(state.obligations.length, 1);
 assert.equal(state.events.length, 1);
 assert.equal(state.events[0]?.detail, 'Mom sounded tired on the phone.');
-say('reloaded through a fresh adapter — all entities intact');
+say('reloaded through a fresh adapter - all entities intact');
 
 // The gap engine must reach the same conclusion from persisted state.
 const gaps = detectCareGaps(state);
@@ -71,7 +71,7 @@ say('claimed the ride; status, owner and audit trail all survived a reload');
 
 // --- provenance survives serialisation -----------------------------------
 assert.equal(after.obligations[0]?.provenance.kind, 'INFERRED');
-say('provenance preserved — an inference did not come back as a fact');
+say('provenance preserved - an inference did not come back as a fact');
 
 // --- the diff-only claim, measured rather than asserted ------------------
 const { DynamoDBClient } = await import('@aws-sdk/client-dynamodb');
@@ -101,5 +101,5 @@ await counted.appendEvent({
 assert.equal(itemsWritten, 1, `expected 1 item written, got ${itemsWritten}`);
 say(`diff-only writes confirmed: 1 item written for 1 change, not the whole snapshot`);
 
-console.log('\n  PASS — the care record round-trips through DynamoDB\n');
+console.log('\n  PASS - the care record round-trips through DynamoDB\n');
 console.log(`  (left household ${hh} in the table; delete with infra/delete-household.sh)`);

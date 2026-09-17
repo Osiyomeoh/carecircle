@@ -45,7 +45,7 @@ test('a validated-but-unmapped caller can create a household and becomes its pri
 });
 
 test('the founder then authenticates as a real member and can grow the circle', async () => {
-  // Same credential — now resolves to the member created above, not a bootstrap principal.
+  // Same credential - now resolves to the member created above, not a bootstrap principal.
   const dana = await connect('founder-tok');
   const recipient = await call(dana, 'add_member', { name: 'Grace', role: 'care_recipient' });
   assert.ok(recipient.structuredContent.memberId);

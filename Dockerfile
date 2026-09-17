@@ -1,4 +1,4 @@
-# CareCircle MCP server — deployable image.
+# CareCircle MCP server - deployable image.
 # Multi-stage: build with dev deps, ship only what runs.
 FROM public.ecr.aws/docker/library/node:22-slim AS build
 WORKDIR /app

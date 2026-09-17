@@ -27,8 +27,8 @@ export interface Member {
  *
  * The subject is whatever the credential asserts: a validated JWT claim value in
  * production, or an opaque token in static/demo mode. Persisting the mapping is
- * what lets a circle grow at runtime — a member added today can authenticate
- * tomorrow — instead of membership being frozen into the environment at deploy.
+ * what lets a circle grow at runtime - a member added today can authenticate
+ * tomorrow - instead of membership being frozen into the environment at deploy.
  */
 export interface IdentityMapping {
   subject: string;

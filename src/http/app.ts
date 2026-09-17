@@ -14,7 +14,7 @@ import { log } from '../obs/log.js';
  *
  * The identity model lives here. Each member of a care circle holds their own
  * credential, and a session is bound to one member at initialize time. Everything
- * afterwards is attributed to that member — never to whoever the conversation
+ * afterwards is attributed to that member - never to whoever the conversation
  * claims to be, because a model can be talked into believing anything about who
  * is speaking, and this server assigns responsibility for someone's medical care.
  *
@@ -44,7 +44,7 @@ export interface AppOptions {
   notifier?: Notifier;
   /**
    * The clock. Defaults to real time. Injectable so a deterministic walkthrough can
-   * run "as of" the moment the story is set — e.g. 8:05pm, when an evening dose is
+   * run "as of" the moment the story is set - e.g. 8:05pm, when an evening dose is
    * genuinely overdue and the absence beat has something real to surface.
    */
   now?: () => Date;

@@ -1,14 +1,14 @@
 /**
  * Bee → CareEvent.
  *
- * A wearable that summarises conversations produces "facts" — short statements it
+ * A wearable that summarises conversations produces "facts" - short statements it
  * heard, each with a confidence. To this contract a Bee fact is the *same kind of
  * thing* as a Ring doorbell: another device writing evidence into one record. That
- * is the whole point of the seam — the engine downstream cannot tell, and should
+ * is the whole point of the seam - the engine downstream cannot tell, and should
  * not care, which surface a CareEvent came from.
  *
  * A Bee fact is never a confirmed truth on its own. It enters as INFERRED, for a
- * human to confirm — the same discipline every other adapter follows.
+ * human to confirm - the same discipline every other adapter follows.
  */
 import { type CareEvent, type SignalAdapter, careEvent } from '../index.js';
 

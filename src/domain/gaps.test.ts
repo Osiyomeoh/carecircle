@@ -103,7 +103,7 @@ test('a dose is not flagged before its time plus grace period', () => {
     baseState({
       medications: [{ id: 'med1', householdId: 'h1', name: 'evening pill', times: ['20:00'], forMemberId: 'm_margaret' }],
     }),
-    { now: NOW }, // 14:00 local — the evening dose is not due yet
+    { now: NOW }, // 14:00 local - the evening dose is not due yet
   );
   assert.deepEqual(gaps, []);
 });

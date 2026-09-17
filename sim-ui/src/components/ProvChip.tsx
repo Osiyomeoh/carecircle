@@ -2,7 +2,7 @@ import type { Provenance } from '../lib/api';
 
 const MAP: Record<Provenance, { cls: string; label: string; title: string }> = {
   CONFIRMED: { cls: 'bg-confirmed', label: 'Confirmed', title: 'A person stated this.' },
-  INFERRED: { cls: 'bg-inferred', label: 'Inferred', title: 'The system guessed this — not counted until someone confirms.' },
+  INFERRED: { cls: 'bg-inferred', label: 'Inferred', title: 'The system guessed this - not counted until someone confirms.' },
   NOT_LOGGED: { cls: 'bg-norecord', label: 'No record', title: 'Nothing was logged. This is not the same as it not happening.' },
 };
 

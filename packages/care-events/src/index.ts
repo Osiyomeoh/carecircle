@@ -3,7 +3,7 @@
  *
  * One seam that any device can plug into.
  *
- * A care signal can come from anywhere — a spoken sentence, a wearable's summary of
+ * A care signal can come from anywhere - a spoken sentence, a wearable's summary of
  * a conversation, a doorbell that saw a delivery. This package defines the single
  * contract they all become, so a coordination system can treat them uniformly:
  *
@@ -17,7 +17,7 @@
  * Zero dependencies. Bring your own transport and your own engine.
  */
 
-/** How we came to believe something — the spine of the trust model. */
+/** How we came to believe something - the spine of the trust model. */
 export type Provenance =
   /** A human asserted it. The only thing to treat as fact. */
   | { kind: 'CONFIRMED'; by: string; at: string }
@@ -57,7 +57,7 @@ export interface CareEvent {
  *
  * Returning an empty array is a first-class outcome: a doorbell ring that is not a
  * delivery, a wearable utterance that carries no obligation. An adapter that is
- * unsure emits an INFERRED event for a human to confirm — it does not drop the
+ * unsure emits an INFERRED event for a human to confirm - it does not drop the
  * signal, and it does not upgrade a guess to a fact.
  */
 export interface SignalAdapter<Raw> {

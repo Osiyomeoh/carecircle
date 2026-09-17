@@ -30,7 +30,7 @@ const when = new Intl.DateTimeFormat('en-US', {
   hour: 'numeric', minute: '2-digit',
 }).format(cardiologyAt);
 
-console.log(`Demo reset — ${dbPath}`);
+console.log(`Demo reset - ${dbPath}`);
 console.log(`  Cardiology: ${when} (America/New_York)`);
 console.log(`  Ride: ${claimed ? 'claimed by Renee' : 'unclaimed'}`);
 console.log(`\nOpening Care Gaps (${gaps.length}):`);

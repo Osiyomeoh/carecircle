@@ -56,9 +56,9 @@
   </header>
   <div class="grid" id="grid"></div>
   <footer>
-    <span class="k"><span class="sw" style="background:var(--confirmed)"></span>Confirmed — a person stated it</span>
-    <span class="k"><span class="sw" style="background:var(--inferred)"></span>Inferred — the system guessed, awaiting confirmation</span>
-    <span class="k"><span class="sw" style="background:var(--norecord)"></span>No record — not the same as it not happening</span>
+    <span class="k"><span class="sw" style="background:var(--confirmed)"></span>Confirmed - a person stated it</span>
+    <span class="k"><span class="sw" style="background:var(--inferred)"></span>Inferred - the system guessed, awaiting confirmation</span>
+    <span class="k"><span class="sw" style="background:var(--norecord)"></span>No record - not the same as it not happening</span>
   </footer>
 </div>
 <script>
@@ -83,7 +83,7 @@ async function refresh(){
     for(const p of proposals){
       html += `<div class="card proposal"><span class="pill">proposed</span>`
         + `<div class="what">${esc(p.what)}</div>`
-        + `<div class="why">Inferred by the system — not treated as real work until a person confirms it.</div>`
+        + `<div class="why">Inferred by the system - not treated as real work until a person confirms it.</div>`
         + prov('INFERRED') + `</div>`;
     }
     for(const g of gaps){

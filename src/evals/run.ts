@@ -7,8 +7,8 @@ import { SYSTEM_PROMPT } from '../sim/host.js';
 /**
  * Tool-selection evaluation.
  *
- * The model is given the CareCircle server's real tool definitions — descriptions
- * and schemas exactly as an Alexa+ planner would see them — and one utterance. We
+ * The model is given the CareCircle server's real tool definitions - descriptions
+ * and schemas exactly as an Alexa+ planner would see them - and one utterance. We
  * record which tool it reaches for first and stop there.
  *
  * The provider is pluggable, but the figure published in the README must come from
@@ -31,7 +31,7 @@ export interface CaseResult {
   pass: boolean;
   reason: string;
   /**
-   * The call never reached the model — credentials, throttling, network.
+   * The call never reached the model - credentials, throttling, network.
    * Errored cases are excluded from accuracy entirely: counting them as wrong
    * tool choices would report "0% accuracy" when the truth is "nothing ran",
    * and a number that can lie is worse than no number.
@@ -167,7 +167,7 @@ export function summarise(results: CaseResult[]): {
   return {
     total: scored.length,
     passed,
-    // Null, not zero, when nothing was scored — an unreported number beats a false one.
+    // Null, not zero, when nothing was scored - an unreported number beats a false one.
     accuracy: scored.length === 0 ? null : passed / scored.length,
     errored: errors.length,
     byCategory: [...byCategory].map(([category, v]) => ({ category, ...v })),

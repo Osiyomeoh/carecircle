@@ -29,7 +29,7 @@ test('a doorbell press is door activity', () => {
 });
 
 test('non-care Ring events are ignored, not mismapped', () => {
-  // Ring emits presence, never absence — and plenty of events are irrelevant.
+  // Ring emits presence, never absence - and plenty of events are irrelevant.
   for (const type of ['device_online', 'subscription_activated', 'app_integration_added']) {
     assert.equal(ringEventToSignal(ev({ type })), null, `${type} should map to nothing`);
   }

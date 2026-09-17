@@ -1,8 +1,8 @@
-// CareCircle — the CareBoard. The fourth surface in "four surfaces, one system":
+// CareCircle - the CareBoard. The fourth surface in "four surfaces, one system":
 // the ambient care board on the living-room TV. Renders the SAME live MCP state
 // the web console reads (today's Care Gaps, who owns what, proposed obligations)
 // at 10-foot / glanceable scale, with the CONFIRMED / INFERRED / NO RECORD
-// provenance chip on every card. D-pad focusable. No new backend — polls /api/state.
+// provenance chip on every card. D-pad focusable. No new backend - polls /api/state.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { useNavigation, DrawerActions, useIsFocused } from '@react-navigation/native';
@@ -115,7 +115,7 @@ function ProposalCard({ ob }: { ob: Obligation }) {
       <Text style={styles.cardWhat} numberOfLines={2}>
         {ob.what}
       </Text>
-      <Text style={styles.owner}>Proposed — waiting for someone to confirm.</Text>
+      <Text style={styles.owner}>Proposed - waiting for someone to confirm.</Text>
       <Chip chip="inferred" />
     </Card>
   );
@@ -239,7 +239,7 @@ export default function HomeScreen() {
         {error && !state && (
           <View style={styles.centerBox}>
             <Text style={styles.centerText}>
-              Care board unavailable — is the MCP server running?
+              Care board unavailable - is the MCP server running?
             </Text>
           </View>
         )}

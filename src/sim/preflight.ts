@@ -5,8 +5,8 @@ import {
 /**
  * Bedrock preflight.
  *
- * Bedrock reports a zero quota and an exhausted quota with the same error —
- * `ThrottlingException: Too many tokens per day` — but they are opposite
+ * Bedrock reports a zero quota and an exhausted quota with the same error -
+ * `ThrottlingException: Too many tokens per day` - but they are opposite
  * situations. An exhausted budget refills; a zero quota never will, because there
  * is nothing to replenish. Clients retry ThrottlingException by default, so a
  * zeroed account retries forever.
@@ -22,12 +22,12 @@ export type Diagnosis =
   | { state: 'ok'; checked: number }
   /**
    * An account-level override has set the quota to zero. Only AWS Support can
-   * lift this — Service Quotas refuses requests at or below the default.
+   * lift this - Service Quotas refuses requests at or below the default.
    */
   | { state: 'account_hold'; quotas: QuotaFact[]; advice: string }
-  /** Quota is zero but not an account override — likely never provisioned. */
+  /** Quota is zero but not an account override - likely never provisioned. */
   | { state: 'zero_quota'; quotas: QuotaFact[]; advice: string }
-  /** We could not look. Not a verdict — the caller should proceed and rely on runtime errors. */
+  /** We could not look. Not a verdict - the caller should proceed and rely on runtime errors. */
   | { state: 'unknown'; reason: string };
 
 export interface QuotaFact {
@@ -39,7 +39,7 @@ export interface QuotaFact {
 }
 
 /**
- * Classify quota facts. Pure, so the interesting logic is testable without AWS —
+ * Classify quota facts. Pure, so the interesting logic is testable without AWS -
  * which matters because the situation it detects is hard to reproduce on demand.
  */
 export function classify(quotas: QuotaFact[]): Diagnosis {
@@ -148,7 +148,7 @@ export async function diagnoseBedrock(options: PreflightOptions): Promise<Diagno
       }
     } else {
       // Fallback: enumerate. Bedrock has >1000 quotas, so use the largest page
-      // size available — at the default this takes over a hundred round trips.
+      // size available - at the default this takes over a hundred round trips.
       const matches = relevantTo(options.modelId);
       let token: string | undefined;
       do {
@@ -191,10 +191,10 @@ export function describe(d: Diagnosis): string {
     case 'ok':
       return `Bedrock quotas look healthy (${d.checked} checked).`;
     case 'account_hold':
-      return `BEDROCK ACCOUNT HOLD — ${d.quotas.length} quota(s) applied at 0 at ACCOUNT level: `
+      return `BEDROCK ACCOUNT HOLD - ${d.quotas.length} quota(s) applied at 0 at ACCOUNT level: `
         + `${d.quotas.map((q) => q.code).join(', ')}.\n${d.advice}`;
     case 'zero_quota':
-      return `BEDROCK QUOTA IS ZERO — ${d.quotas.map((q) => q.code).join(', ')}.\n${d.advice}`;
+      return `BEDROCK QUOTA IS ZERO - ${d.quotas.map((q) => q.code).join(', ')}.\n${d.advice}`;
     case 'unknown':
       return `Bedrock quota state unknown: ${d.reason}`;
   }

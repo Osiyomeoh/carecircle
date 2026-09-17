@@ -15,7 +15,7 @@ Template: what we wanted, why it mattered *for this project*, what we did instea
   *people* with different authority, where the session credential establishes which
   person is acting.
 - **Why it matters:** MCP today reads as one user talking to one server. CareCircle's
-  whole premise is one shared record and four relationships to it — a care recipient,
+  whole premise is one shared record and four relationships to it - a care recipient,
   two family caregivers with different authority, and a paid helper. Every tool call
   has to be attributed and authorised. We built this ourselves, but every multi-user
   MCP server will rebuild the same thing, differently, and most will get authorisation
@@ -46,7 +46,7 @@ Template: what we wanted, why it mattered *for this project*, what we did instea
 
 ### Guidance on speakable tool responses
 - **Urgency:** important
-- **What:** Documented conventions for shaping tool output that will be *spoken* —
+- **What:** Documented conventions for shaping tool output that will be *spoken* -
   length limits, how lists are read aloud, whether the model reformats or reads
   verbatim, how to mark something as a question back to the user.
 - **Why it matters:** A voice surface has hard constraints a chat surface does not.
@@ -57,7 +57,7 @@ Template: what we wanted, why it mattered *for this project*, what we did instea
 ### Elicitation assumes a request that can stay open; a voice turn cannot
 - **Urgency:** important
 - **What:** Guidance (or a protocol affordance) for elicitation on surfaces where a
-  single request cannot stay open across a human's response — voice being the clearest
+  single request cannot stay open across a human's response - voice being the clearest
   case.
 - **Why it matters:** MCP elicitation expects the answer to arrive inside the same
   `tools/call` that raised it. An Alexa turn is over in seconds, so the two disagree
@@ -81,18 +81,18 @@ Template: what we wanted, why it mattered *for this project*, what we did instea
 ### Rich cards: a structured visual return channel for MCP results
 - **Urgency:** critical
 - **What:** A way for an MCP server to return a *renderable* result alongside spoken
-  text — a card with fields, status, and actions — that Alexa+ displays on a screen
+  text - a card with fields, status, and actions - that Alexa+ displays on a screen
   device and degrades gracefully to speech on a headless one.
 - **Why it matters:** This is the single biggest constraint we hit. CareCircle's core
   answer is a *ranked list with state*: four care gaps, each with a severity, an owner
   or the absence of one, a due time, and a reason. Spoken, the usable ceiling is about
-  three items — past that a person cannot hold the list in their head. On a screen, a
+  three items - past that a person cannot hold the list in their head. On a screen, a
   family absorbs twelve at a glance and points at the one they mean.
   Today the whole answer has to be flattened into a sentence, which throws away exactly
   the structure that makes it useful. We already compute `severity`, `because`,
   `dueAt` and `owner` per gap and have to discard all of it at the speech boundary.
 - **Shape we would want:** `structuredContent` is already in the spec and already
-  carries this data. What is missing is a *rendering contract* — an agreed schema (or a
+  carries this data. What is missing is a *rendering contract* - an agreed schema (or a
   set of card types: list, detail, confirmation, status) that a host knows how to draw,
   so servers do not each invent their own and hosts do not have to guess.
 - **Instead:** We truncate to three spoken items and say how many remain, and we render
@@ -100,13 +100,13 @@ Template: what we wanted, why it mattered *for this project*, what we did instea
 
 ### Actionable cards: let a card carry the next tool call
 - **Urgency:** important
-- **What:** Cards whose controls invoke a named tool with bound arguments — a Claim
+- **What:** Cards whose controls invoke a named tool with bound arguments - a Claim
   button on a care gap that calls `claim_obligation` with that id.
 - **Why it matters:** "I'll take the cardiology one" requires the model to resolve a
   referring expression to an id, and it will sometimes get that wrong. When the action
   is assigning responsibility for a hospital trip, sometimes-wrong is not acceptable.
   A tap is unambiguous. Voice is the right input for *capture* and the wrong input for
-  *disambiguation among similar items* — a good multi-modal design uses each for what
+  *disambiguation among similar items* - a good multi-modal design uses each for what
   it is good at.
 
 ### Confirmation as a first-class surface
@@ -119,7 +119,7 @@ Template: what we wanted, why it mattered *for this project*, what we did instea
 
 ### Ambient and glanceable state, not just turn-taking
 - **Urgency:** nice-to-have
-- **What:** A way for an add-on to contribute to a device's ambient/home screen —
+- **What:** A way for an add-on to contribute to a device's ambient/home screen -
   the state a screen device shows when nobody is talking to it.
 - **Why it matters:** The most valuable moment for CareCircle is not a conversation. It
   is a family member walking past the kitchen Echo and noticing that Thursday still has

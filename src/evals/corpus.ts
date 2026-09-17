@@ -7,8 +7,8 @@
  * does the model pick the right tool?
  *
  * `expect` lists every acceptable first call. Some utterances legitimately admit
- * more than one route — "I'll take the cardiology one" may reasonably begin with
- * get_care_gaps to resolve which item is meant — and marking those as failures
+ * more than one route - "I'll take the cardiology one" may reasonably begin with
+ * get_care_gaps to resolve which item is meant - and marking those as failures
  * would measure our opinions rather than the model's judgement.
  *
  * `expectNone` marks utterances where reaching for a tool at all is the error.
@@ -38,7 +38,7 @@ export const CORPUS: EvalCase[] = [
   { id: 'log-02', member: 'm_margaret', utterance: 'Just took my thyroid tablet.', expect: ['log_care_event'] },
   { id: 'log-03', member: 'm_margaret', utterance: "I've had my morning tablets.", expect: ['log_care_event'] },
   { id: 'log-04', member: 'm_margaret', utterance: 'I took the little white one about an hour ago.', expect: ['log_care_event'],
-    note: 'Vague medication name — should still log, or ask which one.' },
+    note: 'Vague medication name - should still log, or ask which one.' },
   { id: 'log-05', member: 'm_margaret', utterance: "I'm feeling alright today.", expect: ['log_care_event', 'add_note'] },
   { id: 'log-06', member: 'm_margaret', utterance: 'I had my pills with breakfast.', expect: ['log_care_event'] },
   { id: 'log-07', member: 'm_david', utterance: 'Mom took her evening pill, I watched her.', expect: ['log_care_event'],
@@ -87,7 +87,7 @@ export const CORPUS: EvalCase[] = [
   { id: 'assign-02', member: 'm_david', utterance: 'Ask Renee to take Thursday.', expect: ['assign_obligation', 'notify_member', 'get_care_gaps'] },
   { id: 'assign-03', member: 'm_david', utterance: 'Renee should do the prescription.', expect: ['assign_obligation', 'get_care_gaps'] },
   { id: 'assign-04', member: 'm_renee', utterance: 'Assign the cardiology drive to David.', expect: ['assign_obligation', 'get_care_gaps'],
-    note: 'Renee lacks the capability — the tool should refuse, but choosing it is correct.' },
+    note: 'Renee lacks the capability - the tool should refuse, but choosing it is correct.' },
   { id: 'assign-05', member: 'm_david', utterance: 'Can Tasha cover the Monday visit?', expect: ['assign_obligation', 'notify_member', 'get_care_gaps'] },
 
   // --- Confirming what the system guessed --------------------------------
@@ -228,7 +228,7 @@ export const CORPUS: EvalCase[] = [
   { id: 'h-buy-03', member: 'm_david', utterance: 'Order more of her thyroid medication.', expect: ['reorder_prescription'] },
   { id: 'h-buy-04', member: 'm_david', utterance: 'Set up a refill for her thyroid tablet.', expect: ['reorder_prescription'] },
   { id: 'h-buy-05', member: 'm_david', utterance: 'She’s nearly out of her heart medication.', expect: ['reorder_prescription', 'add_note', 'get_care_gaps'],
-    note: 'A statement of need — reorder, note, or check are all reasonable.' },
+    note: 'A statement of need - reorder, note, or check are all reasonable.' },
   { id: 'h-buy-06', member: 'm_david', utterance: 'Yes, place the order.', expect: ['confirm_purchase'],
     note: 'Cold: confirming a pending offer. Held-out and strict on purpose.' },
   { id: 'h-buy-07', member: 'm_david', utterance: 'Go ahead and buy it.', expect: ['confirm_purchase'] },
@@ -255,7 +255,7 @@ export const CORPUS: EvalCase[] = [
   { id: 'none-01', member: 'm_margaret', utterance: 'Thank you, that\'s all.', expectNone: true },
   { id: 'none-02', member: 'm_david', utterance: 'What can you help me with?', expectNone: true },
   { id: 'none-03', member: 'm_margaret', utterance: "What's the weather like?", expectNone: true,
-    note: 'Out of scope — must not reach for a care tool.' },
+    note: 'Out of scope - must not reach for a care tool.' },
   { id: 'none-04', member: 'm_renee', utterance: 'Never mind.', expectNone: true },
 ];
 

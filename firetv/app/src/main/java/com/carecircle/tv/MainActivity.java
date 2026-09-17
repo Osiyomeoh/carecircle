@@ -8,11 +8,11 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 /**
- * CareCircle on Fire TV — the "shared display" surface.
+ * CareCircle on Fire TV - the "shared display" surface.
  *
  * The living-room TV is not an input; it is where the whole family sees the
  * assembled care picture. This activity hosts the 10-foot care board, which reads
- * the same MCP resource (/api/state) the voice console reads — one responsibility
+ * the same MCP resource (/api/state) the voice console reads - one responsibility
  * layer, a fourth surface onto it. No new backend.
  */
 public class MainActivity extends Activity {

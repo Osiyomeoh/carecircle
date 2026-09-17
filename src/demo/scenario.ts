@@ -5,7 +5,7 @@ import type { CareStore } from '../store/store.js';
  *
  * Stages the exact state the video opens on, so what is on screen matches what is
  * being said. "Cardiology Thursday at ten" has to genuinely be a Thursday at 10:00
- * in the household's timezone — a card reading "Wednesday at 6:44 AM" while the
+ * in the household's timezone - a card reading "Wednesday at 6:44 AM" while the
  * narrator says Thursday is the kind of detail a judge notices and nobody forgives.
  */
 
@@ -69,7 +69,7 @@ export interface ScenarioOptions {
  * Reset the demo household to the state the video opens on:
  *
  * - Margaret logged her morning heart pill at 08:10, and her thyroid tablet.
- * - Her evening dose has no record yet — the UNCONFIRMED gap, phrased as missing.
+ * - Her evening dose has no record yet - the UNCONFIRMED gap, phrased as missing.
  * - Cardiology is on the next Thursday at 10:00, recorded by Renee.
  * - The ride it implies has been confirmed as needed and has no owner.
  * - The prescription pickup is open and unowned.
@@ -95,7 +95,7 @@ export async function seedScenario(
     occurredAt: todayAt(8, 12, now, NY).toISOString(),
     data: { medicationId: 'med_thyroid', medicationName: 'thyroid tablet', aboutMemberId: 'm_margaret' },
   });
-  // The evening dose is deliberately absent. Not "missed" — unrecorded.
+  // The evening dose is deliberately absent. Not "missed" - unrecorded.
 
   const appointment = await store.appendEvent({
     householdId, kind: 'appointment_scheduled', reportedBy: 'm_renee',
@@ -109,7 +109,7 @@ export async function seedScenario(
     what: 'Drive Mom to cardiology',
     status: 'OPEN',
     consequence: 'medical',
-    // Inferred originally, then confirmed by a human — which is why it counts.
+    // Inferred originally, then confirmed by a human - which is why it counts.
     provenance: { kind: 'INFERRED', rule: 'medical-appointment-transport', from: 'cardiology appointment' },
     ownerId: options.rideClaimedByRenee ? 'm_renee' : null,
     dueAt: cardiologyAt.toISOString(),

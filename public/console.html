@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CareCircle — Alexa+ simulator</title>
+<title>CareCircle - Alexa+ simulator</title>
 <style>
   :root{
     --bg:#0b0f14; --panel:#121821; --panel-2:#182030; --line:#243044;
@@ -40,7 +40,7 @@
   .mic.on{background:var(--accent);color:#04222d;border-color:var(--accent);animation:pulse-ring 1.4s ease-out infinite}
   .mic:disabled{opacity:.35;cursor:not-allowed}
   @keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(0,200,255,.55)}70%{box-shadow:0 0 0 14px rgba(0,200,255,0)}100%{box-shadow:0 0 0 0 rgba(0,200,255,0)}}
-  /* The orb — this is a voice device first. It breathes, listens, and answers. */
+  /* The orb - this is a voice device first. It breathes, listens, and answers. */
   .orb{width:64px;height:64px;border-radius:50%;flex-shrink:0;position:relative;
     background:radial-gradient(circle at 50% 40%,#0d3a4c,#061620 70%);
     border:1px solid var(--accent-dim);display:grid;place-items:center;
@@ -96,7 +96,7 @@
   .pill{font-size:9px;letter-spacing:1px;padding:3px 7px;border-radius:999px;white-space:nowrap;text-transform:uppercase}
   .pill.HIGH{background:#3a1119;color:#ff8b97} .pill.MEDIUM{background:#3a2a10;color:#ffce85}
   .pill.LOW{background:#0f2c1f;color:#8df0bb} .pill.prop{background:#261a3d;color:#cdaaff}
-  /* Provenance chip — the trust model made visible. How we know a thing, never hidden. */
+  /* Provenance chip - the trust model made visible. How we know a thing, never hidden. */
   .prov{display:inline-flex;align-items:center;gap:5px;font-size:9px;letter-spacing:1px;
     text-transform:uppercase;padding:3px 8px;border-radius:999px;margin-top:9px;
     border:1px solid transparent;cursor:default}
@@ -201,7 +201,7 @@ const $ = (id) => document.getElementById(id);
 
 // Keep the human framing; only surface a problem if the simulator can't be reached.
 fetch('/api/config').then(r=>r.json()).catch(()=>{
-  $('cfg').textContent = 'simulator offline — start the server and reload.';
+  $('cfg').textContent = 'simulator offline - start the server and reload.';
 });
 
 function renderWho(){
@@ -235,15 +235,15 @@ function bubble(cls, html){
 const esc = (s)=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 
 /**
- * The provenance chip — the trust model, visible on every card.
+ * The provenance chip - the trust model, visible on every card.
  * We never let a guess or a silence look like a fact.
  *   CONFIRMED  a person stated it            (green)
- *   INFERRED   the system guessed it         (purple) — not counted until confirmed
- *   NO RECORD  nothing was logged            (amber)  — NOT "it didn't happen"
+ *   INFERRED   the system guessed it         (purple) - not counted until confirmed
+ *   NO RECORD  nothing was logged            (amber)  - NOT "it didn't happen"
  */
 const PROV = {
   confirmed: ['confirmed','CONFIRMED','A person stated this.'],
-  inferred:  ['inferred','INFERRED','The system guessed this — not counted until someone confirms.'],
+  inferred:  ['inferred','INFERRED','The system guessed this - not counted until someone confirms.'],
   norecord:  ['norecord','NO RECORD','Nothing was logged. This is not the same as it not happening.'],
 };
 function provChipFor(gap, obById){
@@ -274,7 +274,7 @@ function renderCalls(calls){
 
 /**
  * Re-render only when the state actually changed.
- * A blind interval re-render destroys card buttons mid-tap — on a live demo that
+ * A blind interval re-render destroys card buttons mid-tap - on a live demo that
  * silently drops the click, which is the worst possible moment to lose one.
  */
 let lastBoard = '';
@@ -310,7 +310,7 @@ async function refreshBoard(force){
       d.innerHTML=`<div class="top"><div class="what">${esc(o.item)}</div>`
         +`<div class="pill offer">ready to buy</div></div>`
         +`<div class="why">${esc(o.merchant)} · ${esc(o.etaText)} · <b style="color:var(--text)">${esc(price)}</b></div>`
-        +`<div class="sandbox">One tap to order. Sandbox — no real payment is taken.</div>`;
+        +`<div class="sandbox">One tap to order. Sandbox - no real payment is taken.</div>`;
       d.append(actions([
         [`Confirm · ${price}`, 'confirm_purchase', { offerId:o.offerId, confirmed:true }, false],
         ['Not now', 'confirm_purchase', { offerId:o.offerId, confirmed:false }, true],
@@ -353,7 +353,7 @@ async function refreshBoard(force){
     }
     if(!box.children.length) box.innerHTML='<div class="none">Nothing outstanding. Everything recorded has an owner.</div>';
   }catch{
-    $('gaps').innerHTML='<div class="none">care board unavailable — is the MCP server running?</div>';
+    $('gaps').innerHTML='<div class="none">care board unavailable - is the MCP server running?</div>';
   }
 }
 
@@ -406,8 +406,8 @@ $('form').onsubmit = async (e)=>{
       pending.className='bubble err';
       let msg = typeof data.error==='string' ? data.error : JSON.stringify(data.error||{});
       // Model backends occasionally overload; say so in plain words, not raw JSON.
-      if(/503|overload|high demand/i.test(msg)) msg='The model is busy right now — try that again in a moment.';
-      else if(/429|rate.?limit|quota/i.test(msg)) msg='Hit a rate limit — give it a few seconds and retry.';
+      if(/503|overload|high demand/i.test(msg)) msg='The model is busy right now - try that again in a moment.';
+      else if(/429|rate.?limit|quota/i.test(msg)) msg='Hit a rate limit - give it a few seconds and retry.';
       pending.textContent = msg || 'Something went wrong with that turn.';
     }
     else{
@@ -427,7 +427,7 @@ $('form').onsubmit = async (e)=>{
    Voice.
 
    A judge should hear this working, not read it. Speech in and out both come
-   from the browser, so the demo needs no hardware — which matters for a product
+   from the browser, so the demo needs no hardware - which matters for a product
    whose whole point is several people talking to one shared record: two devices
    in one frame is something a single physical Echo could not show.
 --------------------------------------------------------------------------- */
@@ -439,7 +439,7 @@ let listening = false;
 if (!SpeechRec) {
   $('mic').disabled = true;
   $('mic').title = 'Speech recognition needs Chrome. Typing still works.';
-  $('heard').textContent = 'Voice input needs Chrome — typing works everywhere.';
+  $('heard').textContent = 'Voice input needs Chrome - typing works everywhere.';
 } else {
   recognition = new SpeechRec();
   recognition.lang = 'en-US';
@@ -465,7 +465,7 @@ if (!SpeechRec) {
   };
   recognition.onerror = (event) => {
     $('heard').textContent = event.error === 'not-allowed'
-      ? 'Microphone blocked — allow access, or type instead.'
+      ? 'Microphone blocked - allow access, or type instead.'
       : `Could not hear that (${event.error}).`;
   };
   recognition.onend = () => {
@@ -481,7 +481,7 @@ if (!SpeechRec) {
   };
 }
 
-/** Read a reply aloud, then optionally listen again — a real back-and-forth. */
+/** Read a reply aloud, then optionally listen again - a real back-and-forth. */
 function speak(text) {
   if (!$('speak').checked || !window.speechSynthesis) return;
   window.speechSynthesis.cancel();

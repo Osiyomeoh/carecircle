@@ -10,7 +10,7 @@ import { seedScenario } from './demo/scenario.ts';
  * Adversarial tests.
  *
  * CareCircle assigns responsibility for someone's medical care, so the identity
- * and trust rules are not conveniences — they are the product. Each test here is
+ * and trust rules are not conveniences - they are the product. Each test here is
  * an attack that would be plausible in a real deployment, and the assertion is
  * that it fails closed.
  */
@@ -220,7 +220,7 @@ test('note text is stored as data and never acted on as instructions', async () 
   assert.equal(body.result?.isError, undefined);
 
   const after = store.getCareState('h_margaret');
-  // Exactly one new event — the note itself. No medications logged, nothing assigned.
+  // Exactly one new event - the note itself. No medications logged, nothing assigned.
   assert.equal(after.events.length, before.events.length + 1);
   assert.equal(
     after.events.filter((e) => e.kind === 'medication_taken').length,
@@ -273,7 +273,7 @@ test('a Ring delivery is evidence, not an auto-resolve of the prescription', asy
   assert.equal(body.result.isError, undefined);
   assert.match(spoken(body), /delivery.*arrived/i);
   assert.match(spoken(body), /should I mark it picked up/i);
-  // The obligation is unchanged — it only ASKED.
+  // The obligation is unchanged - it only ASKED.
   assert.equal(store.getObligation(prescription.id, 'h_margaret').status, before);
   // And it pointed at the right item for the model to confirm.
   assert.equal(body.result.structuredContent.resolvesCandidate, prescription.id);

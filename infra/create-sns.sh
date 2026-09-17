@@ -9,6 +9,6 @@ echo "Topic: $ARN"
 if [ "${1:-}" != "" ]; then
   aws sns subscribe --topic-arn "$ARN" --protocol email \
     --notification-endpoint "$1" --region "$REGION" >/dev/null
-  echo "Subscribed $1 — check inbox and confirm the subscription."
+  echo "Subscribed $1 - check inbox and confirm the subscription."
 fi
 echo "Set: export CARECIRCLE_SNS_TOPIC=$ARN"

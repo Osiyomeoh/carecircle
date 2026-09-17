@@ -3,7 +3,7 @@ import type { Member, Obligation, Role } from './types.js';
 /**
  * Who may do what.
  *
- * The household, not the individual, is the unit of state — so every tool call
+ * The household, not the individual, is the unit of state - so every tool call
  * arrives with an identified member and is checked against their role. Identity
  * comes from the MCP session credential, never from the conversation, because a
  * model can be talked into believing anything about who is speaking.

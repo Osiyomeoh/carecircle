@@ -29,7 +29,7 @@ test('SNS publishes with the recipient as a filterable attribute', async () => {
   assert.equal(captured.MessageAttributes.recipient.StringValue, 'm_renee');
 });
 
-test('an SNS failure is reported, not thrown — the message is already recorded', async () => {
+test('an SNS failure is reported, not thrown - the message is already recorded', async () => {
   const failing = { send: async () => { throw new Error('AccessDenied'); } };
   const r = await new SnsNotifier({
     topicArn: 'arn:aws:sns:us-east-1:1:carecircle', client: failing as never,

@@ -43,7 +43,7 @@ export function sentence(text: string): string {
  */
 export function speakGaps(gaps: CareGap[]): string {
   if (gaps.length === 0) {
-    return "Nothing is unassigned right now — everything that's been recorded has someone on it.";
+    return "Nothing is unassigned right now - everything that's been recorded has someone on it.";
   }
   const shown = gaps.slice(0, SPOKEN_LIST_LIMIT);
   const lead = gaps.length === 1
@@ -58,7 +58,7 @@ export function speakGaps(gaps: CareGap[]): string {
 
 export function speakObligation(o: Obligation, ownerName?: string): string {
   if (o.status === 'RESOLVED') return `${o.what} is done.`;
-  if (o.ownerId && ownerName) return `${o.what} — ${ownerName} has it.`;
-  if (o.status === 'PROPOSED') return `${o.what} — not confirmed yet.`;
-  return `${o.what} — nobody has taken it yet.`;
+  if (o.ownerId && ownerName) return `${o.what} - ${ownerName} has it.`;
+  if (o.status === 'PROPOSED') return `${o.what} - not confirmed yet.`;
+  return `${o.what} - nobody has taken it yet.`;
 }

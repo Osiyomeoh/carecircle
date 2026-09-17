@@ -136,7 +136,7 @@ app.post('/api/act', async (req, res) => {
 
 /**
  * The live care board. Read through the MCP server's own resource, so the panel
- * shows exactly what the protocol exposes — not a privileged side channel.
+ * shows exactly what the protocol exposes - not a privileged side channel.
  */
 app.get('/api/state', async (_req, res) => {
   try {

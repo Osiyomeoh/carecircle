@@ -6,7 +6,7 @@ import type { ConsequenceClass, Obligation } from './types.js';
  * Every rule here produces a PROPOSED obligation, never an OPEN one. The system
  * is allowed to notice that an appointment probably needs a ride; it is not
  * allowed to decide that on the family's behalf. Inference proposes, humans
- * dispose — see docs/DESIGN.md section 2.
+ * dispose - see docs/DESIGN.md section 2.
  *
  * Rules are declarative and named so that every proposal can explain itself:
  * "I'm guessing, from the cardiology appointment, that she'll need a ride."
@@ -87,7 +87,7 @@ export function proposeFromAppointment(
  *
  * This is the deeper half of obligation discovery. An appointment implies work that
  * does not exist yet. A constraint does something else: it *orphans work that
- * already has an owner*. Nobody says "create a task" — somebody says "I can't drive
+ * already has an owner*. Nobody says "create a task" - somebody says "I can't drive
  * Thursday", and a ride that was covered silently stops being covered.
  *
  * That silence is precisely the failure mode CareCircle exists to catch, so the

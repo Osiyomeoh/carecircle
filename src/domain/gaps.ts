@@ -47,7 +47,7 @@ function parseHHMM(hhmm: string): number | null {
 
 /**
  * Imminence score: work due soon, or already overdue, outranks distant work.
- * Undated work sits in the middle — it has no deadline but it is still unowned.
+ * Undated work sits in the middle - it has no deadline but it is still unowned.
  */
 function imminenceScore(dueAt: string | undefined, now: Date): number {
   if (!dueAt) return 15;
@@ -102,7 +102,7 @@ function unclaimedGap(o: Obligation, timezone: string, now: Date): CareGap {
     id: `gap_unclaimed_${o.id}`,
     kind: 'UNCLAIMED',
     severity: severityFor(score),
-    spoken: `${o.what}${due} — nobody has taken this yet.`,
+    spoken: `${o.what}${due} - nobody has taken this yet.`,
     because: o.provenance.kind === 'INFERRED'
       ? `Confirmed as needed, originally inferred from ${o.provenance.from}. No owner assigned.`
       : 'This was recorded as needed and no one has claimed it.',
@@ -132,7 +132,7 @@ function followUpGap(o: Obligation, timezone: string, now: Date): CareGap {
  *
  * The hard rule of this project lives here: a missing record is reported as
  * *missing*, never as "they did not take it". The phrasing below is a constraint,
- * not a style choice — see docs/DESIGN.md section 2.
+ * not a style choice - see docs/DESIGN.md section 2.
  */
 function unconfirmedMedicationGaps(state: CareState, now: Date): CareGap[] {
   const { timezone } = state.household;
@@ -170,7 +170,7 @@ function unconfirmedMedicationGaps(state: CareState, now: Date): CareGap[] {
         // Deliberate phrasing: no record != did not happen.
         spoken: `There's no record of ${name}'s ${med.name} from ${time}.`,
         because: `A dose was expected at ${time} and nothing has been logged. `
-          + `This means no one has confirmed it — not that it was missed.`,
+          + `This means no one has confirmed it - not that it was missed.`,
         score,
       });
     }

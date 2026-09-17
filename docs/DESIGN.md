@@ -1,4 +1,4 @@
-# CareCircle — Design
+# CareCircle - Design
 
 **The responsibility layer for families caring for someone.**
 
@@ -17,7 +17,7 @@ EVENTS  ->  OBLIGATIONS  ->  OWNERSHIP
 |---|---|---|
 | Event | What happened? | "I took my heart pill" / "Cardiology is Thursday at 10" |
 | Obligation | What needs to happen? | Someone must drive Margaret to cardiology |
-| Ownership | Who has it? | David claimed it — or **nobody has** |
+| Ownership | Who has it? | David claimed it - or **nobody has** |
 
 A **Care Gap** is the failure state of stage three:
 
@@ -36,7 +36,7 @@ epistemic states and never collapses them:
 |---|---|---|
 | `CONFIRMED` | A human asserted it | "Margaret logged her evening dose at 7:42pm" |
 | `NOT_LOGGED` | No record exists | "I have no record of the evening dose" |
-| `INFERRED` | The system guessed it | "Cardiology usually needs a ride — is that right?" |
+| `INFERRED` | The system guessed it | "Cardiology usually needs a ride - is that right?" |
 | `RESOLVED` | An obligation was discharged | "David drove her Thursday" |
 
 The system will **never** say "Margaret did not take her medication." It only ever
@@ -56,7 +56,7 @@ accountable for. Inference proposes; humans dispose.
 
 ## 3. The Care Gap Engine
 
-Deterministic logic **in the server** — not model narration. The model's only job
+Deterministic logic **in the server** - not model narration. The model's only job
 is to speak the result. Given care state, the engine computes ranked gaps:
 
 ```
@@ -71,7 +71,7 @@ Obligation: "Drive Margaret to cardiology"
   owner: NONE
   |
   v
-CARE GAP  [severity: HIGH — dated, imminent, unowned]
+CARE GAP  [severity: HIGH - dated, imminent, unowned]
 ```
 
 Gap severity is computed from: imminence, whether the obligation is dated,
@@ -86,7 +86,7 @@ Gap taxonomy:
 | NEEDS_FOLLOW_UP | Resolution is stale or partial | Prescription refill requested, not picked up |
 | RESOLVED | Discharged | Grocery pickup, done by Renee |
 
-**The killer query** — *"What's going to fall through the cracks this week?"* — is a
+**The killer query** - *"What's going to fall through the cracks this week?"* - is a
 single call into this engine returning structured, ranked, reasoned gaps.
 
 ---
@@ -104,7 +104,7 @@ and a different conversational stance.
 | Aide | `helper` | "What do I need to know today?" | Scoped to the current shift |
 
 Identity is established by the MCP session (per-member credential), not guessed
-from the conversation. **The household — not the individual — is the unit of state.**
+from the conversation. **The household - not the individual - is the unit of state.**
 That is the hard technical problem of this project and the part most entrants
 will not have.
 
@@ -137,7 +137,7 @@ will not have.
 
 Design rules for the tool layer:
 
-- Tools exist because **a person says a sentence that needs them** — not to mirror CRUD.
+- Tools exist because **a person says a sentence that needs them** - not to mirror CRUD.
 - Errors instruct the model on what to do next; they are not stack traces.
 - Ambiguity is resolved by asking ("which Thursday appointment?"), never by guessing.
 - Responses are shaped to be **spoken aloud** without reformatting.
@@ -162,7 +162,7 @@ script are done.**
 
 The current input model has one real weakness: an obligation only enters the system
 when somebody explicitly states it. In actual caregiving, obligations are created in
-conversation — at the clinic, on the phone with the pharmacy, in the kitchen. Nobody
+conversation - at the clinic, on the phone with the pharmacy, in the kitchen. Nobody
 stops to log them. That is *why* things fall through the cracks.
 
 Bee (an ambient conversation recorder, usable via app + CLI with no hardware) closes

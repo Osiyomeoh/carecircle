@@ -16,7 +16,7 @@
     </style>
   </defs>
   <rect width="1120" height="700" fill="#ffffff"/>
-  <text x="40" y="44" fill="#1f2733" font-size="23" font-weight="700">CareCircle — MCP server architecture</text>
+  <text x="40" y="44" fill="#1f2733" font-size="23" font-weight="700">CareCircle - MCP server architecture</text>
   <text x="40" y="68" class="s">Streamable HTTP · spec 2025-11-25 · session-bound identity · deterministic engine behind the tools</text>
 
   <!-- HOST -->
@@ -75,9 +75,9 @@
 
   <!-- Engine (inside server band) -->
   <rect class="eng" x="640" y="382" width="420" height="80" rx="11"/>
-  <text x="652" y="406" class="m">Care engine — deterministic, not model narration</text>
+  <text x="652" y="406" class="m">Care engine - deterministic, not model narration</text>
   <text x="652" y="428" class="s">Events → Obligations → Ownership · Care Gap detection (ranked + reasoned)</text>
-  <text x="652" y="446" class="s" font-weight="700" fill="#22a45d">Known ≠ Assumed — provenance on every fact</text>
+  <text x="652" y="446" class="s" font-weight="700" fill="#22a45d">Known ≠ Assumed - provenance on every fact</text>
 
   <!-- STORE -->
   <text x="640" y="524" class="lbl">STATE</text>

@@ -1,6 +1,6 @@
 # Plan: a real 10 on every criterion
 
-**Deadline: Friday 23 October 2026, 12:00pm PT.** Today is 14 September — **39 days.**
+**Deadline: Friday 23 October 2026, 12:00pm PT.** Today is 14 September - **39 days.**
 Judging 9–20 November. Winners 3 December.
 
 Target: Alexa+ 1st ($25,000) + AWS Builder ($5,000) + Open Source ($5,000) = **$35,000
@@ -9,12 +9,12 @@ challenge, so these three are the maximum reachable from one submission.
 
 ---
 
-## Part 1 — What a 10 actually means
+## Part 1 - What a 10 actually means
 
 Not "good". A 10 is the submission a judge uses as the reference point for every
 other submission they score that day.
 
-### Tech Implementation — 10 = "this is production code, not a hackathon build"
+### Tech Implementation - 10 = "this is production code, not a hackathon build"
 
 The rules ask how well it is built and how effectively it uses the required tech.
 The rubric's own "obvious" example is *a basic MCP wrapper around an existing API*.
@@ -23,9 +23,9 @@ A 10 requires all of:
 
 - [ ] MCP spec 2025-11-25 over Streamable HTTP, session-bound identity ✅ **done**
 - [ ] Deterministic domain logic, not model narration ✅ **done**
-- [ ] **Measured tool-selection accuracy** published in the README — an eval harness
+- [ ] **Measured tool-selection accuracy** published in the README - an eval harness
       over ~150 real utterances. Nobody else will have a number.
-- [ ] **Hosted on Bedrock AgentCore Runtime** — not a laptop, not a bare container
+- [ ] **Hosted on Bedrock AgentCore Runtime** - not a laptop, not a bare container
 - [ ] Multi-service AWS pipeline: AgentCore + Strands + Bedrock + SNS
 - [ ] >40 tests, typed strictly, CI green on every push
 - [ ] Adversarial tests: credential swap mid-session, cross-household access,
@@ -34,41 +34,41 @@ A 10 requires all of:
 The line that wins it: *"we measured how well the model chooses our tools, found
 nine failures, and fixed them."*
 
-### Design — 10 = "this is a product, and I understood it in ten seconds"
+### Design - 10 = "this is a product, and I understood it in ten seconds"
 
 - [ ] The simulated Alexa+ experience is visually excellent ✅ **largely done**
 - [ ] Rich cards with bound actions ✅ **done**
 - [ ] A scenario seed so every frame matches the narration (cardiology really is
       Thursday at 10:00)
-- [ ] Screen device *and* headless device rendering — the same answer degrading
+- [ ] Screen device *and* headless device rendering - the same answer degrading
       gracefully to speech proves the multi-modal argument
 - [ ] A 3-minute video with no dead air, no setup, no terminal
-- [ ] The care board readable at 720p on a laptop — judges do not full-screen
+- [ ] The care board readable at 720p on a laptop - judges do not full-screen
 
-### Potential Impact — 10 = "I know someone who needs this"
+### Potential Impact - 10 = "I know someone who needs this"
 
 - [ ] **One real caregiver on camera for 30 seconds.** The single highest-value
       artefact available and the only one that cannot be built.
 - [ ] Sized market stated once, with a source
-- [ ] A deployed URL a judge can use themselves — **required by the rules** to remain
+- [ ] A deployed URL a judge can use themselves - **required by the rules** to remain
       free and unrestricted until judging ends 20 November
-- [ ] The Alexa Together answer ✅ **done** — turns the obvious objection into evidence
+- [ ] The Alexa Together answer ✅ **done** - turns the obvious objection into evidence
       of ecosystem understanding
 
-### Quality of the Idea — 10 = "I have not seen this before"
+### Quality of the Idea - 10 = "I have not seen this before"
 
 The rubric names as creative: *agentic workflow orchestrating across services*,
 *context-aware add-on maintaining state across sessions*, *media support*.
 
-- [ ] State across sessions ✅ **done** — the household record is the product
-- [ ] Media support ✅ **done** — cards with actions
-- [ ] **Orchestration across services** — currently missing. `notify_member` must
+- [ ] State across sessions ✅ **done** - the household record is the product
+- [ ] Media support ✅ **done** - cards with actions
+- [ ] **Orchestration across services** - currently missing. `notify_member` must
       actually deliver (SNS/SES), not just record an event.
 - [ ] Care Gaps as a repeatable phrase ✅ **done**
-- [ ] Constraint discovery ✅ **done** — *"I can't drive Thursday"* orphans work
+- [ ] Constraint discovery ✅ **done** - *"I can't drive Thursday"* orphans work
       nobody realised had come loose. This is the most original thing we have.
 
-### AWS Builder — 10 = a pipeline, not a call
+### AWS Builder - 10 = a pipeline, not a call
 
 The rubric is explicit. *Obvious: single Bedrock call.* **That is what we have today.**
 *Creative: multi-service pipeline (Bedrock + AgentCore + Strands), agent orchestration.*
@@ -79,19 +79,19 @@ The rubric is explicit. *Obvious: single Bedrock call.* **That is what we have t
 - [ ] Architecture diagram + written integration notes in the feedback field
 - [ ] Fallback hedge: **Kiro Crew** qualifies on its own as a development tool
 
-### Open Source — 10 = a merged fix that unblocks other developers
+### Open Source - 10 = a merged fix that unblocks other developers
 
 *Obvious: README update, typo fix.* *Creative: meaningful feature addition with tests,
 bug fix that unblocks other developers.*
 
 - [ ] PR to `modelcontextprotocol/typescript-sdk`: transports are not assignable to
-      `Transport` under `exactOptionalPropertyTypes` — **with a regression test**,
+      `Transport` under `exactOptionalPropertyTypes` - **with a regression test**,
       which is what separates "creative" from "typo fix"
 - [ ] CareCircle itself as a reusable OSS project: contribution guide, extension
       docs, issues labelled `good first issue`
 - [ ] File the friction-log findings as upstream issues, linked from the submission
 
-### Friction bonus — 10 = the best feedback Amazon receives
+### Friction bonus - 10 = the best feedback Amazon receives
 
 Applied by Amazon's internal team at **Stage One**, before the judging panel sees
 anything. It affects whether we are shortlisted at all.
@@ -102,27 +102,27 @@ anything. It affects whether we are shortlisted at all.
 
 ---
 
-## Part 2 — The 39 days
+## Part 2 - The 39 days
 
-### Sprint 1 · 14–20 Sept — unblock and measure
+### Sprint 1 · 14–20 Sept - unblock and measure
 
 **The critical path runs through AWS access. Nothing else matters this week.**
 
 | # | Work | Owner |
 |---|---|---|
 | 1.1 | AWS Support case to lift the ACCOUNT-level Bedrock quota hold (see `infra/aws-support-case.md`) | **You** |
-| 1.1b | **Start a second AWS account** as the fallback — do not wait on the case outcome | **You** |
+| 1.1b | **Start a second AWS account** as the fallback - do not wait on the case outcome | **You** |
 | 1.2 | Claim $150 AWS credits (form closes 21 Oct); builder.aws.com account | **You** |
 | 1.3 | Register on Devpost | **You** |
 | 1.4 | **Start asking caregivers.** Longest lead time on the board. | **You** |
 | 1.5 | SDK PR with regression test | Me |
-| 1.6 | Scenario seed — `npm run demo:reset` stages the exact opening state | Me |
+| 1.6 | Scenario seed - `npm run demo:reset` stages the exact opening state | Me |
 | 1.7 | Eval harness v1: 60 utterances, tool-selection accuracy | Me |
 | 1.8 | Fix what the evals expose (incl. the `get_care_summary` overlap question) | Me |
 
 **Exit:** Bedrock works, PR filed, first accuracy number exists.
 
-### Sprint 2 · 21–27 Sept — the AWS pipeline
+### Sprint 2 · 21–27 Sept - the AWS pipeline
 
 Moves AWS Builder from 4 to 8.5 and closes the orchestration gap on the main track.
 
@@ -132,12 +132,12 @@ Moves AWS Builder from 4 to 8.5 and closes the orchestration gap on the main tra
 | 2.2 | Rebuild the simulator agent loop on **Strands Agents SDK** |
 | 2.3 | `notify_member` delivers for real via **SNS** |
 | 2.4 | Architecture diagram: Alexa+ → AgentCore → CareCircle → Bedrock/Strands → SNS |
-| 2.5 | Friction entries for AgentCore, Strands, SNS — richest source left |
+| 2.5 | Friction entries for AgentCore, Strands, SNS - richest source left |
 | 2.6 | Deployment must survive to 20 Nov: budget alarm, no expiring creds |
 
 **Exit:** a URL a judge can use, running a multi-service AWS pipeline.
 
-### Sprint 3 · 28 Sept–4 Oct — hardening and proof
+### Sprint 3 · 28 Sept–4 Oct - hardening and proof
 
 | # | Work |
 |---|---|
@@ -150,7 +150,7 @@ Moves AWS Builder from 4 to 8.5 and closes the orchestration gap on the main tra
 
 **Exit:** >40 tests, a published accuracy figure, adversarial demo ready to film.
 
-### Sprint 4 · 5–11 Oct — the video
+### Sprint 4 · 5–11 Oct - the video
 
 The highest-variance artefact. A working server nobody can see loses to a worse
 project with a better film.
@@ -160,7 +160,7 @@ project with a better film.
 | 4.1 | Script to the second. Beat 1 is constraint discovery, not medication logging. |
 | 4.2 | Film the caregiver segment |
 | 4.3 | Screen capture at 1080p, scenario seed, no terminals |
-| 4.4 | Edit to **under 2:30** — 30 seconds of headroom against the 3:00 cap |
+| 4.4 | Edit to **under 2:30** - 30 seconds of headroom against the 3:00 cap |
 | 4.5 | Watch it muted, then watch it without the picture. Both must work. |
 
 **Video structure (2:30):**
@@ -170,7 +170,7 @@ project with a better film.
            Nobody creates a task. The ride comes loose.
 0:20-0:45  David: "what's going to fall through the cracks this week?"
            Care Gaps board. He claims it by voice. State changes on screen.
-0:45-1:10  Known != Assumed. "No record of her evening dose" — never "she missed it."
+0:45-1:10  Known != Assumed. "No record of her evening dose" - never "she missed it."
            Show the test that enforces it.
 1:10-1:35  One record, four people. Renee refused the assign. The aide scoped out.
 1:35-2:00  Architecture: MCP 2025-11-25, AgentCore, Strands. Tool-selection accuracy.
@@ -180,7 +180,7 @@ project with a better film.
 
 **Exit:** final cut uploaded, unlisted, watched by someone who has never seen it.
 
-### Sprint 5 · 12–18 Oct — the submission is a deliverable
+### Sprint 5 · 12–18 Oct - the submission is a deliverable
 
 Most entrants write this in the last hour. It is scored.
 
@@ -196,12 +196,12 @@ Most entrants write this in the last hour. It is scored.
 
 **Exit:** every field drafted. Nothing left that needs thought.
 
-### Sprint 6 · 19–23 Oct — submit early
+### Sprint 6 · 19–23 Oct - submit early
 
 | # | Work |
 |---|---|
 | 6.0 | **Make the repo public.** It is private during development; the rules require a public repo with the licence visible in GitHub's About panel, and a private repo fails Stage One. |
-| 6.1 | **Submit Tuesday 21 Oct** — two days of margin, not two hours |
+| 6.1 | **Submit Tuesday 21 Oct** - two days of margin, not two hours |
 | 6.2 | Confirm the deployed URL is up and unauthenticated |
 | 6.3 | Confirm the video is public and plays logged out |
 | 6.4 | Read the rules once more against the submission |
@@ -209,7 +209,7 @@ Most entrants write this in the last hour. It is scored.
 
 ---
 
-## Part 3 — Critical path and risk
+## Part 3 - Critical path and risk
 
 ```
 AWS access ─┬─> AgentCore hosting ──> public URL ──> judge can test
@@ -225,7 +225,7 @@ SDK PR ──> review latency ──> merged ──> Open Source score
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| **Bedrock quota hold not lifted in time** | **critical** | The account carries an `ACCOUNT`-level applied override of 0 on every Bedrock inference quota — an AWS-side risk/standing hold, not a provisioning gap, liftable only by Support. Fallback: **stand up a separate AWS account for CareCircle now**, rather than waiting on the outcome. Also Kiro Crew, which qualifies for AWS Builder on its own without a runtime AWS service. |
+| **Bedrock quota hold not lifted in time** | **critical** | The account carries an `ACCOUNT`-level applied override of 0 on every Bedrock inference quota - an AWS-side risk/standing hold, not a provisioning gap, liftable only by Support. Fallback: **stand up a separate AWS account for CareCircle now**, rather than waiting on the outcome. Also Kiro Crew, which qualifies for AWS Builder on its own without a runtime AWS service. |
 | No caregiver found | high | Start week 1. Fallback: a caregiver reading a written quote off-camera, or a support-forum quote with permission |
 | SDK PR not merged by 23 Oct | medium | Rules say PRs need not be merged; a fork with tests qualifies |
 | AgentCore proves painful | medium | Fargate/Lambda fallback; the pain itself becomes friction-log material |
@@ -235,13 +235,13 @@ SDK PR ──> review latency ──> merged ──> Open Source score
 
 ---
 
-## Part 4 — What we are not doing
+## Part 4 - What we are not doing
 
 Naming these once so they stop costing attention:
 
-- **Bee** — no prize multiplier, and one project wins one track
-- **Fire TV** — a second mediocre surface
-- **Ring** — same
+- **Bee** - no prize multiplier, and one project wins one track
+- **Fire TV** - a second mediocre surface
+- **Ring** - same
 - Emergency detection, health analytics, medication recommendations, a caregiver
   social network, thirty tools
 
@@ -249,13 +249,13 @@ The submission that wins is narrow and finished, not broad and nearly done.
 
 ---
 
-## Part 5 — Definition of done
+## Part 5 - Definition of done
 
 Submission is ready when all are true:
 
 - [ ] A judge can open a URL and use CareCircle without credentials or setup
 - [ ] The repo clones and runs from the README on a clean machine
-- [ ] **The repo is public** (private during development — must be flipped before submitting)
+- [ ] **The repo is public** (private during development - must be flipped before submitting)
 - [ ] GitHub's About section shows the MIT licence
 - [ ] The video is under 2:30, public, and works muted
 - [ ] Tool-selection accuracy is measured and published

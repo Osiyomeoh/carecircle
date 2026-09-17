@@ -41,7 +41,7 @@ export default function TVBoard() {
         {proposals.map((p) => (
           <Card key={p.id} border="border-l-inferred" pill="proposed">
             <div className="text-2xl font-semibold leading-snug">{p.what}</div>
-            <div className="mt-3 text-lg leading-snug text-[#c3cad9]">Inferred by the system — not treated as real work until a person confirms it.</div>
+            <div className="mt-3 text-lg leading-snug text-[#c3cad9]">Inferred by the system - not treated as real work until a person confirms it.</div>
             <div className="mt-4"><ProvChip kind="INFERRED" /></div>
           </Card>
         ))}
@@ -67,9 +67,9 @@ export default function TVBoard() {
       </div>
 
       <footer className="flex flex-wrap gap-7 border-t border-line pt-5 text-base text-muted md:text-lg">
-        <Legend color="bg-confirmed" text="Confirmed — a person stated it" />
-        <Legend color="bg-inferred" text="Inferred — the system guessed, awaiting confirmation" />
-        <Legend color="bg-norecord" text="No record — not the same as it not happening" />
+        <Legend color="bg-confirmed" text="Confirmed - a person stated it" />
+        <Legend color="bg-inferred" text="Inferred - the system guessed, awaiting confirmation" />
+        <Legend color="bg-norecord" text="No record - not the same as it not happening" />
       </footer>
     </div>
   );

@@ -18,8 +18,8 @@ export interface Config {
   region?: string;
   identity: IdentityStrategy;
   /**
-   * Whether to seed the built-in demo household. Never under real (JWT) identity —
-   * production must not inject a fake family into a real store — and overridable
+   * Whether to seed the built-in demo household. Never under real (JWT) identity -
+   * production must not inject a fake family into a real store - and overridable
    * with CARECIRCLE_SEED_DEMO for a static-identity staging box that wants it off.
    */
   seedDemo: boolean;

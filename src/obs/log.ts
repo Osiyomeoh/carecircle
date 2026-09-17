@@ -3,8 +3,8 @@
  *
  * In production (NODE_ENV=production) each line is one JSON object, so a log
  * aggregator can index it. Locally it is a terse human line. A caregiving service
- * must never log the care itself — medication names, notes, member identities are
- * PHI — so callers pass only operational fields (ids, counts, durations, outcomes),
+ * must never log the care itself - medication names, notes, member identities are
+ * PHI - so callers pass only operational fields (ids, counts, durations, outcomes),
  * never free text from the record.
  */
 

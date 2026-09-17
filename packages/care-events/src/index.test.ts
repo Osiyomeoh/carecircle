@@ -25,7 +25,7 @@ test('a Bee fact and a Ring event become the same kind of thing to the engine', 
   const ring = ringAdapter.adapt({ type: 'ding' });
   assert.equal(bee[0]!.provenance.kind, 'INFERRED');
   assert.equal(ring[0]!.provenance.kind, 'INFERRED');
-  // Both are CareEvents with a source and honest provenance — indistinguishable downstream.
+  // Both are CareEvents with a source and honest provenance - indistinguishable downstream.
   for (const e of [bee[0]!, ring[0]!]) {
     assert.ok(e.id && e.source && e.occurredAt && e.provenance);
   }

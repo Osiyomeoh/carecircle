@@ -11,8 +11,8 @@ import type { Request } from 'express';
  * - `jwt`      claims from a JWT that a trusted gateway has already validated.
  *
  * The JWT strategy deliberately does NOT verify the signature. That is only safe
- * behind a gateway that has already done so — Bedrock AgentCore validates inbound
- * JWTs against the configured authorizer before forwarding the request — so it is
+ * behind a gateway that has already done so - Bedrock AgentCore validates inbound
+ * JWTs against the configured authorizer before forwarding the request - so it is
  * gated behind an explicit opt-in rather than inferred from the environment.
  * Turning it on for a directly-exposed server would let anyone assert any identity.
  */
@@ -22,7 +22,7 @@ export interface IdentityResolver {
   resolve(req: Request): string | null;
   /**
    * The authenticated subject when the caller is known but not yet a member of any
-   * care circle — the seam that lets a new household be created (`create_household`).
+   * care circle - the seam that lets a new household be created (`create_household`).
    * Returns null when there is no such principal, so an ordinary request cannot
    * bootstrap by accident. In production (JWT) this is any validated subject; in
    * static/demo it is opt-in via CARECIRCLE_ALLOW_SELF_SIGNUP so the demo server's
@@ -112,7 +112,7 @@ export interface JwtIdentityOptions {
  *
  * An unmapped subject resolves to null rather than being admitted as a stranger:
  * being authenticated is not the same as belonging to this care circle. But a
- * validated-yet-unmapped subject IS a bootstrap `principal` — it may create a new
+ * validated-yet-unmapped subject IS a bootstrap `principal` - it may create a new
  * household and, in doing so, become that household's first member.
  */
 export function jwtClaims({ claim, members, lookup, selfSignup }: JwtIdentityOptions): IdentityResolver {
@@ -143,7 +143,7 @@ export function jwtClaims({ claim, members, lookup, selfSignup }: JwtIdentityOpt
  * Choose a resolver from the environment.
  *
  * `CARECIRCLE_JWT_CLAIM` opts in to the JWT strategy and is the only way to enable
- * it — see the warning above. `CARECIRCLE_MEMBER_MAP` is JSON mapping claim values
+ * it - see the warning above. `CARECIRCLE_MEMBER_MAP` is JSON mapping claim values
  * to member ids.
  */
 export function resolverFromEnv(fallbackTokens: Map<string, string>, lookup?: IdentityLookup): IdentityResolver {
@@ -158,7 +158,7 @@ export function resolverFromEnv(fallbackTokens: Map<string, string>, lookup?: Id
   }
   // An empty env map is only viable if self-signup is on, so a validated-but-unmapped
   // principal can bootstrap the first household. Without either, nobody could ever
-  // authenticate — refuse to start rather than boot a server no one can use.
+  // authenticate - refuse to start rather than boot a server no one can use.
   const selfSignup = process.env['CARECIRCLE_ALLOW_SELF_SIGNUP'] === 'true';
   if (members.size === 0 && !selfSignup) {
     throw new Error('CARECIRCLE_JWT_CLAIM is set but CARECIRCLE_MEMBER_MAP is empty and CARECIRCLE_ALLOW_SELF_SIGNUP is not enabled; nobody could authenticate.');

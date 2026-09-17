@@ -45,7 +45,7 @@ test('one zeroed quota among healthy ones is still surfaced', () => {
 });
 
 test('finding no quotas is unknown, never a pass', () => {
-  // Absence of evidence is not evidence of health — the same rule the care model follows.
+  // Absence of evidence is not evidence of health - the same rule the care model follows.
   const d = classify([]);
   assert.equal(d.state, 'unknown');
 });
