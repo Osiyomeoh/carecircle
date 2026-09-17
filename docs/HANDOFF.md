@@ -1,6 +1,7 @@
 # CareCircle — session handoff
 
-A self-contained brief to resume work in a new session. Last updated 2026-09-17.
+A self-contained brief to resume work in a new session. Last updated 2026-09-17
+(added the "four surfaces / four kinds of evidence" framing + canonical user story).
 
 ## What CareCircle is (updated positioning)
 
@@ -23,6 +24,27 @@ Two product principles, both enforced in the type system and tests — not just 
   *"she missed it."* (`CONFIRMED` / `INFERRED` / `NOT_LOGGED` provenance.)
 - **Evidence ≠ Obligation ≠ Ownership** — a Ring package becomes "a package arrived"
   (an `INFERRED` proposal a human confirms), never "the prescription came."
+
+### The unique idea: four surfaces, four kinds of evidence, one responsibility layer
+
+The devices are NOT four integrations bolted on. They are four *kinds of evidence*
+feeding ONE responsibility layer; MCP is the seam. The value is the seam, not any single
+integration — which is why only Alexa+ is entered and the rest stay adapter-ready.
+
+| Surface   | Kind of evidence                    | Status                              |
+|-----------|-------------------------------------|-------------------------------------|
+| Alexa+    | DECLARED — someone says it          | LIVE (real MCP host + Bedrock)      |
+| Ring      | PHYSICAL — a sensor observed it     | SEAM (`ingest_signal`, hand-fired)  |
+| Bee       | AMBIENT — overheard, nobody typed it| SEAM (would add `'bee'` source)     |
+| Fire TV   | not evidence: the SHARED DISPLAY    | SEAM (the board renders there)      |
+
+The full beat-by-beat user story lives in the `carecircle-demo-story` memory. One-day
+arc: Margaret declares a dose (Alexa+) → Bee overhears knee pain → an INFERRED check-in
+proposal → Ring sees a delivery → "was that the refill?" → David asks about the evening
+dose → NO RECORD, not an accusation → three signals converge on one unowned gap →
+`get_care_gaps` → Renee claims it by voice → reorder + confirm_purchase → Fire TV shows
+the assembled shared truth. The gap-convergence moment is the one only the responsibility
+layer can produce; no single device could.
 
 ## Track strategy (locked, per the official rules)
 
