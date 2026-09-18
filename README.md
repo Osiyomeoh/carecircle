@@ -24,10 +24,10 @@ what happened        what must happen        who has it
  Thursday at 10"     drive her                has claimed it
 ```
 
-**And it is real - not a mockup.** Live MCP server you can hit right now, **87 tests**,
-**93.3%** measured tool-selection accuracy on Amazon Bedrock, and a trust model
-**measured at 0% false accusations where a raw LLM hits 50%**. See it end-to-end in ~60
-seconds, no AWS or keys required:
+**And it is real - not a mockup.** Live MCP server you can hit right now, **94 tests**
+(including property-based proofs of the risk model), **93.3%** measured tool-selection
+accuracy on Amazon Bedrock, and a trust model **measured at 0% false accusations where a
+raw LLM hits 50%**. See it end-to-end in ~60 seconds, no AWS or keys required:
 
 ```bash
 git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
@@ -188,13 +188,74 @@ reasoned, structured gaps and speaks them. That keeps the reasoning auditable, m
 the ordering inspectable (every gap carries its `score` and a plain-language
 `because`), and means the server is useful to any client - not only an LLM.
 
+### Severity is expected harm, not tuned points
+
+A gap's rank is not a hand-set number. Each gap's `score` estimates **expected harm**,
+`risk = Cost × P(dropped) × Confidence`, every term in `[0,1]` ([`src/domain/gaps.ts`](src/domain/gaps.ts)):
+
+- **Cost** - normalized harm if the work is dropped: medical `1.0`, logistical `0.5`,
+  social `0.2`.
+- **P(dropped)** - a continuous exponential *hazard* on the deadline
+  (`exp(-hoursUntil / 48h)`, → 1 once overdue), OR-combined with an aging hazard
+  (`1 - exp(-age / 72h)`) for unowned work. No bucket staircase, so ranking is monotone
+  and never jumps at an edge.
+- **Confidence** - a Bayesian posterior on the evidence: `CONFIRMED 1.0`,
+  `NOT_LOGGED 0.75`, `INFERRED 0.6`, multiplied in - so **an assumption can never
+  outrank a fact.** This is "Known ≠ Assumed" expressed as arithmetic.
+
+`HIGH / MEDIUM / LOW` are risk tertiles of the `0-100` score, not magic cutoffs, and
+every gap carries its `factors {cost, pDrop, confidence}` so a card can show *why* it
+ranks where it does. When a judge asks "why 85?", the answer is a derivation, not a vibe.
+
+**The model's laws are proven, not just exemplified.**
+[`src/domain/gaps.props.test.ts`](src/domain/gaps.props.test.ts) uses `fast-check` to
+assert boundedness, determinism, confidence dominance (Known ≥ Assumed), imminence
+monotonicity, and cost ordering over thousands of generated states.
+
+---
+
+## Four surfaces, one responsibility layer
+
+The devices around Margaret are not four integrations bolted on. They are four *kinds of
+evidence* feeding **one** responsibility layer - and **MCP is the seam** that lets
+entirely different surfaces participate in the same system. The value is the seam, which
+is why only Alexa+ is entered and the rest stay honest adapter seams, not overclaimed
+integrations.
+
+| Surface | Kind of evidence | Status |
+|---|---|---|
+| **Alexa+** | DECLARED - someone says it | **LIVE** (real MCP host + Bedrock) |
+| Ring | PHYSICAL - a sensor observed it | Adapter seam ([`src/domain/ring.ts`](src/domain/ring.ts) → `ingest_signal`), hand-fired |
+| Bee | AMBIENT - overheard, nobody typed it | Adapter seam (another `ingest_signal` source) |
+| Fire TV | not evidence: the SHARED DISPLAY | Live ambient TV screen (below) |
+
+A physical signal is **evidence, not a verdict**: a Ring delivery becomes an `INFERRED`
+proposal that *"the prescription pickup may be done"* - a human confirms it; the system
+never closes a medical obligation on a sensor alone. It enters the same pipeline as a
+ride inferred from an appointment, which is exactly why it needs no change to the gap
+engine or the trust model. We deliberately do **not** claim a live Ring/Bee feed - the
+point is the seam, not the vendor.
+
+**The shared display.** Fire TV is the fourth surface - not more evidence, but where the
+assembled truth is *seen*. It is one real React Native screen (rendered on Fire TV /
+Android TV / web from the same code) built as **ambient TV content**: a calm clock over
+which care gaps arrive as sliding notification cards, the way a TV OS surfaces an alert -
+not a dashboard a family has to read. It polls the same live `/api/state` the voice
+surface does. Try it: **[`/tv-native/`](https://krqi2tpsif.us-east-1.awsapprunner.com/tv-native/)**.
+
 ---
 
 ## Running it
 
 ### Quickstart for judges - no credentials, no AWS, ~60 seconds
 
-Either try the deployed server, or clone and run the self-contained demo:
+Either open a live surface, hit the deployed server, or clone and run the
+self-contained demo.
+
+**Live surfaces (nothing to install):**
+- Voice console + care board: `https://krqi2tpsif.us-east-1.awsapprunner.com/console`
+- Ambient TV surface: `https://krqi2tpsif.us-east-1.awsapprunner.com/tv-native/`
+- MCP server health: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/health`
 
 ```bash
 # Option A - hit the live MCP server, nothing to install
@@ -203,7 +264,7 @@ curl https://ypq2dfq2p7.us-east-1.awsapprunner.com/health
 # Option B - clone and reproduce locally (no AWS needed)
 git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
 npm ci
-npm test          # 87 tests
+npm test          # 94 tests (unit, adversarial, and property-based)
 npm run story     # the whole one-day story, end to end, over real MCP
 ```
 
