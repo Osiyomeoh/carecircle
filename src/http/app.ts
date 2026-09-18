@@ -8,6 +8,7 @@ import type { CareStore } from '../store/store.js';
 import { staticTokens, BOOTSTRAP_PREFIX, type IdentityResolver } from './identity.js';
 import { RecordOnlyNotifier, type Notifier } from '../notify/notifier.js';
 import { log } from '../obs/log.js';
+import { createRingWebhook } from './ring-webhook.js';
 
 /**
  * Streamable HTTP transport (MCP spec 2025-11-25).
@@ -66,6 +67,18 @@ const lookup = (subject: string): string | null => store.resolveIdentity(subject
 const resolver = identity ?? staticTokens(tokens ?? new Map(), lookup, allowSelfSignup);
 const messenger = notifier ?? new RecordOnlyNotifier();
 const app = express();
+
+// The Ring webhook is mounted BEFORE the JSON parser and takes the raw bytes.
+// An HMAC has to be computed over exactly what was sent: parse-then-restringify
+// changes key order and whitespace, and the signature stops matching.
+const ringKey = process.env['RING_HMAC_KEY'] ?? '';
+const ringHousehold = process.env['RING_HOUSEHOLD_ID'] ?? 'h_margaret';
+app.post(
+  '/ring/webhook',
+  express.raw({ type: '*/*', limit: '256kb' }),
+  createRingWebhook({ store, hmacKey: ringKey, householdId: ringHousehold, ...(now ? { now } : {}) }),
+);
+
 app.use(express.json({ limit: '1mb' }));
 
 // One operational access line per request. Deliberately no body and no query: the
