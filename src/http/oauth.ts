@@ -210,6 +210,15 @@ export class OAuthProvider {
       });
       return;
     }
+    // Record where a client wants the code sent. A partner's redirect URI is not
+    // published anywhere we can read, so the practical way to populate the
+    // allowlist is to watch what the real client actually asks for. Not secret,
+    // and no PHI.
+    if (this.#allowed.length === 0) {
+      console.warn('[oauth] authorize with unrestricted redirect_uri', {
+        client_id, redirect_uri,
+      });
+    }
     // Checked BEFORE the consent screen is drawn: a person should never be asked to
     // approve a handoff to somewhere we would refuse to send the code anyway.
     if (!redirectAllowed(redirect_uri, this.#allowed)) {

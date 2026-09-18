@@ -122,7 +122,7 @@ env = {
     "CARECIRCLE_TABLE": os.environ.get("CARECIRCLE_TABLE", "carecircle"),
     "AWS_REGION": os.environ["REGION"],
 }
-for key in ("CARECIRCLE_OAUTH_SECRET", "CARECIRCLE_PUBLIC_URL", "RING_HMAC_KEY", "RING_HOUSEHOLD_ID"):
+for key in ("CARECIRCLE_OAUTH_SECRET", "CARECIRCLE_PUBLIC_URL", "CARECIRCLE_OAUTH_REDIRECTS", "RING_HMAC_KEY", "RING_HOUSEHOLD_ID"):
     value = os.environ.get(key)
     if value:
         env[key] = value
