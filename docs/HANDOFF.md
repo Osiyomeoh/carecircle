@@ -509,24 +509,67 @@ Amazon device-app IDs above. Once the triplet arrives, wire `ingest_signal` (`se
 
 ## Pending / next moves
 
-1. **Option G - the "play-the-day" surface.** The video centrepiece: one press walks
-   the whole one-day arc on screen. **Open question, asked and never answered: should
-   pressing play make real MCP calls against the shared demo household?**
-   Recommendation: yes, with a visible Reset - a scripted animation is the one thing a
-   judge cannot verify, and the calls are what make it real.
-2. **Option D - speaker identity.** Accept a host-provided speaker identity as an
-   `INFERRED` signal, and file the matching FRICTION-LOG / FEATURE-REQUESTS entry:
-   **MCP has no way to pass speaker identity**, so a shared device cannot tell the
-   server who is talking. That is a real protocol gap and a scored observation.
-3. **Option H - Ring doorstep card.** Snapshot card carrying a `SIMULATED RING EVENT`
-   badge (honesty rule: never imply Ring is wired) + Margaret's photo.
-4. Write and shoot the **<=3-minute demo video**, Ring/Bee framed as seams throughout.
-5. Devpost writeup.
-6. **User-only:** register on Devpost, make the repo public near Oct 23, claim the
-   $150 AWS credits.
-7. Consider the top-line positioning rewrite ("responsibility layer for family care")
-   across README/SUBMISSION openers - bigger, subjective; confirm before doing.
+Organiser update (2026-09-18): **the repo may now stay private**, provided both
+`@AmazonAppDev` (GitHub account) and `testing@devpost.com` (email) have access.
+Ours is already private, so the old "make it public near Oct 23" item is gone.
 
-Done since last handoff: FRICTION-LOG audit (all 14 entries carry the 6 required
-fields), the live board is seeded (3 Care Gaps + 1 proposal, not "nothing
-outstanding"), the MCP App, `docs/MCP.md`, voice accuracy, and responsive scaling.
+**P0 - this week**
+
+1. **Repo access.** Add `AmazonAppDev` as a collaborator (CLI can do this; needs
+   the user's go-ahead - it grants an outside party read access). `testing@devpost.com`
+   is an EMAIL, and GitHub's collaborator API only takes usernames, so that invite
+   must go through the web UI: Settings -> Collaborators -> Add people. Do it early;
+   invites must be accepted and that clock is not ours.
+2. **Modality independence, as a tested invariant.** The thesis: *no single modality
+   is load-bearing*. Half exists - a test asserts spoken text never says "tap",
+   "click" or "below", so the screen can never become required (blind users have
+   full access by voice). Write the symmetric half: every fact a gap carries is
+   present in the board's structured data, so voice can never become required (deaf
+   users have full access by screen). A dual guarantee a judge can verify by running
+   the tests.
+3. **Fire TV D-pad.** Organisers explicitly want "voice, D-pad and visuals" blended.
+   The RN app has focus via `react-tv-space-navigation`; **unverified whether the
+   `/tv` web route is keyboard/D-pad navigable.** Check, and fix if not - it is the
+   same "no channel is required" argument.
+4. **Dismiss the two zombie proposals** (needs the user's go-ahead; changes what
+   every visitor sees).
+
+**P0 - next two weeks**
+
+5. **OAuth 2.1 + PKCE**, then onboard the real Alexa+ add-on via the Alexa AI CLI.
+   Amazon now documents a self-service path plus a web simulator, so real Alexa+
+   rendering our MCP App is reachable. Unknown approval turnaround is why this
+   cannot slip. Latency is NOT a blocker: App Runner measures 2-10ms in-region
+   against Amazon's 500ms ceiling.
+6. **The <=3-minute video**, built on the delegation arc, captioned, stating the
+   accessibility thesis out loud. Ring/Bee framed as seams throughout.
+
+**P1**
+
+7. Accessibility pass on the sim UI: screen-reader semantics on the board, verify
+   provenance chips never rely on colour alone. (Polly pace control is done.)
+8. Attack the 9 eval misses; publish the number either way.
+9. Friction-log entries: **prompt injection via care notes** (free text flows into
+   model context), **MCP cannot pass speaker identity**, and **MCP gives a server no
+   way to tell the client what time it is** - the bug that produced a December 2024
+   appointment. All three are real protocol observations, and friction entries carry
+   up to a 10% bonus.
+10. Writeup language: organisers reward "an agentic workflow that orchestrates
+    across services or keeps context across sessions". That is the delegation loop
+    and the persistent household state. Use their vocabulary, not ours.
+
+**P2** - care timeline, Ring doorstep card with its `SIMULATED` badge, purchase polish.
+
+**Explicitly not doing:** RAG on the gap-decision path (it would destroy the
+determinism the trust benchmark depends on), more tools for their own sake, a
+Google calendar integration.
+
+**Still unanswered by the user:** whether the demo "play the day" surface should
+make real MCP calls against the shared household (recommendation: yes, with a
+visible Reset).
+
+**Cannot be entered, and this has not changed:** Ring and Bee. Entering Ring needs
+it working through a Ring simulator/device; Bee needs live data in code and video.
+Organisers describing Ring's ideal as "a caretaking monitor" does not change the
+rule - it makes the FEATURE-REQUESTS entry more valuable, not the integration more
+claimable.
