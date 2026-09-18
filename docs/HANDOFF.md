@@ -7,7 +7,10 @@ knows what day it is; **Amazon Polly** speaks replies with a listener-chosen pac
 transcript repair**; the console orb now shows listening state and a live interim
 transcript; the interface scales from a 360px phone to a 4K television;
 **MCP Apps: the Care Board ships as an interactive view**; TV surface reworked to
-an ambient RN screen with sliding notifications, hosted live at `/tv-native`).
+an ambient RN screen with sliding notifications, hosted live at `/tv-native`;
+**OAuth 2.1 + PKCE**, so Alexa+ can link this add-on to a real person, with a
+redirect allowlist; **modality independence is now a tested dual invariant**;
+**docs/EVIDENCE.md** carries the cited research and economic case).
 
 ## What CareCircle is (updated positioning)
 
@@ -55,7 +58,7 @@ layer can produce; no single device could.
 ## Track strategy (locked, per the official rules)
 
 - **Primary track: Alexa+ (MCP).** We qualify cleanly - self-hosted MCP server, spec
-  2025-11-25, Streamable HTTP, called in code (18 tools), live URL. Top-prize track.
+  2025-11-25, Streamable HTTP, called in code (21 tools), live URL. Top-prize track.
 - **Mini challenges: AWS Builder + Open Source.** Both qualify (Bedrock/DynamoDB/App
   Runner/SNS documented; `@carecircle/care-events` MIT package). A project can **win
   only one mini prize**, but entering both is allowed.
@@ -100,14 +103,14 @@ verdict.
 
 ## What's built vs. adapter-ready
 
-**Built + tested (live code):** Alexa+ MCP server (18 tools, session-bound identity),
+**Built + tested (live code):** Alexa+ MCP server (21 tools, session-bound identity),
 Care Gap engine (deterministic; severity is a stated risk model, see below),
 trust/provenance model, `ingest_signal` (the real
 Ring/Bee seam - any external signal → INFERRED proposal), ownership/claiming,
 purchase-in-place (`reorder_prescription` / `confirm_purchase`), SNS notifications
 (record-only fallback), DynamoDB persistence, App Runner deploy, the multi-device web
-board (simulator), **the Care Board as an MCP App (SEP-1865)**, 174 tests +
-adversarial suite + CI.
+board (simulator), **the Care Board as an MCP App (SEP-1865)**, the delegation
+loop, the Ring webhook, OAuth 2.1 + PKCE, **209 tests** + adversarial suite + CI.
 
 **Adapter-ready (seam only, no live third-party wiring):** Ring → `ingest_signal`
 (Ring's payload schema is unpublished - see FRICTION-LOG.md); Bee → `ingest_signal`
@@ -376,6 +379,70 @@ against real Ring traffic.
 Portal (Staging tab, HTTPS, must return 200), and show the simulator driving the
 live endpoint in the demo video.
 
+## DONE (2026-09-18): OAuth 2.1 + PKCE, and the deploy that lied
+
+`src/http/oauth.ts`, mounted by `src/http/app.ts` only when
+`CARECIRCLE_OAUTH_SECRET` is set. Alexa+ will not link an add-on to a person
+without it, and neither will Ring.
+
+- RFC 9728 protected-resource metadata + RFC 8414 AS metadata at
+  `/.well-known/...`, so a client discovers us instead of being configured.
+- PKCE **S256 only**; an authorization code is single-use and is **burned on a
+  failed exchange**, not just a successful one - otherwise a wrong verifier is a
+  free retry against a live code.
+- HS256 only; `verifyToken` rejects any other `alg` (the `alg:"none"` family).
+- `CODE_TTL_MS` 60s, access token 1h, refresh 30d.
+
+**Two failures worth remembering.**
+
+1. **The routes 404'd after a deploy that reported success.** `update-service`
+   applied the new env (the Ring endpoint moved 503 -> 401, proving env landed)
+   while the container kept the **previous image**. The `:latest` tag makes this
+   indistinguishable from a good deploy. This is the both-services
+   `start-deployment` rule above, in a new disguise.
+2. **OAuth then authenticated nothing in production** - `/health` still said
+   `identity: "static"`. `src/http.ts` built its own resolver and never went
+   through the app factory's composition. The tests missed it because they let
+   the factory choose, i.e. they tested a path production did not take.
+   Composition now lives in `resolverFromEnv` and there is a test through that
+   shared path.
+
+**Redirect allowlist, deliberately off in production.** `redirectAllowed()`
+matches **exactly** (a prefix match would accept
+`https://client.example.attacker.test` for `https://client.example`) and is
+checked **before the consent screen is drawn**, so no one is asked to approve a
+handoff we would refuse to complete. `CARECIRCLE_OAUTH_REDIRECTS` is
+**intentionally empty in production**: Ring's redirect URI is not published, and
+a guess would reject Ring's own linking. While empty the server logs
+`client_id` / `redirect_uri` on every authorize. **Next action: read that line
+out of the App Runner logs after the first real Ring link attempt, put the URI
+in `CARECIRCLE_OAUTH_REDIRECTS`, redeploy - enforcement then starts with no code
+change.**
+
+## DONE (2026-09-18): modality independence is a tested invariant
+
+`src/modality.test.ts`. Both halves now exist, so the thesis is verifiable by
+running the tests rather than by reading the pitch:
+- the spoken answer never says "tap"/"click"/"below" - the screen can never
+  become required, so a blind listener has full access;
+- every fact a gap carries (`spoken`, `because`, `kind`, `severity`, `score`,
+  `factors`) is present in the board's structured data - voice can never become
+  required, so a deaf reader has full access.
+
+The invariant is **reader >= listener**, not token equality. An earlier version
+demanded the literal strings `CONFIRMED`/`INFERRED` in the spoken text and
+failed for the wrong reason; the board already renders provenance while voice
+carries only `spoken`.
+
+## DONE (2026-09-18): docs/EVIDENCE.md
+
+Every figure behind the impact claim, each marked PRIMARY / SECONDARY /
+CONTESTED - we apply our own trust model to our own argument. Leads with WHO,
+ILO and Sub-Saharan African sources; US cost figures are supporting, not
+primary. The sharpest line: Cameroon has **fewer than 50 nursing-home places**
+for 28 million people, so a coordination layer is not a convenience over a care
+system - it is the only realistic form the care system takes.
+
 ## Front-end (judge-facing UI) - React + Vite + Tailwind + R3F
 
 The UI was migrated off vanilla HTML to a real build in **`sim-ui/`** (React 18 + Vite +
@@ -428,7 +495,12 @@ cards** (the way a TV OS surfaces an alert), not a board a family reads. It is o
 
 ## Live resources
 
-- MCP server: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/mcp` (health: `/health`)
+- MCP server: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/mcp` (health: `/health`,
+  now reports `identity: "jwt"`)
+- Ring webhook: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/ring/webhook`
+  (401 unsigned, 200 signed - both verified live)
+- OAuth: `/oauth/authorize`, `/oauth/token`, discovery at
+  `/.well-known/oauth-protected-resource` (200 live)
 - Simulator (judge-facing UI): `https://krqi2tpsif.us-east-1.awsapprunner.com`
 - Ambient TV surface (real React Native, web build): `https://krqi2tpsif.us-east-1.awsapprunner.com/tv-native/`
 - Reproduce end-to-end with no AWS/keys: `npm ci && npm run story`
@@ -574,13 +646,7 @@ Ours is already private, so the old "make it public near Oct 23" item is gone.
    is an EMAIL, and GitHub's collaborator API only takes usernames, so that invite
    must go through the web UI: Settings -> Collaborators -> Add people. Do it early;
    invites must be accepted and that clock is not ours.
-2. **Modality independence, as a tested invariant.** The thesis: *no single modality
-   is load-bearing*. Half exists - a test asserts spoken text never says "tap",
-   "click" or "below", so the screen can never become required (blind users have
-   full access by voice). Write the symmetric half: every fact a gap carries is
-   present in the board's structured data, so voice can never become required (deaf
-   users have full access by screen). A dual guarantee a judge can verify by running
-   the tests.
+2. ~~Modality independence as a tested invariant~~ - **DONE**, see above.
 3. **Fire TV D-pad.** Organisers explicitly want "voice, D-pad and visuals" blended.
    The RN app has focus via `react-tv-space-navigation`; **unverified whether the
    `/tv` web route is keyboard/D-pad navigable.** Check, and fix if not - it is the
@@ -590,7 +656,8 @@ Ours is already private, so the old "make it public near Oct 23" item is gone.
 
 **P0 - next two weeks**
 
-5. **OAuth 2.1 + PKCE**, then onboard the real Alexa+ add-on via the Alexa AI CLI.
+5. OAuth 2.1 + PKCE is **DONE and live**; what remains is onboarding the real
+   Alexa+ add-on via the Alexa AI CLI (needs the user's own Amazon login).
    Amazon now documents a self-service path plus a web simulator, so real Alexa+
    rendering our MCP App is reachable. Unknown approval turnaround is why this
    cannot slip. Latency is NOT a blocker: App Runner measures 2-10ms in-region
@@ -622,8 +689,9 @@ Google calendar integration.
 make real MCP calls against the shared household (recommendation: yes, with a
 visible Reset).
 
-**Cannot be entered, and this has not changed:** Ring and Bee. Entering Ring needs
-it working through a Ring simulator/device; Bee needs live data in code and video.
-Organisers describing Ring's ideal as "a caretaking monitor" does not change the
-rule - it makes the FEATURE-REQUESTS entry more valuable, not the integration more
-claimable.
+**Cannot be entered:** Bee only. It needs real data recorded through a Bee device
+or an Apple Watch running Bee software; we have neither, so Bee stays a seam and
+is never claimed as an integration. (An earlier version of this line also listed
+Ring - that was wrong. The rules explicitly permit a simulator and state no
+physical device is required, and we now run a real verified webhook driven by a
+signed simulator. Corrected 2026-09-18.)
