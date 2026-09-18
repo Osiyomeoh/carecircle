@@ -443,6 +443,46 @@ primary. The sharpest line: Cameroon has **fewer than 50 nursing-home places**
 for 28 million people, so a coordination layer is not a convenience over a care
 system - it is the only realistic form the care system takes.
 
+## DONE (2026-09-18): the television answers the remote
+
+`/tv` had **no keyboard handling anywhere in `sim-ui`** - not a focus ring, not a
+key listener. A D-pad press did nothing. Organisers explicitly ask for voice, D-pad
+and visuals blended, and the surface that was supposed to prove it was read-only.
+
+**Why this is the accessibility argument, not a control scheme.** Voice serves
+someone who cannot see. The screen serves someone who cannot hear. Neither serves
+someone who cannot easily **speak** - after a stroke, with advanced Parkinson's, or
+simply across a room from the Echo. Before this, such a person could watch the care
+board and not touch it. The remote is the third channel.
+
+- `sim-ui/src/lib/dpad.ts` - navigation as a **pure reducer**, so "can you always get
+  back out?" has a provable answer. Three modes: `ambient` (the clock) -> `browsing`
+  (moving between gaps) -> `identifying` (who is taking this on).
+- `src/dpad.test.ts` - 10 tests in the main suite (**219 total**), including that
+  every mode can be backed out of and that a gap list shrinking under the viewer
+  never leaves focus past its end (the board polls every 4s; someone else can claim
+  the focused gap mid-press).
+
+**The middle rung is the design.** OK never claims directly - it asks **who**. A
+remote in a living room carries no identity; the television cannot know which of
+four people pressed the button, and CareCircle binds identity to a credential and
+never infers it. Claiming in someone's name because they were nearest the remote is
+assumption-as-fact, which is the one thing this product exists to refuse.
+
+**Margaret is on the chooser but is never the default** (she is a participant in her
+own care, not a subject of it) - caught in review, because a viewer pressing OK
+twice quickly would otherwise have assigned work in the care recipient's name
+without ever choosing her.
+
+**Gotchas:** Back arrives as `Escape` on some Fire TV builds and `Backspace` on
+others, and an unhandled Backspace navigates the WebView out of the app - both are
+mapped. Every recognised key calls `preventDefault`. Focus is never carried by a
+glow alone: the focused card also reads **"> Selected - 2 of 3"**, because at ten
+feet, and for a colour-blind viewer, the word is what communicates.
+
+Verified in-browser at 1600x900: wake, wrap, choose, claim, and the failure path
+rendering honestly as *"Couldn't claim that: HTTP 500"* rather than a false success.
+
 ## Front-end (judge-facing UI) - React + Vite + Tailwind + R3F
 
 The UI was migrated off vanilla HTML to a real build in **`sim-ui/`** (React 18 + Vite +
@@ -647,10 +687,7 @@ Ours is already private, so the old "make it public near Oct 23" item is gone.
    must go through the web UI: Settings -> Collaborators -> Add people. Do it early;
    invites must be accepted and that clock is not ours.
 2. ~~Modality independence as a tested invariant~~ - **DONE**, see above.
-3. **Fire TV D-pad.** Organisers explicitly want "voice, D-pad and visuals" blended.
-   The RN app has focus via `react-tv-space-navigation`; **unverified whether the
-   `/tv` web route is keyboard/D-pad navigable.** Check, and fix if not - it is the
-   same "no channel is required" argument.
+3. ~~Fire TV D-pad~~ - **DONE**, see above. It was not navigable at all.
 4. **Dismiss the two zombie proposals** (needs the user's go-ahead; changes what
    every visitor sees).
 

@@ -167,6 +167,14 @@ So **modality independence is an architectural invariant with a test on each hal
   `factors` - is present in the board's structured data, so voice can never become
   required and a deaf reader has full access.
 
+And the television answers the **remote**, which is the third channel: voice serves
+someone who cannot see, the screen serves someone who cannot hear, and neither
+serves someone who cannot easily **speak** - after a stroke, with advanced
+Parkinson's, or simply across a room from the Echo. A D-pad closes that gap. The
+navigation is a pure reducer (`sim-ui/src/lib/dpad.ts`) with its own tests, and OK
+never claims directly - **it asks who is taking this on**, because a remote in a
+living room carries no identity and this system never infers one.
+
 Neither channel is allowed to become load-bearing, and the build fails if one does.
 Polly's speech-rate control (75% / 90% / 100%) exists for older listeners, people with
 hearing loss, and anyone processing language after a stroke.

@@ -126,6 +126,13 @@ Cut to the television surface, across the room, a person glancing at it.
 
 **On screen:** `src/modality.test.ts - both directions asserted`
 
+**Pick up the remote on camera.** Arrow across to the ride, press OK - and the set
+asks *"who is taking this on?"*.
+
+> **VO:** "And the remote is the third channel. Voice doesn't help someone who can't
+> see. A screen doesn't help someone who can't hear. Neither helps someone who can't
+> easily speak. Notice what OK does **not** do - it doesn't guess who pressed it.
+
 > **VO, over a map pulling to West Africa:** "And where I'm from, this isn't a
 > convenience layer over a care system. Cameroon has fewer than fifty nursing-home
 > places for twenty-eight million people. The family **is** the care system - one
