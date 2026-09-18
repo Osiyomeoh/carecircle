@@ -120,6 +120,11 @@ export class CareStore {
     return this.#snapshot.households.length;
   }
 
+  /** Every member across every household. Used by the OAuth consent screen. */
+  allMembers(): Member[] {
+    return [...this.#snapshot.members];
+  }
+
   getMember(memberId: string): Member {
     const m = this.#snapshot.members.find((x) => x.id === memberId);
     if (!m) throw new NotFoundError('member', memberId);

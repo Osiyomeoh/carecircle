@@ -5,10 +5,11 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createCareCircleServer } from '../mcp/server.js';
 import type { CareStore } from '../store/store.js';
-import { staticTokens, BOOTSTRAP_PREFIX, type IdentityResolver } from './identity.js';
+import { staticTokens, firstOf, BOOTSTRAP_PREFIX, type IdentityResolver } from './identity.js';
 import { RecordOnlyNotifier, type Notifier } from '../notify/notifier.js';
 import { log } from '../obs/log.js';
 import { createRingWebhook } from './ring-webhook.js';
+import { OAuthProvider, oauthResolver } from './oauth.js';
 
 /**
  * Streamable HTTP transport (MCP spec 2025-11-25).
@@ -64,7 +65,14 @@ export interface AppOptions {
 export function createCareCircleApp({ store, identity, tokens, notifier, now, allowSelfSignup }: AppOptions): express.Express {
 // Runtime-provisioned members authenticate via the persisted identity map.
 const lookup = (subject: string): string | null => store.resolveIdentity(subject)?.memberId ?? null;
-const resolver = identity ?? staticTokens(tokens ?? new Map(), lookup, allowSelfSignup);
+const demoResolver = staticTokens(tokens ?? new Map(), lookup, allowSelfSignup);
+// An OAuth access token this server issued authenticates ahead of a demo token,
+// because it is the one we can actually verify.
+const oauthSecretForAuth = process.env['CARECIRCLE_OAUTH_SECRET'] ?? '';
+const resolver = identity
+  ?? (oauthSecretForAuth
+    ? firstOf(oauthResolver(oauthSecretForAuth, lookup), demoResolver)
+    : demoResolver);
 const messenger = notifier ?? new RecordOnlyNotifier();
 const app = express();
 
@@ -80,6 +88,26 @@ app.post(
 );
 
 app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+
+// --- OAuth 2.1 + PKCE -----------------------------------------------------
+// Enabled by setting a signing secret. Without one the endpoints are absent
+// rather than present-and-insecure: a half-configured auth server is worse than
+// no auth server, because it looks like protection.
+const oauthSecret = process.env['CARECIRCLE_OAUTH_SECRET'] ?? '';
+if (oauthSecret) {
+  const oauth = new OAuthProvider({
+    secret: oauthSecret,
+    issuer: (process.env['CARECIRCLE_PUBLIC_URL'] ?? 'http://localhost:8787').replace(/\/$/, ''),
+    members: () => store.allMembers().map((m) => ({ id: m.id, name: m.spokenAs ?? m.name })),
+    ...(now ? { now } : {}),
+  });
+  // RFC 9728 - how an MCP client finds the authorization server for this resource.
+  app.get('/.well-known/oauth-protected-resource', oauth.protectedResource);
+  app.get('/.well-known/oauth-authorization-server', oauth.metadata);
+  app.get('/oauth/authorize', oauth.authorize);
+  app.post('/oauth/token', oauth.token);
+}
 
 // One operational access line per request. Deliberately no body and no query: the
 // request carries PHI (medication names, notes) and it must never reach the logs.

@@ -79,6 +79,35 @@ export function staticTokens(
   };
 }
 
+/**
+ * Try each resolver in turn; the first to name a member wins.
+ *
+ * Used so a server with OAuth enabled still honours the demo tokens: a judge with a
+ * bearer token and Alexa+ with an issued access token reach the same care circle.
+ * Order matters - verified credentials are tried before opaque ones.
+ */
+export function firstOf(...resolvers: IdentityResolver[]): IdentityResolver {
+  const primary = resolvers[0];
+  if (!primary) throw new Error('firstOf needs at least one resolver.');
+  return {
+    strategy: primary.strategy,
+    resolve(req) {
+      for (const r of resolvers) {
+        const id = r.resolve(req);
+        if (id) return id;
+      }
+      return null;
+    },
+    principal(req) {
+      for (const r of resolvers) {
+        const p = r.principal(req);
+        if (p) return p;
+      }
+      return null;
+    },
+  };
+}
+
 /** Decode a JWT payload without verifying it. Only valid behind a trusted gateway. */
 function decodeClaims(token: string): Record<string, unknown> | null {
   const parts = token.split('.');
