@@ -49,6 +49,7 @@ else
     --service-role "$CB_ROLE_ARN" --region "$REGION" >/dev/null
 fi
 
+export REGION ECR_URI
 echo "==> Building image (this takes a few minutes)"
 BUILD_ID=$(aws codebuild start-build --project-name "$PROJECT" --region "$REGION" --query 'build.id' --output text)
 echo "    build: $BUILD_ID"
@@ -104,7 +105,42 @@ aws iam put-role-policy --role-name "$INST_ROLE" --policy-name inline --policy-d
 INST_ROLE_ARN=$(aws iam get-role --role-name "$INST_ROLE" --query Role.Arn --output text)
 
 echo "==> App Runner service"
-CONFIG="{\"ImageRepository\":{\"ImageIdentifier\":\"$ECR_URI:latest\",\"ImageRepositoryType\":\"ECR\",\"ImageConfiguration\":{\"Port\":\"8000\",\"RuntimeEnvironmentVariables\":{\"CARECIRCLE_TABLE\":\"${CARECIRCLE_TABLE:-carecircle}\",\"AWS_REGION\":\"$REGION\"}}},\"AutoDeploymentsEnabled\":false}"
+# Runtime configuration, including secrets.
+#
+# Secrets are read from the DEPLOYING SHELL's environment (source .env first) and
+# never appear in this file. They are passed as App Runner runtime variables, which
+# means they are readable by anyone with AWS console access to this account.
+#
+# Secrets Manager (RuntimeEnvironmentSecrets) would be the better home for these and
+# the code needs no change to use it - the blocker is that the deploying IAM user has
+# no secretsmanager permissions. If that is granted, move CARECIRCLE_OAUTH_SECRET and
+# RING_HMAC_KEY to secret ARNs here. For a demo household this is an acceptable
+# trade-off; for real medical data it is not.
+CONFIG=$(python3 - <<PYEOF
+import json, os
+env = {
+    "CARECIRCLE_TABLE": os.environ.get("CARECIRCLE_TABLE", "carecircle"),
+    "AWS_REGION": os.environ["REGION"],
+}
+for key in ("CARECIRCLE_OAUTH_SECRET", "CARECIRCLE_PUBLIC_URL", "RING_HMAC_KEY", "RING_HOUSEHOLD_ID"):
+    value = os.environ.get(key)
+    if value:
+        env[key] = value
+print(json.dumps({
+    "ImageRepository": {
+        "ImageIdentifier": os.environ["ECR_URI"] + ":latest",
+        "ImageRepositoryType": "ECR",
+        "ImageConfiguration": {"Port": "8000", "RuntimeEnvironmentVariables": env},
+    },
+    "AutoDeploymentsEnabled": False,
+}))
+PYEOF
+)
+# Say which optional settings are active, WITHOUT printing any of their values.
+for k in CARECIRCLE_OAUTH_SECRET RING_HMAC_KEY; do
+  eval "v=\${$k:-}"
+  if [ -n "$v" ]; then echo "    $k: set"; else echo "    $k: not set (feature stays off)"; fi
+done
 ARN=$(aws apprunner list-services --region "$REGION" --query "ServiceSummaryList[?ServiceName=='carecircle-mcp'].ServiceArn" --output text)
 if [ -n "$ARN" ]; then
   aws apprunner update-service --service-arn "$ARN" --source-configuration "{\"AuthenticationConfiguration\":{\"AccessRoleArn\":\"$AR_ROLE_ARN\"},$(echo "$CONFIG" | sed 's/^{//')" --region "$REGION" >/dev/null
