@@ -181,3 +181,41 @@ test('gap detection is deterministic for a fixed now', () => {
   });
   assert.deepEqual(detectCareGaps(state, { now: NOW }), detectCareGaps(state, { now: NOW }));
 });
+
+// --- speaking a date out loud --------------------------------------------
+
+/** NOW is Thursday 2026-10-15, 14:00 in New York. */
+function spokenFor(dueAt: string): string {
+  return detectCareGaps(
+    baseState({ obligations: [obligation({ dueAt })] }), { now: NOW },
+  )[0]!.spoken;
+}
+
+test('a bare weekday is never spoken on its own', () => {
+  // Said on a Friday, "Thursday" could be six days out or thirteen, and a person
+  // who mishears it misses a cardiology appointment.
+  const s = spokenFor('2026-10-20T14:00:00Z'); // the following Tuesday
+  assert.match(s, /Tuesday the 20th/);
+});
+
+test('today and tomorrow are said plainly, because they cannot be confused', () => {
+  assert.match(spokenFor('2026-10-15T22:00:00Z'), / today at /);
+  assert.match(spokenFor('2026-10-16T14:00:00Z'), / tomorrow at /);
+});
+
+test('further out, the month comes too', () => {
+  const s = spokenFor('2026-11-05T14:00:00Z');
+  assert.match(s, /Thursday November 5th/);
+});
+
+test('ordinals are spoken correctly, including the teens', () => {
+  assert.match(spokenFor('2026-11-11T14:00:00Z'), /November 11th/);
+  assert.match(spokenFor('2026-11-21T14:00:00Z'), /November 21st/);
+  assert.match(spokenFor('2026-11-22T14:00:00Z'), /November 22nd/);
+  assert.match(spokenFor('2026-11-23T14:00:00Z'), /November 23rd/);
+});
+
+test('an unparseable due date is dropped rather than spoken as gibberish', () => {
+  const s = spokenFor('not-a-date');
+  assert.ok(!/NaN|Invalid/.test(s));
+});

@@ -130,10 +130,30 @@ function severityFor(score: number): Severity {
   return 'LOW';
 }
 
-/** Natural-language due phrasing, so the model can speak it unchanged. */
+/** "24th", "1st", "2nd" - spoken ordinals, so a date can be read aloud. */
+function ordinal(day: number): string {
+  if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`;
+  switch (day % 10) {
+    case 1: return `${day}st`;
+    case 2: return `${day}nd`;
+    case 3: return `${day}rd`;
+    default: return `${day}th`;
+  }
+}
+
+/**
+ * Natural-language due phrasing, so the model can speak it unchanged.
+ *
+ * A bare weekday is the trap here. Said on a Friday, "Thursday" could be six days
+ * away or thirteen, and the listener has no way to tell - which is exactly the
+ * ambiguity that makes somebody miss a cardiology appointment. Only today and
+ * tomorrow are unambiguous enough to say on their own; everything else carries the
+ * date, because "Thursday the 24th" cannot be misheard as the wrong Thursday.
+ */
 function spokenDue(dueAt: string | undefined, timezone: string, now: Date): string {
   if (!dueAt) return '';
   const due = new Date(dueAt);
+  if (Number.isNaN(due.getTime())) return '';
   const dayFmt = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'long' });
   const timeFmt = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone, hour: 'numeric', minute: '2-digit', hour12: true,
@@ -142,12 +162,20 @@ function spokenDue(dueAt: string | undefined, timezone: string, now: Date): stri
   const today = localParts(now, timezone).date;
   const dueDate = localParts(due, timezone).date;
   if (dueDate === today) return ` today at ${time}`;
+
   const daysOut = (new Date(dueDate).getTime() - new Date(today).getTime()) / (24 * HOUR);
   if (daysOut === 1) return ` tomorrow at ${time}`;
-  if (daysOut > 1 && daysOut < 7) return ` ${dayFmt.format(due)} at ${time}`;
-  return ` on ${new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone, month: 'long', day: 'numeric',
-  }).format(due)} at ${time}`;
+  if (daysOut === -1) return ` yesterday at ${time}`;
+
+  const dayNum = Number(dueDate.slice(8, 10));
+  const monthFmt = new Intl.DateTimeFormat('en-US', { timeZone: timezone, month: 'long' });
+  // Inside the coming week the weekday is the useful part, but it still needs the
+  // date attached to be unambiguous.
+  if (daysOut > 1 && daysOut < 7) {
+    return ` ${dayFmt.format(due)} the ${ordinal(dayNum)} at ${time}`;
+  }
+  // Further out, lead with the date and keep the weekday for orientation.
+  return ` on ${dayFmt.format(due)} ${monthFmt.format(due)} ${ordinal(dayNum)} at ${time}`;
 }
 
 function unclaimedGap(o: Obligation, timezone: string, now: Date): CareGap {
