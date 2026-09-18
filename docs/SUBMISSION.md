@@ -84,7 +84,7 @@ different surfaces feed one shared responsibility system.
   on failed exchange, HS256 enforced. This is what lets Alexa+ link the add-on to a
   real person rather than a demo token.
 - **Amazon Polly and Amazon Transcribe** - identical voice on every judge's machine,
-  and a listener-chosen speech **pace** (75% / 80% / 100%), which is an accessibility
+  and a listener-chosen speech **pace** - speed and breath together - which is an accessibility
   requirement, not polish.
 
 **Adapter-ready (seam built, no live third-party wiring):**
@@ -176,7 +176,7 @@ never claims directly - **it asks who is taking this on**, because a remote in a
 living room carries no identity and this system never infers one.
 
 Neither channel is allowed to become load-bearing, and the build fails if one does.
-Polly's speech-rate control (75% / 80% / 100%) exists for older listeners, people with
+Polly's pace control - speed and pause length together - exists for older listeners, people with
 hearing loss, and anyone processing language after a stroke.
 
 ## What is creative here (the rubric's own examples, met)

@@ -32,21 +32,40 @@ function polly(): PollyClient {
 }
 
 /**
- * Speech rates we expose. `slow` exists for listeners, not for demos.
+ * The three paces we offer, as **speed and breath together**.
  *
- * `gentle` was 90% and produced audio **byte-identical** to 100% - the generative
- * engine quantizes `prosody rate` to its own internal steps and reports no error,
- * so a rate close to normal is silently dropped. 75% survived, 90% did not, which
- * puts the boundary somewhere between. 80% is chosen to sit clear of it.
+ * This started as rate alone and did not survive contact with Polly. The generative
+ * engine quantizes `prosody rate` to coarse internal steps and reports nothing: at
+ * 90% it returned audio byte-identical to 100%, and at 80% byte-identical to 75%.
+ * Three rates, two distinct renderings, no error either time. There is no percentage
+ * that produces a genuine middle speed.
  *
- * Verify a change here by synthesizing the same sentence at two rates and comparing
- * the bytes - the SSML being correct proves nothing, which is how this went unnoticed.
+ * So `gentle` is not a slightly slower voice - it is the same voice with **longer
+ * pauses between sentences**, which is closer to what the setting is for anyway.
+ * These sentences carry a date, a name and a responsibility; for an older listener,
+ * or someone processing language after a stroke, the room to finish parsing one
+ * sentence before the next arrives does more good than shaving 10% off the speed.
+ *
+ * Breaks are structural, so the engine honours them at any length.
+ *
+ * Verify a change here by synthesizing one sentence at each pace and comparing the
+ * BYTES. Asserting the SSML only proves we composed the request we intended to send,
+ * which is precisely how a dead accessibility control passed its tests.
  */
-export const RATES = { slow: '75%', gentle: '80%', normal: '100%' } as const;
-export type Rate = keyof typeof RATES;
+export const PACES = {
+  slow:   { rate: '75%',  breathMs: 900 },
+  gentle: { rate: '100%', breathMs: 600 },
+  normal: { rate: '100%', breathMs: 350 },
+} as const;
+
+/** Kept as a name because callers and docs speak of rates. */
+export const RATES = {
+  slow: PACES.slow.rate, gentle: PACES.gentle.rate, normal: PACES.normal.rate,
+} as const;
+export type Rate = keyof typeof PACES;
 
 export function isRate(value: unknown): value is Rate {
-  return typeof value === 'string' && value in RATES;
+  return typeof value === 'string' && value in PACES;
 }
 
 /** XML-escape, so a care note containing an ampersand cannot break the markup. */
@@ -63,9 +82,10 @@ function escapeXml(text: string): string {
  * name and a responsibility, and run together they are genuinely hard to follow.
  */
 export function toSsml(text: string, rate: Rate = 'normal'): string {
+  const pace = PACES[rate];
   const body = escapeXml(text.trim())
-    .replace(/([.!?])\s+/g, '$1<break time="350ms"/> ');
-  return `<speak><prosody rate="${RATES[rate]}">${body}</prosody></speak>`;
+    .replace(/([.!?])\s+/g, `$1<break time="${pace.breathMs}ms"/> `);
+  return `<speak><prosody rate="${pace.rate}">${body}</prosody></speak>`;
 }
 
 export interface Spoken {

@@ -539,10 +539,16 @@ Template:
   did nothing at all while every test passed.
 - **Severity:** major - an accessibility control that silently does nothing is worse
   than one that is absent, because nobody goes looking for it.
-- **Workaround:** Moved `gentle` to **80%**, clear of whatever boundary sits between
-  75% and 90%, and wrote the verification method into the code comment: compare the
-  *bytes* at two rates, because asserting the SSML proves only that we composed the
-  request correctly, which is exactly how this went unnoticed.
+- **Workaround:** First moved `gentle` to **80%** - which returned audio byte-identical
+  to **75%**. So the engine has coarse internal steps and there is no percentage that
+  yields a genuine middle speed: three rates, two distinct renderings, no error either
+  time. We redesigned pace as **speed *and* breath**: `gentle` is now the same speed
+  with longer pauses between sentences (600ms vs 350ms), which the engine honours at
+  any length because breaks are structural. That is arguably the better control anyway
+  - for a listener parsing a date, a name and a responsibility, room to finish one
+  sentence matters more than 10% off the speed. The verification method is now in the
+  code comment: compare the **bytes**, because asserting the SSML proves only that we
+  composed the request we intended to send.
 - **Suggestion:** Two things. (1) Document, per engine, which SSML tags are honoured
   and at what granularity - the SSML documentation is largely engine-agnostic, and
   `generative` is the engine Amazon steers you toward. (2) Return a warning field when
