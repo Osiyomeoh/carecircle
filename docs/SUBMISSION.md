@@ -65,7 +65,7 @@ different surfaces feed one shared responsibility system.
 - `ingest_signal` - the generic external-signal tool: any physical or wearable event becomes an `INFERRED` proposal a human must confirm. **This is the Ring and Bee seam, and it runs today.**
 - Ownership / claiming / assignment, purchase-in-place (`reorder_prescription` / `confirm_purchase`), multi-person identity, SNS notifications (record-only fallback), DynamoDB persistence, App Runner deployment.
 - The shared multi-device board (the simulator) - the same view a Fire TV would render.
-- **209 tests**, adversarial suite, CI.
+- **232 tests**, adversarial suite, CI.
 
 - **The delegation loop** - `request_owner` / `respond_to_request` / `get_my_requests`.
   `REQUESTED` is its own status and **carries no owner**: being asked is not having

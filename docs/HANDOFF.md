@@ -459,7 +459,7 @@ board and not touch it. The remote is the third channel.
 - `sim-ui/src/lib/dpad.ts` - navigation as a **pure reducer**, so "can you always get
   back out?" has a provable answer. Three modes: `ambient` (the clock) -> `browsing`
   (moving between gaps) -> `identifying` (who is taking this on).
-- `src/dpad.test.ts` - 10 tests in the main suite (**219 total**), including that
+- `src/dpad.test.ts` - 10 tests in the main suite (the suite now stands at **232**), including that
   every mode can be backed out of and that a gap list shrinking under the viewer
   never leaves focus past its end (the board polls every 4s; someone else can claim
   the focused gap mid-press).
@@ -485,6 +485,52 @@ Verified in-browser at 1600x900, locally and then **against the live `/tv`**: wa
 wrap, choose, and the failure path rendering honestly as *"Couldn't claim that:
 HTTP 500"* rather than a false success. The live check was deliberately backed out
 without claiming - the shared board is what every visitor sees.
+
+## DONE (2026-09-18): the microphone that had to be told to stop
+
+Found by testing the UI by hand rather than by reading it. Tapping **Speak** on
+the Transcribe path started recording and then just kept going: the turn only
+ended when you tapped **Stop**. Every test passed, because no test ever asked the
+question "does this end on its own?"
+
+That is a real accessibility defect, not a rough edge. The whole premise is that
+speech is the only channel some people have. A microphone that needs a second
+deliberate tap to release needs hands, aim and attention - the three things this
+surface exists to not require. Nobody talks to a kitchen Echo and then reaches
+over to end the sentence.
+
+**Fix.** `sim-ui/src/lib/endpoint.ts` decides when the speaker stopped, as a pure
+fold over `(elapsed, peak)`. Keeping it pure is the point: the thresholds are
+tested against a *script of a conversation* (`src/endpoint.test.ts`, 11 tests)
+rather than by talking at a laptop and hoping. It runs off the audio callbacks,
+not a timer, so it cannot fire while the stream is stalled and has nothing to
+judge, and it decides on the same peak the level meter draws - what the listener
+sees is what it acts on.
+
+**The thresholds err towards waiting, deliberately:**
+
+- `SILENCE_MS = 1500`. A brisk 700ms is a common default and is wrong here.
+  Someone recalling whether a dose was taken this morning pauses mid-sentence,
+  and 700ms sends half a question to Transcribe. There is a test that fails if
+  anyone tightens this below 1.2s.
+- Nothing is endpointed **before** speech is heard. An empty room stays open for
+  `PATIENCE_MS = 9000`, because somebody may still be getting to the mic.
+- `nothing` and `silence` are different endings and the caller treats them
+  differently - one discards the audio, the other sends it. Confusing them posts
+  an empty clip to Transcribe.
+- `MAX_MS = 45000` is a stuck-stream guard, not a turn limit.
+
+Manual Stop still works and still wins. Only the *requirement* is gone.
+
+**Verified in a real browser**, not only in unit tests: `getUserMedia` was stubbed
+with a synthetic tone that stops after 2s, and the page held through 0.8s of
+silence and released between 0.8s and 1.8s, then ran the full path to Transcribe
+and surfaced "I didn't catch that" for the tone. No console errors.
+
+**The lesson, again:** asserting the code we wrote proves we wrote it. This is
+the second dead accessibility control in one day found only by operating the
+product - the first was the Polly `gentle` pace that synthesised byte-identical
+audio to `normal`. Both passed every test. Drive the surfaces by hand.
 
 ## The deploy deleted secrets it was not given (2026-09-18)
 
