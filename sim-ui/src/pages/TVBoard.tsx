@@ -56,7 +56,7 @@ export default function TVBoard() {
   }, [top?.obligationId, top?.spoken, top?.severity]);
 
   return (
-    <div className="flex h-screen flex-col gap-7 bg-[radial-gradient(120%_100%_at_80%_0%,#0d1424_0%,#07090f_60%)] p-10 md:p-14 2xl:gap-6 2xl:px-16 2xl:py-10">
+    <div className="flex h-screen flex-col gap-7 bg-[radial-gradient(120%_100%_at_80%_0%,#0d1424_0%,#07090f_60%)] p-10 md:p-14 tv:px-[3.5vw] tv:py-[3vh] 2xl:gap-6 2xl:px-16 2xl:py-10">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4 2xl:gap-6">
           <span className="h-4 w-4 rounded-full bg-confirmed shadow-[0_0_22px_#7cf0c8] 2xl:h-6 2xl:w-6" />
@@ -123,7 +123,7 @@ export default function TVBoard() {
 function Card({ children, border, pill }: { children: React.ReactNode; border: string; pill: string }) {
   return (
     <div className={`glass animate-rise rounded-2xl border-l-[6px] p-6 md:p-7 2xl:rounded-3xl 2xl:p-6 ${border}`}>
-      <div className="float-right rounded-full border border-line px-3 py-1.5 text-[13px] uppercase tracking-wider text-muted 2xl:px-4 2xl:py-2 2xl:text-lg">{pill}</div>
+      <div className="float-right rounded-full border border-line px-3 py-1.5 text-[0.8125rem] uppercase tracking-wider text-muted 2xl:px-4 2xl:py-2 2xl:text-lg">{pill}</div>
       {children}
     </div>
   );

@@ -3,6 +3,8 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
+      // Living-room breakpoints, for the places a rem scale is not enough.
+      screens: { tv: '1920px', tv4k: '3200px' },
       colors: {
         bg: '#07090f',
         panel: 'rgba(18,22,33,0.72)',

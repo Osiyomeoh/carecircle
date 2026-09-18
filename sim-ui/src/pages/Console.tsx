@@ -179,7 +179,7 @@ export default function Console() {
             <span className="h-2.5 w-2.5 rounded-full bg-core shadow-[0_0_14px_#7cf0c8]" />
             <b className="text-ink">CareCircle</b><span className="text-sm">· console</span>
           </Link>
-          <div className={`glass flex items-center gap-2 rounded-full px-3 py-1.5 text-[12px] ${online ? 'text-muted' : 'text-sevHigh'}`}>
+          <div className={`glass flex items-center gap-2 rounded-full px-3 py-1.5 text-[0.75rem] ${online ? 'text-muted' : 'text-sevHigh'}`}>
             <span className={`h-2 w-2 rounded-full ${online ? 'bg-confirmed' : 'bg-sevHigh'} animate-beat`} />
             {online ? 'connected' : 'offline'}
           </div>
@@ -191,7 +191,7 @@ export default function Console() {
             <button key={m.id} onClick={() => setMember(m)}
               className={`rounded-xl border px-3 py-2 text-left transition ${member.id === m.id ? 'border-core/50 bg-core/10' : 'border-line glass hover:border-line'}`}>
               <div className="text-sm font-semibold text-ink">{m.label}</div>
-              <div className="text-[11px] text-muted">{m.sub}</div>
+              <div className="text-[0.6875rem] text-muted">{m.sub}</div>
             </button>
           ))}
         </div>
@@ -203,7 +203,7 @@ export default function Console() {
             <div className={`absolute inset-0 rounded-full ${listening ? 'animate-ping bg-alexa/20' : speaking ? 'animate-ping bg-core/20' : ''}`} />
             <div className={`h-16 w-16 rounded-full bg-gradient-to-br ${speaking ? 'from-core to-alexa' : 'from-alexa to-[#2f6fd0]'} shadow-glow`} />
           </div>
-          <div className="text-[13px] text-muted">
+          <div className="text-[0.8125rem] text-muted">
             {listening
               ? (accurate ? 'listening… tap Stop when you finish' : 'listening…')
               : speaking ? 'speaking…'
@@ -221,11 +221,11 @@ export default function Console() {
             </div>
           )}
           {voiceNote && (
-            <div className="max-w-sm rounded-lg border border-norecord/40 bg-norecord/10 px-3 py-2 text-center text-[12px] leading-relaxed text-norecord">
+            <div className="max-w-sm rounded-lg border border-norecord/40 bg-norecord/10 px-3 py-2 text-center text-[0.75rem] leading-relaxed text-norecord">
               {voiceNote}
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             <button disabled={!accurate && !SpeechRec} onClick={() => {
               if (accurate) {
                 void (listening ? finishAccurately() : listenAccurately());
@@ -241,14 +241,14 @@ export default function Console() {
               className={`rounded-lg px-4 py-2 text-sm font-medium transition ${listening ? 'bg-alexa text-[#04120d]' : 'glass text-ink'} disabled:opacity-40`}>
               {listening ? 'Stop' : '🎙 Speak'}
             </button>
-            <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-muted">
+            <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[0.75rem] text-muted">
               <input type="checkbox" checked={speakOn} onChange={(e) => setSpeakOn(e.target.checked)} /> speak replies
             </label>
-            <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-muted"
+            <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[0.75rem] text-muted"
               title="Amazon Transcribe, given this household's names as a custom vocabulary. Off uses the browser's own recogniser.">
               <input type="checkbox" checked={accurate} onChange={(e) => setAccurate(e.target.checked)} /> Transcribe
             </label>
-            <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-muted">
+            <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[0.75rem] text-muted">
               <input type="checkbox" checked={handsfree} onChange={(e) => setHandsfree(e.target.checked)} /> hands-free
             </label>
           </div>
@@ -258,12 +258,12 @@ export default function Console() {
         <div ref={scrollRef} className="glass flex-1 space-y-3 overflow-y-auto rounded-2xl p-4" style={{ minHeight: 220, maxHeight: 340 }}>
           {messages.length === 0 && <div className="p-6 text-center text-sm text-muted">Speak or type as {member.label}. Try “Did Mom take her heart pill?”</div>}
           {messages.map((m, i) => (
-            <div key={i} className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-[15px] leading-snug animate-rise ${
+            <div key={i} className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-[0.9375rem] leading-snug animate-rise ${
               m.who === 'me' ? 'ml-auto bg-alexa/15 text-ink' : m.who === 'err' ? 'bg-sevHigh/15 text-sevHigh' : 'bg-white/5 text-ink'}`}>
-              {m.tag && <div className="mb-0.5 text-[11px] uppercase tracking-wider text-muted">{m.tag}</div>}
+              {m.tag && <div className="mb-0.5 text-[0.6875rem] uppercase tracking-wider text-muted">{m.tag}</div>}
               {m.text}
               {m.heard && (
-                <div className="mt-1.5 border-t border-line pt-1.5 text-[11px] text-muted">
+                <div className="mt-1.5 border-t border-line pt-1.5 text-[0.6875rem] text-muted">
                   heard as {m.heard}
                 </div>
               )}
@@ -302,7 +302,7 @@ export default function Console() {
             <BoardCard key={o.offerId} accent="border-l-alexa" pill="ready to buy">
               <div className="text-lg font-semibold">{o.item}</div>
               <div className="mt-1.5 text-sm text-[#c3cad9]">{o.merchant} · {o.etaText} · <b className="text-ink">${(o.amountCents / 100).toFixed(2)}</b></div>
-              <div className="mt-2 text-[12px] text-muted">Sandbox - no real payment is taken.</div>
+              <div className="mt-2 text-[0.75rem] text-muted">Sandbox - no real payment is taken.</div>
               <div className="mt-3 flex items-center gap-2">
                 <button onClick={() => act('confirm_purchase', { offerId: o.offerId, confirmed: true })} className="btn-primary">Confirm · ${(o.amountCents / 100).toFixed(2)}</button>
                 <button onClick={() => act('confirm_purchase', { offerId: o.offerId, confirmed: false })} className="btn-ghost">Not now</button>
@@ -339,10 +339,10 @@ export default function Console() {
 
           {calls.length > 0 && (
             <div className="glass mt-2 rounded-2xl p-4">
-              <div className="mb-2 text-[11px] uppercase tracking-wider text-muted">Tool calls (real MCP)</div>
+              <div className="mb-2 text-[0.6875rem] uppercase tracking-wider text-muted">Tool calls (real MCP)</div>
               <div className="space-y-1.5">
                 {calls.map((c, i) => (
-                  <div key={i} className={`flex items-center gap-2 text-[12px] ${c.isError ? 'text-sevHigh' : 'text-muted'}`}>
+                  <div key={i} className={`flex items-center gap-2 text-[0.75rem] ${c.isError ? 'text-sevHigh' : 'text-muted'}`}>
                     <span className="w-12 text-right tabular-nums">{c.ms}ms</span>
                     <span className="font-semibold text-ink">{c.name}</span>
                     <span className="truncate">{JSON.stringify(c.arguments)}</span>
@@ -360,7 +360,7 @@ export default function Console() {
 function BoardCard({ children, accent, pill }: { children: React.ReactNode; accent: string; pill: string }) {
   return (
     <div className={`glass animate-rise rounded-2xl border-l-[5px] p-4 ${accent}`}>
-      <div className="float-right rounded-full border border-line px-2.5 py-1 text-[11px] uppercase tracking-wider text-muted">{pill}</div>
+      <div className="float-right rounded-full border border-line px-2.5 py-1 text-[0.6875rem] uppercase tracking-wider text-muted">{pill}</div>
       {children}
     </div>
   );
