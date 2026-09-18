@@ -59,11 +59,18 @@ layer can produce; no single device could.
 - **Mini challenges: AWS Builder + Open Source.** Both qualify (Bedrock/DynamoDB/App
   Runner/SNS documented; `@carecircle/care-events` MIT package). A project can **win
   only one mini prize**, but entering both is allowed.
-- **Ring and Bee are NOT enterable - this is a hard rule, not a choice.** To enter Ring
-  you must show it working through a Ring simulator/device; to enter Bee you must show
-  live Bee data in code + video. We do neither. `ingest_signal` is a **generic seam**,
-  not a Ring API call or live Bee feed. So Ring/Bee stay framed as *architecturally-
-  ready adapter seams*, never as track entries or live integrations.
+- **Ring IS enterable (corrected 2026-09-18).** The official rules say: *"Build a new
+  app or extend an existing one using Ring APIs, SDKs, simulators, or devices"*,
+  *"A physical Ring device is not required"*, and *"Show your project working through
+  a simulator or an actual Ring device."* Ring's named priority categories include
+  **accessibility and caretaking** - i.e. this product. An earlier note here called
+  Ring un-enterable; that was wrong and cost us time. We now run a real verified
+  webhook (see below).
+  NOTE: Ring's OWN staging environment tests against real hardware ("Verify API
+  integration with real Ring devices"), so the simulator is ours. The rules permit it.
+- **Bee is still NOT enterable.** It requires *"real data recorded and processed
+  through a Bee device or an Apple Watch running Bee software"*. We have neither, so
+  Bee stays an architecturally-ready seam and is never claimed as an integration.
 - **Fire TV** is not entered either; the web board is the presentation surface, no
   Fire-TV-specific app.
 
@@ -99,7 +106,7 @@ trust/provenance model, `ingest_signal` (the real
 Ring/Bee seam - any external signal → INFERRED proposal), ownership/claiming,
 purchase-in-place (`reorder_prescription` / `confirm_purchase`), SNS notifications
 (record-only fallback), DynamoDB persistence, App Runner deploy, the multi-device web
-board (simulator), **the Care Board as an MCP App (SEP-1865)**, 163 tests +
+board (simulator), **the Care Board as an MCP App (SEP-1865)**, 174 tests +
 adversarial suite + CI.
 
 **Adapter-ready (seam only, no live third-party wiring):** Ring → `ingest_signal`
@@ -321,6 +328,53 @@ falls back to the browser voice: a downgrade, never a silence.
 `polly:SynthesizeSpeech` on the instance role (in `deploy-mcp.sh`). Note the
 `conductor` *user* lacks Polly, so it cannot be tested from the CLI - verify
 against the deployed service.
+
+## DONE (2026-09-18): Ring, on a real verified webhook
+
+`POST /ring/webhook` (`src/http/ring-webhook.ts`), implementing Ring's published
+Partner API contract - **verified against Amazon's own Ring docs**: HMAC-SHA256
+over the raw body in `X-Signature`, idempotency on `meta.request_id`, HTTP 200
+within five seconds, event types `motion_detected` / `button_press`.
+
+**Mounted BEFORE `express.json` and reads raw bytes.** An HMAC is computed over
+exactly what was sent; parse-then-restringify reorders keys and whitespace and the
+signature stops matching. This is the single easiest way to get a webhook subtly
+wrong.
+
+Three refusals, all load-bearing because this is a **public, unauthenticated URL
+that writes into a family's medical record**:
+- an unsigned or wrongly-signed body is rejected *before parsing* (401);
+- a redelivery is acknowledged but not acted on twice - `SeenEvents` is bounded,
+  since an unbounded set on a public endpoint is a way to be run out of memory;
+- an event we do not act on still returns 200, or Ring retries it forever.
+
+`applySignal` (`src/domain/ingest.ts`) is now shared by the webhook and the
+`ingest_signal` tool, so a doorbell and a person describing a doorbell travel
+identical code. A Ring event becomes an **INFERRED proposal**; a test asserts no
+sensor ever resolves an obligation.
+
+**The simulator** (`src/demo/ring-simulate.ts`, `npm run ring:simulate -- --url
+<webhook> --event package`) signs with the **real partner HMAC key from .env**, so
+what is simulated is the device and what is exercised is the integration.
+
+Verified locally end to end: signed package -> `200 accepted`, `delivery_arrived`,
+naming an existing obligation as `resolvesCandidate` *without* resolving it;
+redelivery -> `200 duplicate`; unsigned -> `401`; obligations resolved by sensor: 0.
+
+**Env:** `RING_HMAC_KEY` (in gitignored `.env`), `RING_HOUSEHOLD_ID` (default
+`h_margaret`). Without the key the endpoint returns 503 rather than accepting
+unverifiable claims about someone's home.
+
+**Open uncertainty worth a friction-log entry:** our adapter reads a package
+delivery from `attributes.sub_type` matching /package|delivery/, but Amazon's docs
+describe `sub_type` as a classification (`human`, and by implication animal /
+vehicle). Whether `package` is a real Ring sub_type is **unconfirmed** - the full
+payload nesting is not published. Do not claim delivery detection as verified
+against real Ring traffic.
+
+**Still to do for the Ring track:** register the webhook URL in the Ring Developer
+Portal (Staging tab, HTTPS, must return 200), and show the simulator driving the
+live endpoint in the demo video.
 
 ## Front-end (judge-facing UI) - React + Vite + Tailwind + R3F
 
