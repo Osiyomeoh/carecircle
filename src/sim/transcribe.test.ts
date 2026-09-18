@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
-import { frames, hasEnoughAudio, unhyphenate, vocabularyPhrases, SAMPLE_RATE } from './transcribe.ts';
+import { frames, hasEnoughAudio, signature, unhyphenate, vocabularyPhrases, SAMPLE_RATE } from './transcribe.ts';
 
 /**
  * The parts worth testing without calling AWS: how audio is cut up, and how a
@@ -45,4 +45,14 @@ test('hyphenated names come back as they are spoken', () => {
 
 test('single-word names are left alone by unhyphenation', () => {
   assert.equal(unhyphenate('Renee is driving', ['Renee']), 'Renee is driving');
+});
+
+test('a reordered vocabulary is not treated as a change', () => {
+  // Rebuilding on every restart would leave the vocabulary PENDING - and so
+  // unusable - for a minute each time, for no reason.
+  assert.equal(signature(['Renee', 'David']), signature(['David', 'renee']));
+});
+
+test('a household that gained a member is a change', () => {
+  assert.notEqual(signature(['Renee', 'David']), signature(['Renee', 'David', 'Tasha']));
 });

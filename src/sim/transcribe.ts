@@ -82,6 +82,23 @@ export function unhyphenate(text: string, terms: string[]): string {
   return out;
 }
 
+/** The phrases Amazon is currently holding, once we have established them. */
+let applied: string | undefined;
+
+/** Order-independent fingerprint, so a reordered vocabulary is not a change. */
+export function signature(phrases: string[]): string {
+  return [...phrases].map((p) => p.toLowerCase()).sort().join('\u0000');
+}
+
+/** Read back what Amazon actually has, so we can tell whether it is current. */
+async function phrasesOf(downloadUri?: string): Promise<string | undefined> {
+  if (!downloadUri) return undefined;
+  try {
+    const body = await (await fetch(downloadUri)).text();
+    return signature(body.split(/\r?\n/).map((l) => l.trim()).filter(Boolean));
+  } catch { return undefined; }
+}
+
 /**
  * Make sure Transcribe knows this household's names.
  *
@@ -94,16 +111,32 @@ export function unhyphenate(text: string, terms: string[]): string {
 export async function ensureVocabulary(terms: string[]): Promise<string | undefined> {
   const phrases = vocabularyPhrases(terms);
   if (phrases.length === 0) return undefined;
+  const wanted = signature(phrases);
 
   try {
     const existing = await controlClient().send(
       new GetVocabularyCommand({ VocabularyName: VOCABULARY_NAME }),
     );
-    if (existing.VocabularyState === 'READY') return VOCABULARY_NAME;
+
+    if (existing.VocabularyState === 'READY') {
+      // A vocabulary that no longer matches the household is worse than useless:
+      // it silently keeps steering transcripts toward names that have changed.
+      // On the first call in a process we do not know what Amazon is holding, so
+      // read it back once rather than assuming it is current.
+      applied ??= await phrasesOf(existing.DownloadUri);
+      if (applied === wanted) return VOCABULARY_NAME;
+      await controlClient().send(new UpdateVocabularyCommand({
+        VocabularyName: VOCABULARY_NAME, LanguageCode: 'en-US', Phrases: phrases,
+      }));
+      applied = wanted;
+      return undefined; // rebuilding - go without it for a moment
+    }
+
     if (existing.VocabularyState === 'FAILED') {
       await controlClient().send(new UpdateVocabularyCommand({
         VocabularyName: VOCABULARY_NAME, LanguageCode: 'en-US', Phrases: phrases,
       }));
+      applied = wanted;
     }
     return undefined; // PENDING - use it next time
   } catch (err) {
@@ -112,6 +145,7 @@ export async function ensureVocabulary(terms: string[]): Promise<string | undefi
     await controlClient().send(new CreateVocabularyCommand({
       VocabularyName: VOCABULARY_NAME, LanguageCode: 'en-US', Phrases: phrases,
     })).catch(() => undefined);
+    applied = wanted;
     return undefined;
   }
 }
