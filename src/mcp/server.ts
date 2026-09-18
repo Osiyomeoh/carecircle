@@ -8,6 +8,7 @@ import { implausible, toInstant } from '../domain/time.js';
 import { interpretSignal, type CareSignal } from '../domain/signals.js';
 import { offerFor, offerSpoken, formatPrice, type OfferKind, type PurchaseOffer } from '../domain/commerce.js';
 import { can, canActOn, NotPermittedError, require as requireCap } from '../domain/auth.js';
+import { attributionOf, isReported, sayWhoSaysSo } from '../domain/attribution.js';
 import { bootstrapSubject } from '../http/identity.js';
 import { CareStore, HouseholdScopeError, NotFoundError } from '../store/store.js';
 import { CARE_BOARD_HTML } from './app/care-board.js';
@@ -735,9 +736,16 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       const proposals = pendingProposals(s);
 
       const parts: string[] = [];
+      // Who logged a dose is part of what the record says, not metadata about it.
+      // A bare count silently upgrades "the aide says you took it" into "you took
+      // it", which is the accusation rule failing in the opposite direction.
+      const proxied = meds.filter(isReported);
       parts.push(meds.length > 0
         ? sentence(`${countPhrase(meds.length, 'medication')} logged today.`)
         : 'Nothing logged for medications today yet.');
+      for (const e of proxied.slice(0, 2)) {
+        parts.push(sentence(`${sayWhoSaysSo(attributionOf(e), (id) => nameOf(id) ?? null)}.`));
+      }
       for (const n of notes.slice(0, 2)) {
         parts.push(`${nameOf(n.reportedBy) ?? 'Someone'} noted: ${n.detail}`);
       }
@@ -747,6 +755,12 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       }
       return reply(parts.join(' '), {
         medicationsLogged: meds.length,
+        medications: meds.map((e) => ({
+          eventId: e.id,
+          medicationId: e.data['medicationId'] ?? null,
+          at: e.occurredAt,
+          attribution: attributionOf(e),
+        })),
         notes: notes.map((n) => ({ by: nameOf(n.reportedBy), text: n.detail })),
         gaps: gaps.map((g) => ({ severity: g.severity, spoken: g.spoken })),
         pendingProposals: proposals.map((p) => ({ id: p.id, what: p.what })),
@@ -1165,6 +1179,17 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
             owner: nameOf(o.ownerId) ?? null, dueAt: o.dueAt ?? null,
             provenance: o.provenance.kind,
           })),
+          // Doses recorded today, each carrying who says so. A surface that draws
+          // this must not flatten a proxy record into the subject's own word.
+          doses: s.events
+            .filter((e) => e.kind === 'medication_taken'
+              && e.occurredAt.slice(0, 10) === now().toISOString().slice(0, 10))
+            .map((e) => ({
+              medicationId: e.data['medicationId'] ?? null,
+              at: e.occurredAt,
+              attribution: attributionOf(e),
+              saidBy: nameOf(e.reportedBy) ?? null,
+            })),
           gaps: detectCareGaps(s, { now: now() }),
           // Purchase offers still awaiting a decision - the in-place buy moment.
           offers: (() => {
