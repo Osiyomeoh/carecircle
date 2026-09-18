@@ -139,6 +139,10 @@ env = json.loads(os.environ.get("EXISTING_ENV") or "{}") or {}
 env.update({
     "CARECIRCLE_TABLE": os.environ.get("CARECIRCLE_TABLE", "carecircle"),
     "AWS_REGION": os.environ["REGION"],
+    # The agent's heartbeat. Every 15 minutes it lets the policy look at every
+    # household and ask, once, about slipping work. The policy owns all restraint
+    # (quiet hours, fatigue); this only sets how often it gets the chance.
+    "CARECIRCLE_AGENT_INTERVAL_MS": os.environ.get("CARECIRCLE_AGENT_INTERVAL_MS", "900000"),
 })
 for key in ("CARECIRCLE_OAUTH_SECRET", "CARECIRCLE_PUBLIC_URL", "CARECIRCLE_OAUTH_REDIRECTS", "RING_HMAC_KEY", "RING_HOUSEHOLD_ID"):
     value = os.environ.get(key)
