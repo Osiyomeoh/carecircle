@@ -480,8 +480,25 @@ mapped. Every recognised key calls `preventDefault`. Focus is never carried by a
 glow alone: the focused card also reads **"> Selected - 2 of 3"**, because at ten
 feet, and for a colour-blind viewer, the word is what communicates.
 
-Verified in-browser at 1600x900: wake, wrap, choose, claim, and the failure path
-rendering honestly as *"Couldn't claim that: HTTP 500"* rather than a false success.
+Verified in-browser at 1600x900, locally and then **against the live `/tv`**: wake,
+wrap, choose, and the failure path rendering honestly as *"Couldn't claim that:
+HTTP 500"* rather than a false success. The live check was deliberately backed out
+without claiming - the shared board is what every visitor sees.
+
+## The deploy deleted secrets it was not given (2026-09-18)
+
+Worth reading before the next deploy. `update-service` **replaces** the whole
+`RuntimeEnvironmentVariables` map instead of merging into it. A deploy run from a
+shell that had not sourced `.env` therefore removed `CARECIRCLE_OAUTH_SECRET` and
+`RING_HMAC_KEY` from the running service. The build succeeded, the image was
+correct, the script printed "not set (feature stays off)" - and account linking
+would simply have stopped working.
+
+`deploy-mcp.sh` now reads the service's current environment first and treats it as
+the floor, so an unset variable is a variable **left alone**, and the summary line
+distinguishes "set from this shell" from "kept from the running service (not in
+this shell - did you source .env?)". Restored and re-verified: `identity: "jwt"`,
+OAuth discovery 200, Ring unsigned 401 (503 would mean the key was missing).
 
 ## Front-end (judge-facing UI) - React + Vite + Tailwind + R3F
 

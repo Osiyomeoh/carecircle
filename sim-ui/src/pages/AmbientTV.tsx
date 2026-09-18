@@ -97,7 +97,14 @@ export default function AmbientTV() {
 
       const gap = gapsRef.current[step.nav.gap];
       const member = CHOOSERS[navRef.current.member];
-      if (!gap?.obligationId || !member) return;
+      if (!member) return;
+      if (!gap?.obligationId) {
+        // A gap with no obligation behind it is real (a medication with no record
+        // is a gap, not a task) but there is nothing to claim. Say so, rather than
+        // swallowing the press and looking broken.
+        setClaimed('There is nothing to take on for that one.');
+        return;
+      }
       // Nothing about this is special-cased for the television: it is the same
       // claim_obligation the voice path calls, under the same identity rules.
       setClaiming(`${member.label} is taking it on…`);
