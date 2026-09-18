@@ -116,12 +116,30 @@ echo "==> App Runner service"
 # no secretsmanager permissions. If that is granted, move CARECIRCLE_OAUTH_SECRET and
 # RING_HMAC_KEY to secret ARNs here. For a demo household this is an acceptable
 # trade-off; for real medical data it is not.
+#
+# update-service REPLACES the whole environment map rather than merging into it, so a
+# deploy run from a shell that never sourced .env silently DELETES the OAuth and Ring
+# secrets from a running service. The deploy reports success, the image is fine, and
+# account linking simply stops working. That happened on 2026-09-18. So: read what the
+# service already has and treat it as the floor, with the deploying shell overriding.
+EXISTING_ARN=$(aws apprunner list-services --region "$REGION" \
+  --query "ServiceSummaryList[?ServiceName=='carecircle-mcp'].ServiceArn" --output text)
+EXISTING_ENV='{}'
+if [ -n "$EXISTING_ARN" ] && [ "$EXISTING_ARN" != "None" ]; then
+  EXISTING_ENV=$(aws apprunner describe-service --service-arn "$EXISTING_ARN" --region "$REGION" \
+    --query 'Service.SourceConfiguration.ImageRepository.ImageConfiguration.RuntimeEnvironmentVariables' \
+    --output json)
+fi
+export EXISTING_ENV
+
 CONFIG=$(python3 - <<PYEOF
 import json, os
-env = {
+# Start from what is already deployed, so an unset variable is a variable left alone.
+env = json.loads(os.environ.get("EXISTING_ENV") or "{}") or {}
+env.update({
     "CARECIRCLE_TABLE": os.environ.get("CARECIRCLE_TABLE", "carecircle"),
     "AWS_REGION": os.environ["REGION"],
-}
+})
 for key in ("CARECIRCLE_OAUTH_SECRET", "CARECIRCLE_PUBLIC_URL", "CARECIRCLE_OAUTH_REDIRECTS", "RING_HMAC_KEY", "RING_HOUSEHOLD_ID"):
     value = os.environ.get(key)
     if value:
@@ -136,10 +154,16 @@ print(json.dumps({
 }))
 PYEOF
 )
-# Say which optional settings are active, WITHOUT printing any of their values.
+# Say where each optional setting came from, WITHOUT printing any of their values.
 for k in CARECIRCLE_OAUTH_SECRET RING_HMAC_KEY; do
   eval "v=\${$k:-}"
-  if [ -n "$v" ]; then echo "    $k: set"; else echo "    $k: not set (feature stays off)"; fi
+  if [ -n "$v" ]; then
+    echo "    $k: set from this shell"
+  elif echo "$CONFIG" | grep -q "\"$k\""; then
+    echo "    $k: kept from the running service (not in this shell - did you source .env?)"
+  else
+    echo "    $k: not set (feature stays off)"
+  fi
 done
 ARN=$(aws apprunner list-services --region "$REGION" --query "ServiceSummaryList[?ServiceName=='carecircle-mcp'].ServiceArn" --output text)
 if [ -n "$ARN" ]; then
