@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { detectCareGaps, pendingProposals } from '../domain/gaps.js';
 import { orphanedBy, proposeFromAppointment } from '../domain/inference.js';
+import { candidatesFor } from '../domain/delegation.js';
 import { interpretSignal, type CareSignal } from '../domain/signals.js';
 import { offerFor, offerSpoken, formatPrice, type OfferKind, type PurchaseOffer } from '../domain/commerce.js';
 import { can, canActOn, NotPermittedError, require as requireCap } from '../domain/auth.js';
@@ -410,6 +411,220 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       return reply(`Done - ${o.what} is assigned to ${who}.`, {
         obligationId: updated.id, ownerId: assignee.id,
       });
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
+  // --- 6b. "Ask David if he can take her." -------------------------------
+  //
+  // The delegation loop. This is the difference between a system that *reports*
+  // a Care Gap and one that *pursues* it. Asking deliberately does not move
+  // ownership: the obligation goes to REQUESTED, ownerId stays null, and it keeps
+  // showing up as a gap until a human actually says yes.
+  server.registerTool('request_owner', {
+    title: 'Ask someone to take a piece of work on',
+    description:
+      'Ask a member of the care circle whether they will take something on - "ask David if '
+      + 'he can drive her", "see if Renee can pick up the prescription", "can someone take '
+      + 'Thursday?", "who can do this?". This ASKS; it does not assign. They still have to '
+      + 'say yes, and the work stays unowned until they do. If no name is given, leave '
+      + 'assigneeName empty and this picks who to ask and explains why. Use assign_obligation '
+      + 'only when the primary caregiver is putting it on someone\'s name outright, and '
+      + 'claim_obligation when the speaker is taking it themselves.',
+    inputSchema: {
+      obligationId: z.string().describe('Which piece of work. From get_care_gaps.'),
+      assigneeName: z.string().optional()
+        .describe('Who to ask, as the speaker named them. Omit to let CareCircle suggest someone.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  }, async ({ obligationId, assigneeName }) => {
+    try {
+      const me = actor();
+      requireCap(me, 'request_owner');
+      const s = state();
+      const o = store.getObligation(obligationId, me.householdId);
+      if (o.status === 'PROPOSED') {
+        return guidance(
+          `"${o.what}" hasn't been confirmed as actually needed yet. Confirm it first with `
+          + 'confirm_proposal, then ask someone to take it.',
+        );
+      }
+      if (o.status === 'ASSIGNED' && o.ownerId) {
+        return guidance(
+          `${nameOf(o.ownerId)} already has "${o.what}". Ask whether they want to hand it over.`,
+        );
+      }
+
+      const ranked = candidatesFor(o, s, { askerId: me.id });
+      let target = ranked[0];
+      if (assigneeName) {
+        const named = store.findMemberByName(me.householdId, assigneeName);
+        if (!named) {
+          const others = s.members.filter((m) => m.id !== me.id).map((m) => m.spokenAs ?? m.name);
+          return guidance(
+            `There's nobody called "${assigneeName}" in this care circle. `
+            + `The people here are ${joinSpoken(others)}. Ask which one they meant.`,
+          );
+        }
+        if ((o.declinedBy ?? []).includes(named.id)) {
+          const next = ranked[0];
+          return guidance(
+            `${named.spokenAs ?? named.name} has already said no to "${o.what}". `
+            + (next
+              ? `${next.name} ${next.because} - shall I ask them instead?`
+              : 'There is nobody else left to ask. It may need the primary caregiver.'),
+          );
+        }
+        target = {
+          memberId: named.id,
+          name: named.spokenAs ?? named.name,
+          because: '',
+          load: 0,
+        };
+      }
+
+      if (!target) {
+        return guidance(
+          `There's nobody left to ask about "${o.what}" - everyone has either declined or `
+          + 'said they are not available then. This may need the primary caregiver to step in.',
+        );
+      }
+
+      const updated = await store.transition(
+        obligationId, me.householdId, 'REQUESTED', me.id,
+        { ownerId: null, request: { askedOfId: target.memberId, askedById: me.id, askedAt: now().toISOString() } },
+        `Asked ${target.name}`,
+      );
+      const delivery = await notifier.deliver({
+        to: target.memberId, toName: target.name, from: me.spokenAs ?? me.name,
+        message: `${me.spokenAs ?? me.name} asked: can you take "${o.what}"?`,
+      });
+      await store.appendEvent({
+        householdId: me.householdId,
+        kind: 'owner_requested',
+        reportedBy: me.id,
+        occurredAt: now().toISOString(),
+        detail: o.what,
+        data: { obligationId, askedOfId: target.memberId, delivered: delivery.delivered },
+      });
+
+      // Say what is true: they were asked, and nobody owns it yet.
+      const suggested = !assigneeName && target.because
+        ? ` I picked ${target.name} because they're the one who ${target.because}.` : '';
+      return reply(
+        `I've asked ${target.name} whether they can take ${o.what}.${suggested} `
+        + "It stays unowned until they say yes.",
+        { obligationId: updated.id, askedOfId: target.memberId, status: 'REQUESTED' },
+      );
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
+  // --- 6c. "Yes, I'll do it." / "No, I can't." ---------------------------
+  server.registerTool('respond_to_request', {
+    title: 'Answer a request to take something on',
+    description:
+      'The speaker answers something they were asked to take on - "yes, I\'ll do it", '
+      + '"I can take that", "no, I can\'t", "sorry, not this week". Accepting makes them the '
+      + 'owner. Declining puts it back with no owner, records that they said no, and suggests '
+      + 'who to ask next - a decline is an answer, not a failure.',
+    inputSchema: {
+      obligationId: z.string().describe('Which request they are answering.'),
+      accepted: z.boolean().describe('True if they said yes, false if they said no.'),
+      note: z.string().optional().describe('Anything they said about why, in their words.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+  }, async ({ obligationId, accepted, note }) => {
+    try {
+      const me = actor();
+      const o = store.getObligation(obligationId, me.householdId);
+      if (o.status !== 'REQUESTED' || !o.request) {
+        return guidance(
+          `Nobody has an outstanding request for "${o.what}". `
+          + 'If the speaker wants it, they can take it on with claim_obligation.',
+        );
+      }
+      // Only the person asked can answer. Anyone else "accepting" on their behalf
+      // would be the system inventing an agreement that was never given.
+      if (o.request.askedOfId !== me.id) {
+        return guidance(
+          `That was asked of ${nameOf(o.request.askedOfId)}, so it's theirs to answer. `
+          + 'The speaker can take it on themselves instead if they want it.',
+        );
+      }
+
+      if (accepted) {
+        await store.transition(
+          obligationId, me.householdId, 'ASSIGNED', me.id,
+          { ownerId: me.id, clearRequest: true }, note,
+        );
+        await store.appendEvent({
+          householdId: me.householdId, kind: 'request_answered', reportedBy: me.id,
+          occurredAt: now().toISOString(), ...(note ? { detail: note } : {}),
+          data: { obligationId, accepted: true },
+        });
+        return reply(`Thanks - ${o.what} is yours now.`, {
+          obligationId, ownerId: me.id, status: 'ASSIGNED',
+        });
+      }
+
+      const declinedBy = [...(o.declinedBy ?? []), me.id];
+      await store.transition(
+        obligationId, me.householdId, 'OPEN', me.id,
+        { ownerId: null, clearRequest: true, declinedBy }, note,
+      );
+      await store.appendEvent({
+        householdId: me.householdId, kind: 'request_answered', reportedBy: me.id,
+        occurredAt: now().toISOString(), ...(note ? { detail: note } : {}),
+        data: { obligationId, accepted: false },
+      });
+      // A decline should move the loop forward, not dead-end it.
+      const next = candidatesFor(
+        { ...o, declinedBy, ownerId: null }, state(), { askerId: me.id },
+      )[0];
+      return reply(
+        `That's noted - ${o.what} is back with no owner. `
+        + (next
+          ? `${next.name} ${next.because}. Shall I ask them?`
+          : 'There is nobody else left to ask, so the primary caregiver may need to step in.'),
+        { obligationId, status: 'OPEN', declined: true, nextCandidate: next?.name ?? null },
+      );
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
+  // --- 6d. "What have I been asked to do?" -------------------------------
+  server.registerTool('get_my_requests', {
+    title: 'What the speaker has been asked to take on',
+    description:
+      'Everything the speaker has been asked to take on and has not answered yet - "what do '
+      + 'I have for Mom?", "did anyone ask me to do anything?", "what am I down for?", "what '
+      + 'was I asked?". Read-only. Use this before respond_to_request when you do not know '
+      + 'which request they mean.',
+    inputSchema: {},
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async () => {
+    try {
+      const me = actor();
+      requireCap(me, 'read_shift');
+      const mine = state().obligations.filter(
+        (o) => o.status === 'REQUESTED' && o.request?.askedOfId === me.id,
+      );
+      if (mine.length === 0) {
+        return reply('Nobody is waiting on an answer from you right now.', { requests: [] });
+      }
+      const lines = mine.map((o) => {
+        const who = nameOf(o.request!.askedById) ?? 'Someone';
+        return `${who} asked you to take ${o.what}`;
+      });
+      return reply(
+        `${joinSpoken(lines)}. You haven't answered yet.`,
+        {
+          requests: mine.map((o) => ({
+            obligationId: o.id, what: o.what,
+            askedBy: nameOf(o.request!.askedById) ?? null,
+            askedAt: o.request!.askedAt,
+            dueAt: o.dueAt ?? null,
+          })),
+        },
+      );
     } catch (err) { return guidance(describeError(err)); }
   });
 

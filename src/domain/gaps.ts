@@ -43,6 +43,7 @@ const HARM_COST: Record<ConsequenceClass, number> = {
 const TAU_DEADLINE = 48; // how fast drop-risk rises as a due time approaches
 const TAU_STALE = 72;    // how fast unowned work accrues risk purely by aging
 const TAU_DOSE = 240;    // how fast an unlogged dose looks truly missed (minutes)
+const TAU_REPLY = 12;    // how fast an unanswered request stops counting for anything
 
 /**
  * Confidence(the gap is real), a Bayesian posterior in (0,1]. This is the trust
@@ -171,6 +172,42 @@ function unclaimedGap(o: Obligation, timezone: string, now: Date): CareGap {
   };
 }
 
+/**
+ * Asked, but nobody has answered.
+ *
+ * A pending request earns a *discount* on drop-risk, not an exemption: somebody
+ * being asked genuinely does make the work likelier to happen, but only while the
+ * ask is fresh. The relief decays on TAU_REPLY, so an unanswered request climbs
+ * back to the full risk of unowned work within a day. That is the arithmetic of
+ * "I asked David" quietly becoming "nobody is doing this".
+ */
+function awaitingReplyGap(
+  o: Obligation, askedOf: string, timezone: string, now: Date,
+): CareGap {
+  const cost = HARM_COST[o.consequence];
+  const base = probOr(imminenceHazard(o.dueAt, now), stalenessHazard(o.createdAt, now));
+  const hoursWaiting = o.request
+    ? (now.getTime() - new Date(o.request.askedAt).getTime()) / HOUR
+    : 0;
+  const relief = 0.55 * Math.exp(-Math.max(0, hoursWaiting) / TAU_REPLY);
+  const pDrop = base * (1 - relief);
+  const confidence = confidenceOf(o.provenance.kind);
+  const score = toScore(cost * pDrop * confidence);
+  const due = spokenDue(o.dueAt, timezone, now);
+  return {
+    id: `gap_awaiting_${o.id}`,
+    kind: 'UNCLAIMED',
+    severity: severityFor(score),
+    // "asked" and "agreed" are different words on purpose.
+    spoken: `${o.what}${due} - ${askedOf} was asked and hasn't answered yet.`,
+    because: `${askedOf} has been asked but has not accepted, so this still has no owner.`,
+    obligationId: o.id,
+    ...(o.dueAt ? { dueAt: o.dueAt } : {}),
+    score,
+    factors: { cost, pDrop, confidence },
+  };
+}
+
 function followUpGap(o: Obligation, timezone: string, now: Date): CareGap {
   // Assigned but past due: it has slipped (hazard -> 1). Still weighted by how bad
   // dropping it is, and by how sure we are the underlying need was real.
@@ -273,6 +310,12 @@ export function detectCareGaps(state: CareState, options: GapOptions = {}): Care
     // the trust model forbids.
     if (o.status === 'OPEN' && o.ownerId === null) {
       gaps.push(unclaimedGap(o, timezone, now));
+    } else if (o.status === 'REQUESTED' && o.ownerId === null) {
+      // Still a gap. Someone was asked; nobody has agreed.
+      const askedOf = state.members.find((m) => m.id === o.request?.askedOfId);
+      gaps.push(awaitingReplyGap(
+        o, askedOf?.spokenAs ?? askedOf?.name ?? 'Someone', timezone, now,
+      ));
     } else if (o.status === 'ASSIGNED' && o.dueAt && new Date(o.dueAt) < now) {
       gaps.push(followUpGap(o, timezone, now));
     }

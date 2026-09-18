@@ -192,7 +192,9 @@ export class CareStore {
     householdId: string,
     to: Obligation['status'],
     byMemberId: string,
-    changes: Partial<Pick<Obligation, 'ownerId' | 'resolutionNote' | 'resolvedAt'>> = {},
+    changes: Partial<Pick<
+      Obligation, 'ownerId' | 'resolutionNote' | 'resolvedAt' | 'request' | 'declinedBy'
+    >> & { clearRequest?: boolean } = {},
     note?: string,
   ): Promise<Obligation> {
     return this.#write(() => {
@@ -202,6 +204,11 @@ export class CareStore {
       if ('ownerId' in changes) o.ownerId = changes.ownerId ?? null;
       if (changes.resolutionNote !== undefined) o.resolutionNote = changes.resolutionNote;
       if (changes.resolvedAt !== undefined) o.resolvedAt = changes.resolvedAt;
+      // An answered request must leave no stale ask behind, so clearing it is an
+      // explicit flag rather than a missing key.
+      if (changes.request) o.request = changes.request;
+      if (changes.clearRequest) delete o.request;
+      if (changes.declinedBy !== undefined) o.declinedBy = changes.declinedBy;
       this.#snapshot.transitions.push({
         obligationId: id, from, to, byMemberId,
         at: new Date().toISOString(),

@@ -54,6 +54,10 @@ export type EventKind =
   | 'note_added'
   | 'obligation_resolved'
   | 'member_notified'
+  /** Somebody was asked to take a piece of work on. */
+  | 'owner_requested'
+  /** They answered - yes or no. Both are recorded; a decline is information. */
+  | 'request_answered'
   | 'external_signal'
   | 'check_in'
   | 'purchase_offered'
@@ -84,6 +88,15 @@ export type ObligationStatus =
   | 'PROPOSED'
   /** Real, and nobody owns it. This is what produces a Care Gap. */
   | 'OPEN'
+  /**
+   * Somebody has been *asked* and has not answered yet.
+   *
+   * Deliberately distinct from ASSIGNED: being asked is not the same as having
+   * agreed, and collapsing the two would be exactly the kind of assumption this
+   * system exists to refuse. A REQUESTED obligation still has no owner and still
+   * reads as a Care Gap.
+   */
+  | 'REQUESTED'
   /** Someone has taken it. */
   | 'ASSIGNED'
   /** Done. */
@@ -116,6 +129,21 @@ export interface Obligation {
   createdAt: string;
   resolvedAt?: string;
   resolutionNote?: string;
+  /**
+   * The outstanding ask, when status is REQUESTED. `ownerId` stays null while this
+   * is set - the request is a question, not a transfer.
+   */
+  request?: {
+    askedOfId: string;
+    askedById: string;
+    askedAt: string;
+  };
+  /**
+   * Everyone who has said no to this particular piece of work. Kept so the agent
+   * moves down the circle instead of asking the same person twice, and so a decline
+   * stays visible rather than evaporating.
+   */
+  declinedBy?: string[];
 }
 
 export type GapKind =

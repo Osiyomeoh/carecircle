@@ -83,6 +83,11 @@ fi
 # Written every deploy, not only on creation: the policy grows as the server
 # learns to do more, and a role created before Transcribe existed would
 # otherwise keep its original permissions forever.
+#
+# Bedrock is granted on "*" deliberately. A cross-region inference profile
+# (us.anthropic.*) authorises against BOTH the profile ARN and the underlying
+# foundation model in every region it can route to, so naming one ARN here is a
+# reliable way to be denied in production and nowhere else.
 aws iam put-role-policy --role-name "$INST_ROLE" --policy-name inline --policy-document '{
   "Version":"2012-10-17","Statement":[
     {"Effect":"Allow","Action":["dynamodb:*"],"Resource":"*"},
@@ -91,7 +96,10 @@ aws iam put-role-policy --role-name "$INST_ROLE" --policy-name inline --policy-d
       "transcribe:StartStreamTranscription",
       "transcribe:GetVocabulary",
       "transcribe:CreateVocabulary",
-      "transcribe:UpdateVocabulary"],"Resource":"*"}]}' >/dev/null
+      "transcribe:UpdateVocabulary"],"Resource":"*"},
+    {"Effect":"Allow","Action":[
+      "bedrock:InvokeModel",
+      "bedrock:InvokeModelWithResponseStream"],"Resource":"*"}]}' >/dev/null
 INST_ROLE_ARN=$(aws iam get-role --role-name "$INST_ROLE" --query Role.Arn --output text)
 
 echo "==> App Runner service"

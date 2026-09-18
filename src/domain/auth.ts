@@ -17,6 +17,7 @@ export type Capability =
   | 'create_obligation'
   | 'claim_obligation'   // take work yourself
   | 'assign_obligation'  // give work to someone else
+  | 'request_owner'      // ASK someone to take work on - they still have to agree
   | 'confirm_proposal'   // turn an inference into real work
   | 'resolve_obligation'
   | 'escalate'           // pull a human in urgently
@@ -27,17 +28,21 @@ const CAPABILITIES: Record<Role, ReadonlySet<Capability>> = {
   // The person being cared for: full authority over their own life, and they can
   // see their own day. They are a participant, not a subject.
   care_recipient: new Set([
-    'log_own_event', 'read_shift', 'create_obligation',
+    // Margaret can ask her family for help. She cannot *assign* anyone work, but a
+    // person being cared for asking "could David drive me?" is the most ordinary
+    // sentence in this whole system, and refusing it would make her a subject
+    // rather than a participant.
+    'log_own_event', 'read_shift', 'create_obligation', 'request_owner',
   ]),
   primary_caregiver: new Set([
     'log_own_event', 'log_others_event', 'read_full_state', 'read_shift',
-    'create_obligation', 'claim_obligation', 'assign_obligation',
+    'create_obligation', 'claim_obligation', 'assign_obligation', 'request_owner',
     'confirm_proposal', 'resolve_obligation', 'escalate', 'manage_circle',
     'make_purchase',
   ]),
   caregiver: new Set([
     'log_own_event', 'log_others_event', 'read_full_state', 'read_shift',
-    'create_obligation', 'claim_obligation', 'confirm_proposal',
+    'create_obligation', 'claim_obligation', 'request_owner', 'confirm_proposal',
     'resolve_obligation', 'make_purchase',
   ]),
   // A paid helper: scoped to the work in front of them.
@@ -57,7 +62,10 @@ export function can(member: Member, capability: Capability): boolean {
  */
 const DENIAL: Partial<Record<Capability, string>> = {
   assign_obligation:
-    'Only the primary caregiver can assign work to someone else. You can take it on yourself instead.',
+    'Only the primary caregiver can put work on someone else\'s name. You can take it on '
+    + 'yourself, or I can ask them whether they will.',
+  request_owner:
+    'Asking the family to take something on is for the family to do. You can take it on yourself instead.',
   escalate:
     'Only the primary caregiver can raise an urgent alert. You could add a note so they see it.',
   read_full_state:
