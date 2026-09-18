@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { detectCareGaps, pendingProposals } from '../domain/gaps.js';
 import { orphanedBy, proposeFromAppointment } from '../domain/inference.js';
 import { candidatesFor } from '../domain/delegation.js';
+import { runAgentOnce } from '../domain/agent-runner.js';
+import { deliberate, AGENT_ID } from '../domain/agent.js';
 import { implausible, toInstant } from '../domain/time.js';
 import { interpretSignal, type CareSignal } from '../domain/signals.js';
 import { offerFor, offerSpoken, formatPrice, type OfferKind, type PurchaseOffer } from '../domain/commerce.js';
@@ -104,6 +106,9 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   const state = () => store.getCareState(household());
   const nameOf = (id: string | null): string | undefined => {
     if (!id) return undefined;
+    // The agent is a reporter in the log like anyone else, and must be nameable, or
+    // its requests read as coming from nobody. It is not a member and holds no work.
+    if (id === AGENT_ID) return 'CareCircle';
     try {
       const m = store.getMember(id);
       return m.spokenAs ?? m.name;
@@ -733,6 +738,57 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         data: { obligationId },
       });
       return reply(`Marked done - ${o.what}.`, { obligationId });
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
+  // --- The agent, on demand ---------------------------------------------
+  // The agent normally runs on a timer with nobody watching. This lets a person
+  // ask it to look right now - "is anything falling through the cracks?" - and,
+  // because it runs the identical policy, also lets the autonomy be shown on camera
+  // without waiting an hour for the clock. It asks; it never assigns; and it reports
+  // its own restraint, so a pass that decides to do nothing still explains why.
+  server.registerTool('run_care_agent', {
+    title: 'Let CareCircle look for slipping work itself',
+    description:
+      'Have CareCircle proactively review everything unowned and, where it is worth '
+      + 'interrupting somebody, ASK the fairest person to take it on - the same thing it '
+      + 'does on its own in the background. Use this for "check on things", "is anything '
+      + 'being missed", "chase up the open items", or to see what the agent would do. It '
+      + 'only ever asks; it never assigns work to anyone. It reports both what it did and '
+      + 'what it deliberately left alone, and why.',
+    inputSchema: {
+      dryRun: z.boolean().optional()
+        .describe('When true, report what it would do without asking anyone. Defaults to false.'),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
+  }, async ({ dryRun }) => {
+    try {
+      const me = actor();
+      requireCap(me, 'read_full_state');
+      const s = state();
+
+      if (dryRun) {
+        const d = deliberate(s, { now: now(), timezone: s.household.timezone });
+        const lines = d.actions.map((a) => a.because);
+        const held = d.restraint.map((r) => r.because);
+        const spoken = d.actions.length
+          ? `I would reach out about ${d.actions.length === 1 ? 'one thing' : `${d.actions.length} things`}. ${lines.join(' ')}`
+          : "I looked, and there's nothing I'd interrupt anyone about right now.";
+        return reply(spoken, { would: d.actions, heldBack: d.restraint, dryRun: true });
+      }
+
+      const run = await runAgentOnce(me.householdId, { store, notifier, now });
+      const asks = run.performed.map((p) => p.action.because);
+      const held = run.deliberation.restraint;
+      const spoken = run.performed.length
+        ? `Done. ${run.performed.length === 1 ? 'I reached out about one thing.' : `I reached out about ${run.performed.length} things.`} ${asks.join(' ')}`
+        : (held.length
+          ? `I looked at everything and decided to leave it for now. ${held[0]!.because}`
+          : "I looked, and everything that needs doing already has someone.");
+      return reply(spoken, {
+        asked: run.performed.map((p) => ({ because: p.action.because, value: p.action.value, delivered: p.delivered })),
+        heldBack: held,
+      });
     } catch (err) { return guidance(describeError(err)); }
   });
 

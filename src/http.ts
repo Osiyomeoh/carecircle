@@ -6,6 +6,7 @@ import { DynamoPersistence } from './store/dynamo.js';
 import { seedDemoHousehold, DEMO_TOKENS } from './demo/seed.js';
 import { resolverFromEnv } from './http/identity.js';
 import { notifierFromEnv } from './notify/notifier.js';
+import { startAgentLoop } from './agent-loop.js';
 import { loadConfig } from './config.js';
 import { log } from './obs/log.js';
 
@@ -60,6 +61,14 @@ try {
   log.error('storage init failed; serving with an empty record', { reason: (err as Error).message });
 }
 
+// --- the agent's heartbeat --------------------------------------------------
+// Everything else in this server answers a request. This is the one thing that
+// acts on its own: on an interval it lets the policy look at every household and
+// ask, once, about work that is slipping. The policy owns restraint - this only
+// decides how often to give it the chance. Off by default in tests and local runs
+// (set CARECIRCLE_AGENT_INTERVAL_MS), always on in production.
+const stopAgent = startAgentLoop({ store, notifier, log });
+
 // --- graceful shutdown ------------------------------------------------------
 let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
@@ -71,6 +80,7 @@ async function shutdown(signal: string): Promise<void> {
   const closed = new Promise<void>((resolve) => server.close(() => resolve()));
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, 10_000).unref());
   await Promise.race([closed, timeout]);
+  stopAgent();
   try { await store.quiesce(); } catch { /* already logged at the write site */ }
   log.info('shutdown complete', { signal });
   process.exit(0);
