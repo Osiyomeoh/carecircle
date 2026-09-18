@@ -1,7 +1,8 @@
 # CareCircle - session handoff
 
-A self-contained brief to resume work in a new session. Last updated 2026-09-17
-(Fire TV app BUILT - CareBoard shipped, debug APK green, live board seeded).
+A self-contained brief to resume work in a new session. Last updated 2026-09-18
+(TV surface reworked to an ambient RN screen with sliding notifications, hosted
+live at `/tv-native`; sim CORS opened; single-gap notification loop fixed).
 
 ## What CareCircle is (updated positioning)
 
@@ -120,10 +121,39 @@ client routes served as an SPA by the sim Express server (`src/sim/app.ts` serve
   signed APK with `cd firetv && ./gradlew :app:assembleRelease`
   (-> `app/build/outputs/apk/release/app-release.apk`).
 
+## Ambient TV surface (2026-09-18) - the "shared display" as TV content
+
+The Fire TV surface was reworked from a 3-column dashboard into an **ambient TV
+screen**: a big clock/date over which care gaps arrive as **sliding notification
+cards** (the way a TV OS surfaces an alert), not a board a family reads. It is one
+**real React Native** component shared across Fire TV / Android TV / Apple TV and web:
+
+- Source: `firetv/packages/shared-ui/src/screens/CareCircleScreen.tsx` (RN
+  `Animated` slide-in; polls the live `/api/state` every 4s; green/red online dot).
+  The sim-ui web twin is `sim-ui/src/pages/AmbientTV.tsx` (route `/tv`).
+- **Hosted live** as a static Expo web export at **`/tv-native/`** on the sim. Built
+  with `EXPO_BASE_URL`/`experiments.baseUrl = /tv-native` so every asset path is
+  self-contained, exported to `public/tv-native/`, and served by the sim's existing
+  static middleware (no code change). Re-export:
+  `cd firetv/apps/expo-multi-tv && npx expo export -p web --output-dir dist-web`
+  then `cp -R dist-web/. ../../../public/tv-native/`, commit, redeploy.
+- **CORS:** the sim now sends `Access-Control-Allow-Origin: *` on all responses
+  (`src/sim/app.ts`), so the RN web build fetches `/api/state` cross-origin during
+  `yarn dev:web` (localhost:8082). Without it the screen renders but the dot stays
+  red and no notifications appear.
+- **Gotchas fixed:** (a) the sample's `scaledPixels` returns 0 on web, so sizing uses
+  `useWindowDimensions` and `s = n => n*width/1920`; (b) the notification froze after
+  one slide-out when only ONE gap was live (`idx % 1` never advanced) - now driven by
+  a monotonic cycle counter so it loops with one gap or many.
+- **APK is a stretch goal, not built for this surface.** The web export IS the demo;
+  producing the Fire OS APK (expo-multi-tv Android build) is deferred unless a rule
+  requires the app installed on physical Fire TV.
+
 ## Live resources
 
 - MCP server: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/mcp` (health: `/health`)
 - Simulator (judge-facing UI): `https://krqi2tpsif.us-east-1.awsapprunner.com`
+- Ambient TV surface (real React Native, web build): `https://krqi2tpsif.us-east-1.awsapprunner.com/tv-native/`
 - Reproduce end-to-end with no AWS/keys: `npm ci && npm run story`
 - Measured claims: `npm run evals` (93.3% tool selection), `npm run trust-benchmark`
   (raw LLM 50% false accusation vs CareCircle 0%)

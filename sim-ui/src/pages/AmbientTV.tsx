@@ -18,6 +18,15 @@ const ACCENT: Record<string, string> = {
   HIGH: '#ff6b6b', MEDIUM: '#ffc234', LOW: '#7cf0c8',
 };
 
+/** Seeded demo household, shown only when the live board can't be reached (dead
+ *  network, or no backend). Mirrors src/demo/scenario.ts and always carries a HIGH
+ *  gap; the online dot stays red, so it never masquerades as live. */
+const DEMO_GAPS = [
+  { spoken: "There's no record of Mom's evening heart pill from 20:00.", severity: 'HIGH', obligationId: 'demo_heart_pm' },
+  { spoken: "Pick up Mom's prescription - nobody has taken this yet.", severity: 'MEDIUM', obligationId: 'demo_rx' },
+  { spoken: 'Drive Mom to cardiology Thursday at 10 AM', severity: 'LOW', obligationId: 'demo_ride' },
+];
+
 /** A gap turned into a spoken alert line. */
 function alertText(spoken: string): string {
   return spoken.replace(/\s-\s.*$/, '').trim() || spoken;
@@ -26,8 +35,10 @@ function alertText(spoken: string): string {
 export default function AmbientTV() {
   const { state, online } = useBoard();
   // The ambient card cycles every open gap (a LOW one still needs an owner); the
-  // interruptive native heads-up below is gated to above-routine gaps only.
-  const gaps = state?.gaps ?? [];
+  // interruptive native heads-up below is gated to above-routine gaps only. When
+  // the board was never reachable, fall back to the seeded demo set so the surface
+  // stays alive offline.
+  const gaps = state?.gaps ?? (online ? [] : DEMO_GAPS);
 
   // Live clock.
   const [now, setNow] = useState(() => new Date());
