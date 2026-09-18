@@ -887,6 +887,19 @@ Amazon device-app IDs above. Once the triplet arrives, wire `ingest_signal` (`se
 `source` enum currently `'ring'|'other'`) to the real Ring API (sandbox has synthetic data).
 "Care-taking" is a named Ring priority category → this earns the Ring track.
 
+## NEXT PRIORITY (2026-09-18): product-readiness — see docs/PRODUCT-READINESS.md
+
+The user reframed the goal at the end of this session: Alexa+ Add-ons are **apps sold to
+customers**, and CareCircle must reach "a level somebody can actually use", not stay an
+impressive engine at a low level. The engine is done; what is missing is the product
+wrapper. **`docs/PRODUCT-READINESS.md` is the Monday plan — read it first.**
+
+Highest-leverage item: first-run onboarding so a real family starts their OWN circle
+(the `create_household` / `add_member` / `add_medication` tools and self-signup identity
+already exist; nothing wraps them into an experience). Then un-seed for real use, the
+day-one "aha", and the store listing (Amazon certification requires it). Do NOT add engine
+depth. Still owed separately: `outputSchema` on all 22 tools (MCP design-guide audit).
+
 ## What we learned this session
 
 - **The rules make honesty mandatory.** "Not just a mention in the README" for Alexa+/
