@@ -10,6 +10,16 @@ type Msg = { who: 'me' | 'alexa' | 'err'; text: string; tag?: string };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SpeechRec: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
+/** What the Web Speech API's error codes actually mean to someone demoing this. */
+const VOICE_ERRORS: Record<string, string> = {
+  'not-allowed': 'The browser blocked the microphone. Allow mic access for this site, then tap Speak again.',
+  'service-not-allowed': 'The browser blocked its speech service. Allow mic access, or type instead.',
+  'no-speech': "I didn't hear anything. Tap Speak and talk a little closer to the mic.",
+  network: 'Speech recognition needs the network and could not reach it. Typing still works.',
+  'audio-capture': 'No microphone was found. Plug one in, or type instead.',
+  aborted: 'Voice input stopped.',
+};
+
 export default function Console() {
   const [member, setMember] = useState<Member>(MEMBERS[1]); // David
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -19,6 +29,8 @@ export default function Console() {
   const [speaking, setSpeaking] = useState(false);
   const [speakOn, setSpeakOn] = useState(true);
   const [handsfree, setHandsfree] = useState(false);
+  /** Why the mic is not listening, when it isn't. Null when nothing is wrong. */
+  const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const [calls, setCalls] = useState<ToolCall[]>([]);
   const { state, online } = useBoard(3000);
   const recRef = useRef<any>(null);
@@ -65,21 +77,44 @@ export default function Console() {
     }
   }, [member, speak]);
 
-  // speech recognition
+  /**
+   * Speech recognition.
+   *
+   * The recogniser is built exactly once and reaches the latest `say` through a
+   * ref. It used to depend on `say` directly, which was a silent killer: `speak`
+   * closes over `listening`, `say` closes over `speak`, so the first `onstart`
+   * set `listening` -> rebuilt `speak` -> rebuilt `say` -> re-ran this effect,
+   * whose cleanup aborted the recognition that had just started. The mic
+   * appeared dead with nothing in the console to explain why.
+   */
+  const sayRef = useRef(say);
+  useEffect(() => { sayRef.current = say; }, [say]);
+
+  const handsfreeRef = useRef(handsfree);
+  useEffect(() => { handsfreeRef.current = handsfree; }, [handsfree]);
+
   useEffect(() => {
     if (!SpeechRec) return;
     const rec = new SpeechRec();
     rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = false;
-    rec.onstart = () => setListening(true);
+    rec.onstart = () => { setListening(true); setVoiceNote(null); };
     rec.onend = () => setListening(false);
     rec.onresult = (e: any) => {
       let t = ''; for (const r of e.results) t += r[0].transcript;
       setInput(t);
-      if (e.results[e.results.length - 1].isFinal && t.trim()) say(t);
+      if (e.results[e.results.length - 1].isFinal && t.trim()) sayRef.current(t);
+    };
+    // Every one of these used to fail silently. A demo where the mic quietly
+    // does nothing is worse than one that says why it cannot hear you.
+    rec.onerror = (e: any) => {
+      setListening(false);
+      handsfreeRef.current = false;
+      setHandsfree(false);
+      setVoiceNote(VOICE_ERRORS[e?.error] ?? `Voice stopped: ${e?.error ?? 'unknown error'}. Typing still works.`);
     };
     recRef.current = rec;
     return () => { try { rec.abort(); } catch { /* */ } };
-  }, [say]);
+  }, []);
 
   const gaps = state?.gaps ?? [];
   const obById = Object.fromEntries((state?.obligations ?? []).map((o) => [o.id, o]));
@@ -123,8 +158,20 @@ export default function Console() {
           <div className="text-[13px] text-muted">
             {listening ? 'listening…' : speaking ? 'speaking…' : SpeechRec ? 'tap the mic and speak' : 'voice needs Chrome - typing works'}
           </div>
+          {voiceNote && (
+            <div className="max-w-sm rounded-lg border border-norecord/40 bg-norecord/10 px-3 py-2 text-center text-[12px] leading-relaxed text-norecord">
+              {voiceNote}
+            </div>
+          )}
           <div className="flex gap-2">
-            <button disabled={!SpeechRec} onClick={() => { const r = recRef.current; if (!r) return; listening ? r.stop() : (() => { try { r.start(); } catch { /* */ } })(); }}
+            <button disabled={!SpeechRec} onClick={() => {
+              const r = recRef.current; if (!r) return;
+              setVoiceNote(null);
+              if (listening) { r.stop(); return; }
+              // start() throws if the recogniser is already running - surface it
+              // rather than swallowing it, which is how this went unnoticed.
+              try { r.start(); } catch { setVoiceNote('The microphone is already starting. Give it a second and try again.'); }
+            }}
               className={`rounded-lg px-4 py-2 text-sm font-medium transition ${listening ? 'bg-alexa text-[#04120d]' : 'glass text-ink'} disabled:opacity-40`}>
               {listening ? 'Stop' : '🎙 Speak'}
             </button>
