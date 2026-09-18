@@ -459,7 +459,7 @@ board and not touch it. The remote is the third channel.
 - `sim-ui/src/lib/dpad.ts` - navigation as a **pure reducer**, so "can you always get
   back out?" has a provable answer. Three modes: `ambient` (the clock) -> `browsing`
   (moving between gaps) -> `identifying` (who is taking this on).
-- `src/dpad.test.ts` - 10 tests in the main suite (the suite now stands at **232**), including that
+- `src/dpad.test.ts` - 10 tests in the main suite (the suite now stands at **250**), including that
   every mode can be backed out of and that a gap list shrinking under the viewer
   never leaves focus past its end (the board polls every 4s; someone else can claim
   the focused gap mid-press).
@@ -485,6 +485,73 @@ Verified in-browser at 1600x900, locally and then **against the live `/tv`**: wa
 wrap, choose, and the failure path rendering honestly as *"Couldn't claim that:
 HTTP 500"* rather than a false success. The live check was deliberately backed out
 without claiming - the shared board is what every visitor sees.
+
+## DONE (2026-09-18): "who says so" - the trust model, one level deeper
+
+Prompted by a strategy review arguing we should broaden from elderly care to people
+with disabilities. Most of that brief was already true or already wrong (see below),
+but one row in one of its tables pointed at a real defect, and probing it found this:
+
+```
+Alex logged it himself :  []
+Tasha logged it for him:  []
+```
+
+Same dose, same schedule, only `reportedBy` differs - **byte-identical output**, all the
+way out to what a person hears (`get_care_summary` said "3 medications logged today").
+`reportedBy` and `data.aboutMemberId` were both being recorded and **neither was ever
+read by anything downstream.**
+
+That is the thesis breaking. "Known != Assumed" says an inference must not masquerade
+as a fact; the identical argument says **somebody else's account of you must not
+masquerade as your own account of yourself.** It falls hardest on people whose day is
+largely narrated by others - someone using AAC, or with limited speech - where "the aide
+says you took it" versus "you say you took it" can reach a compliance finding, a
+benefits review, or simply whether anyone asks you first.
+
+**`src/domain/attribution.ts`** - `FIRST_HAND` vs `REPORTED`, derived from the event,
+plus `sayWhoSaysSo` and `namesItsSource` (the invariant as a predicate, so tests and the
+benchmark share one definition). Wired into `get_care_summary` (spoken **and**
+structured, so a board can reach it without parsing English) and into the `doses` array
+on the state resource.
+
+**The rule that is easy to get wrong, and the strongest thing to say about it:** a proxy
+record still **fully closes** the gap. Treating the aide's word as weaker evidence would
+be the same accusation from the other direction, and it would punish precisely the
+households that depend on proxies most. **The distinction lives in the language, never
+in the doubt.** There is a test asserting the two gap outputs are `deepEqual`.
+
+**Measured, and the number is honest and lower than we expected.** New second axis in
+`npm run trust-benchmark`: 8 proxy scenarios + 2 controls. Raw Sonnet 4.5 erased the
+source in **2/8 = 25%**; CareCircle 0/8. The *pattern* is the finding and it is sharp -
+the model disclosed Tasha on every narrow factual question and dropped her on both
+questions asking for a **verdict about the person**: "is Alex up to date?" and "has Alex
+been **compliant** with his medication today?" That second word is the one that appears
+in benefits reviews, and it is exactly where the model asserted compliance in Alex's
+name on somebody else's word. The benchmark now prints which question ids erased, so the
+pattern is auditable rather than asserted.
+
+**Also:** the accusation axis came back **7/12 = 58.3%** this run against 6/12 = 50%
+yesterday. Same non-determinism as the eval split. Docs now say "50-58%".
+
+**Also fixed:** `rawLLM` had no backoff and the benchmark died mid-run on a Bedrock
+`ThrottlingException` - a benchmark that dies halfway reports a number for the half it
+finished. Now retries with exponential backoff and paces the loop.
+
+**One line generalised:** `src/sim/host.ts` said "caring for an elderly relative". The
+domain model was **already** age-neutral (`Role` is `care_recipient`, medications hang
+off `forMemberId`, gap text uses `spokenAs ?? name`), so that prompt was the only thing
+holding it back. It now names both populations and adds the attribution rule.
+
+### What we did NOT take from that review
+
+- **"Do not claim live Ring/Bee/Fire TV integrations you don't have."** Ring IS live and
+  verified. Following this would have made us under-claim three shipped things.
+- **Accessibility attributes as a bag of booleans** (`needs_accessible_transport`, ...).
+  That is us inventing a disability taxonomy in a type definition - "nothing about us
+  without us", violated in code. One general mechanism instead.
+- **A second persona in the video.** Five weeks of build time, still 180 seconds of
+  video, still one arc.
 
 ## DONE (2026-09-18): the microphone that had to be told to stop
 

@@ -11,6 +11,26 @@ fix in place, without ever turning a guess into a fact.
 
 ---
 
+## The thesis
+
+**CareCircle treats the person receiving support as a first-class participant - whether
+they are 78 with mild cognitive decline, 34 with a mobility disability, or 19 with a
+communication disability - and refuses two conflations that every other system makes:**
+
+1. **An absent record is not non-compliance.** The system only knows what has been
+   recorded. It says *"there's no record"*; it never says *"she missed it"*.
+2. **Somebody else's account of you is not your own.** When a support worker logs a
+   dose on your behalf, the system says *who* logged it. It never quietly reports
+   their word as your act.
+
+Both are the same principle at different depths, both are measured against a raw model
+on the same scenarios, and both are structural rather than prompt-level: the sentences
+come from a deterministic engine that has no way to phrase the alternative.
+
+The second one matters most to the people least able to correct the record. If your day
+is largely narrated by other people, an account of yourself that is identifiably yours
+is not a nicety - it is the thing the record was supposed to give you.
+
 ## The problem, in one family
 
 Margaret is 78 and lives alone. Her son **David**, her daughter **Renee**, and a paid
@@ -45,11 +65,13 @@ must own that work. A Care Gap is the failure state of the third stage.
 The judges' own advice is to beware glossy vapor. CareCircle is the opposite:
 
 - A **live MCP server** a judge can hit now (Streamable HTTP, spec 2025-11-25).
-- **209 automated tests**, strict TypeScript, an adversarial suite, CI.
+- **250 automated tests**, strict TypeScript, an adversarial suite, CI.
 - Tool selection **measured at 93.3%** (126/135, half of them held out) on Amazon
   Bedrock - `npm run evals`, and it reproduces.
-- The trust model **measured**: a raw Sonnet 4.5 turns a missing dose into "she missed
-  it" **50%** of the time; CareCircle **0%** - `npm run trust-benchmark`.
+- The trust model **measured on two axes**: a raw Sonnet 4.5 turns a missing dose into
+  "she missed it" in **~50-58%** of absence cases, and reports a support worker's
+  account as the disabled person's own act in **25%** of proxy cases. CareCircle:
+  **0% on both** - `npm run trust-benchmark`.
 - Reproduce the whole one-day story end-to-end with **no AWS or keys**: `npm ci && npm run story`.
 
 ## What's built vs. what's an adapter seam (no overclaiming)
@@ -65,7 +87,7 @@ different surfaces feed one shared responsibility system.
 - `ingest_signal` - the generic external-signal tool: any physical or wearable event becomes an `INFERRED` proposal a human must confirm. **This is the Ring and Bee seam, and it runs today.**
 - Ownership / claiming / assignment, purchase-in-place (`reorder_prescription` / `confirm_purchase`), multi-person identity, SNS notifications (record-only fallback), DynamoDB persistence, App Runner deployment.
 - The shared multi-device board (the simulator) - the same view a Fire TV would render.
-- **232 tests**, adversarial suite, CI.
+- **250 tests**, adversarial suite, CI.
 
 - **The delegation loop** - `request_owner` / `respond_to_request` / `get_my_requests`.
   `REQUESTED` is its own status and **carries no owner**: being asked is not having
@@ -211,11 +233,21 @@ graceful shutdown, DynamoDB persistence, App Runner deployment), runtime onboard
   number a judge will actually get and name the variance rather than quoting our
   best run - the arithmetic that ranks someone's care is deterministic, but the
   language model choosing the tool is not, and those are different claims.
-- **Measured trust model: a raw Sonnet 4.5 turns a missing record into a false
-  accusation ("she missed it") in 50% of absence cases; CareCircle's deterministic
-  engine, 0%** - the same model, the same scenarios, every answer auditable.
-  Reproducible: `npm run trust-benchmark`. This is the differentiator, quantified.
-- **209 automated tests** incl. an adversarial suite (credential swap mid-session,
+- **Measured trust model, first axis: a raw Sonnet 4.5 turns a missing record into a
+  false accusation ("she missed it") in 50-58% of absence cases; CareCircle's
+  deterministic engine, 0%** - the same model, the same scenarios, every answer
+  auditable. (The rate moves between runs; two consecutive runs gave 6/12 and 7/12.)
+- **Second axis - attribution: when a support worker logged the dose, the raw model
+  reported it as the disabled person's own act in 2/8 = 25% of cases; CareCircle, 0%.**
+  The number is lower than the accusation rate and we report it as measured. The
+  *pattern* is the finding: the model disclosed the source on every narrow factual
+  question ("did Alex take his baclofen?") and dropped it on both questions that asked
+  it to render a verdict about the person - *"is Alex up to date?"* and, pointedly,
+  *"has Alex been compliant with his medication today?"* **Compliant** is the word that
+  turns up in benefits reviews and care-plan audits, and it is exactly where the model
+  asserted compliance in Alex's name on somebody else's word. Reproducible, with the
+  erasing questions printed by id: `npm run trust-benchmark`.
+- **250 automated tests** incl. an adversarial suite (credential swap mid-session,
   cross-household access, prompt-injection through note text), strict TypeScript, CI.
 - Deterministic end-to-end demo over real MCP: `npm run story`.
 
