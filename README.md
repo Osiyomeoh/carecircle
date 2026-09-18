@@ -36,6 +36,11 @@ npm ci && npm run story
 
 Live server: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/health`
 
+**Want to point your own client at it?** [`docs/MCP.md`](docs/MCP.md) is the
+integration guide: endpoint and handshake, ready-made Claude Desktop and MCPJam
+configuration, all 18 tools with their arguments, the resources and prompts, the
+role/capability matrix, and how to run your own instance.
+
 ---
 
 ## The interaction
