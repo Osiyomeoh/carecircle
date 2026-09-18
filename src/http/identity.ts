@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import { oauthResolver as oauthTokens } from './oauth.js';
 
 /**
  * Who is speaking.
@@ -176,8 +177,21 @@ export function jwtClaims({ claim, members, lookup, selfSignup }: JwtIdentityOpt
  * to member ids.
  */
 export function resolverFromEnv(fallbackTokens: Map<string, string>, lookup?: IdentityLookup): IdentityResolver {
+  // OAuth first when configured: an access token this server signed is the only
+  // credential here we can actually verify. It composes with whatever follows, so
+  // enabling OAuth never switches off the demo tokens a judge is using.
+  //
+  // This lives here rather than only in createCareCircleApp because the production
+  // entrypoint passes its resolver in explicitly - so a composition that existed
+  // only in the app factory was silently skipped in production, and OAuth tokens
+  // authenticated nothing. The tests said otherwise because they let the factory
+  // choose.
+  const oauthSecret = process.env['CARECIRCLE_OAUTH_SECRET'] ?? '';
+  const withOAuth = (base: IdentityResolver): IdentityResolver =>
+    (oauthSecret ? firstOf(oauthTokens(oauthSecret, lookup), base) : base);
+
   const claim = process.env['CARECIRCLE_JWT_CLAIM'];
-  if (!claim) return staticTokens(fallbackTokens, lookup);
+  if (!claim) return withOAuth(staticTokens(fallbackTokens, lookup));
   const raw = process.env['CARECIRCLE_MEMBER_MAP'] ?? '{}';
   let members: Map<string, string>;
   try {
@@ -192,5 +206,5 @@ export function resolverFromEnv(fallbackTokens: Map<string, string>, lookup?: Id
   if (members.size === 0 && !selfSignup) {
     throw new Error('CARECIRCLE_JWT_CLAIM is set but CARECIRCLE_MEMBER_MAP is empty and CARECIRCLE_ALLOW_SELF_SIGNUP is not enabled; nobody could authenticate.');
   }
-  return jwtClaims({ claim, members, selfSignup, ...(lookup ? { lookup } : {}) });
+  return withOAuth(jwtClaims({ claim, members, selfSignup, ...(lookup ? { lookup } : {}) }));
 }

@@ -65,9 +65,10 @@ export interface AppOptions {
 export function createCareCircleApp({ store, identity, tokens, notifier, now, allowSelfSignup }: AppOptions): express.Express {
 // Runtime-provisioned members authenticate via the persisted identity map.
 const lookup = (subject: string): string | null => store.resolveIdentity(subject)?.memberId ?? null;
-const demoResolver = staticTokens(tokens ?? new Map(), lookup, allowSelfSignup);
 // An OAuth access token this server issued authenticates ahead of a demo token,
-// because it is the one we can actually verify.
+// because it is the one we can actually verify. Composed in one place - see
+// resolverFromEnv - so the factory and the production entrypoint cannot disagree.
+const demoResolver = staticTokens(tokens ?? new Map(), lookup, allowSelfSignup);
 const oauthSecretForAuth = process.env['CARECIRCLE_OAUTH_SECRET'] ?? '';
 const resolver = identity
   ?? (oauthSecretForAuth

@@ -6,6 +6,7 @@ import { createCareCircleApp } from './app.ts';
 import { CareStore } from '../store/store.ts';
 import { seedDemoHousehold, DEMO_TOKENS } from '../demo/seed.ts';
 import { makePkce, pkceMatches, signToken, verifyToken, oauthResolver } from './oauth.ts';
+import { resolverFromEnv } from './identity.ts';
 
 /**
  * OAuth 2.1 + PKCE.
@@ -303,6 +304,25 @@ test('attack: a refresh token cannot be used as an access token', () => {
   const resolver = oauthResolver(SECRET);
   const fake = { header: () => `Bearer ${refresh}` };
   assert.equal(resolver.resolve(fake as never), null);
+});
+
+test('production wiring: the entrypoint resolver honours OAuth tokens', () => {
+  // The entrypoint (src/http.ts) builds its own resolver and passes it in, so a
+  // composition that lived only in createCareCircleApp was skipped in production
+  // and OAuth tokens authenticated nothing. Live proof was `identity: "static"`
+  // on a deployed server with OAuth enabled. Assert the shared path, not the
+  // factory's convenience default.
+  const resolver = resolverFromEnv(new Map(Object.entries(DEMO_TOKENS)));
+  const token = signToken(
+    { sub: 'm_renee', iss: ISSUER, aud: ISSUER, exp: Math.floor(Date.now() / 1000) + 60, iat: 0, typ: 'access' },
+    SECRET,
+  );
+  const asOAuth = { header: () => `Bearer ${token}` };
+  assert.equal(resolver.resolve(asOAuth as never), 'm_renee');
+
+  // And the demo tokens must keep working through the same resolver.
+  const asDemo = { header: () => 'Bearer renee-token' };
+  assert.equal(resolver.resolve(asDemo as never), 'm_renee');
 });
 
 // --- PKCE unit -----------------------------------------------------------
