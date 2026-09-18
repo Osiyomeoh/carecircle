@@ -24,7 +24,7 @@ what happened        what must happen        who has it
  Thursday at 10"     drive her                has claimed it
 ```
 
-**And it is real - not a mockup.** Live MCP server you can hit right now, **94 tests**
+**And it is real - not a mockup.** Live MCP server you can hit right now, **101 tests**
 (including property-based proofs of the risk model), **93.3%** measured tool-selection
 accuracy on Amazon Bedrock, and a trust model **measured at 0% false accusations where a
 raw LLM hits 50%**. See it end-to-end in ~60 seconds, no AWS or keys required:
@@ -214,6 +214,54 @@ monotonicity, and cost ordering over thousands of generated states.
 
 ---
 
+## The Care Board: the same answer, drawn instead of spoken
+
+A voice turn carries about three items before a person stops holding the list. But the
+real answer to *"what's falling through the cracks?"* is a **ranked list with state** —
+severity, owner, due time, why it was flagged, and how sure we are. Spoken, all of that
+structure gets flattened into a sentence and thrown away.
+
+So `get_care_gaps` is also an **MCP App** ([SEP-1865](https://blog.modelcontextprotocol.io/posts/2025-11-21-mcp-apps/),
+spec dialect `2026-01-26`). The tool points at a `ui://` resource, the resource returns a
+self-contained HTML view, and a host that supports the extension renders it in a sandboxed
+iframe that talks back over the same JSON-RPC. See
+[`src/mcp/app/`](src/mcp/app/).
+
+Three things it does that a card normally does not:
+
+**It shows its provenance.** Every row says how we came to believe it — a person told us,
+we inferred it by a named rule, or we simply have **no record**. That last chip is drawn
+quietly on purpose, and it says so on hover: *an absence of information is not evidence.*
+The trust model isn't in the README, it's on the screen.
+
+**The ranking explains itself.** Tap a score and it expands into the actual arithmetic —
+`cost × p(dropped) × confidence`. The score is a deterministic engine's output, not a
+model's opinion, and the view will show you its working. A ranking over someone's medical
+care that can't be audited shouldn't be trusted.
+
+**Claiming closes the loop.** Voice is the right input for *capture* and the wrong one for
+*disambiguating among similar items* — "I'll take the cardiology one" makes the model
+resolve a referring expression to an id, and it will sometimes get that wrong. A tap can't.
+The button makes a real `tools/call` to `claim_obligation` down the same authorisation path
+as speech (no weaker permission model for clicks), then tells the model what changed via
+`ui/update-model-context`, so the conversation doesn't go on offering work already taken.
+
+The view reaches **no origin but its host** — no CDN, no fonts, no network at all — so
+there is nothing to allowlist and nothing to inject into a page showing a family's medical
+coordination. And it is strictly an *enhancement*: a host that can't draw ignores the
+resource, and the spoken answer is untouched. There's a test asserting the spoken text
+never says "tap", "click" or "below", so the view can never quietly become load-bearing.
+
+> This is also us answering our own [feature request](docs/FEATURE-REQUESTS.md). "A
+> structured visual return channel for MCP results" was the loudest thing in that file.
+> The protocol half now exists, so we built against it rather than keep complaining. The
+> half that's still open is the one only Amazon can close: **Alexa+ adopting the
+> extension**, so the board a desktop host already draws today reaches an Echo Show — and
+> degrades to our existing speech on a headless one. We built the card once, to the open
+> standard.
+
+---
+
 ## Four surfaces, one responsibility layer
 
 The devices around Margaret are not four integrations bolted on. They are four *kinds of
@@ -264,7 +312,7 @@ curl https://ypq2dfq2p7.us-east-1.awsapprunner.com/health
 # Option B - clone and reproduce locally (no AWS needed)
 git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
 npm ci
-npm test          # 94 tests (unit, adversarial, and property-based)
+npm test          # 101 tests (unit, adversarial, and property-based)
 npm run story     # the whole one-day story, end to end, over real MCP
 ```
 

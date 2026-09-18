@@ -99,6 +99,17 @@ so - the workaround is usually the tell for what the platform should have handle
   so servers do not each invent their own and hosts do not have to guess.
 - **Instead:** We truncate to three spoken items and say how many remain, and we render
   our own cards in our simulator to show what the experience should be.
+- **Update (2026-09-18):** the rendering contract we asked for now exists at the MCP
+  layer - the MCP Apps extension (SEP-1865) - and we have shipped against it. Our
+  `get_care_gaps` is an MCP App: it points at a `ui://` resource, and a host that
+  supports the extension draws the ranked board, provenance and all, with the ranking's
+  arithmetic inspectable and a Claim button that calls `claim_obligation` straight back
+  through the host. So the *protocol* half of this request is answered, and we would
+  rather say so than keep the complaint. What is still open is the half only Amazon can
+  close: **Alexa+ adopting the extension**, so the same view a desktop host already
+  draws today reaches an Echo Show, and degrades to our existing speech on a headless
+  device. We built the card once, to the open standard; we are asking for it to be
+  rendered where the family actually is.
 
 > *This is the one that genuinely frustrated us, because we could feel the good product
 > on the other side of the wall. We compute a ranked list with severity, owner, due time
@@ -116,6 +127,12 @@ so - the workaround is usually the tell for what the platform should have handle
   A tap is unambiguous. Voice is the right input for *capture* and the wrong input for
   *disambiguation among similar items* - a good multi-modal design uses each for what
   it is good at.
+- **Update (2026-09-18):** also answered by MCP Apps, and better than we asked for. We
+  wanted a card that could carry a bound tool call; the extension gives the view the
+  actual client, so our Claim button makes a real `tools/call` down the same
+  authorisation path as speech - no second, weaker permission model for taps. The one
+  thing we had to add ourselves was telling the model afterwards
+  (`ui/update-model-context`), or it keeps offering work the hands already took.
 
 ### Confirmation as a first-class surface
 - **Urgency:** important

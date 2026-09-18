@@ -1,8 +1,9 @@
 # CareCircle - session handoff
 
 A self-contained brief to resume work in a new session. Last updated 2026-09-18
-(TV surface reworked to an ambient RN screen with sliding notifications, hosted
-live at `/tv-native`; sim CORS opened; single-gap notification loop fixed).
+(**MCP Apps: the Care Board ships as an interactive view**; TV surface reworked to
+an ambient RN screen with sliding notifications, hosted live at `/tv-native`; sim
+CORS opened; single-gap notification loop fixed).
 
 ## What CareCircle is (updated positioning)
 
@@ -94,11 +95,66 @@ trust/provenance model, `ingest_signal` (the real
 Ring/Bee seam - any external signal → INFERRED proposal), ownership/claiming,
 purchase-in-place (`reorder_prescription` / `confirm_purchase`), SNS notifications
 (record-only fallback), DynamoDB persistence, App Runner deploy, the multi-device web
-board (simulator), 87 tests + adversarial suite + CI.
+board (simulator), **the Care Board as an MCP App (SEP-1865)**, 101 tests +
+adversarial suite + CI.
 
 **Adapter-ready (seam only, no live third-party wiring):** Ring → `ingest_signal`
 (Ring's payload schema is unpublished - see FRICTION-LOG.md); Bee → `ingest_signal`
 (deliberately gated); Fire TV → the web board would render there.
+
+## DONE (2026-09-18): the Care Board as an MCP App
+
+The loudest entry in our own feature requests ("Rich cards: a structured visual
+return channel for MCP results") is now answered in the one place we can answer
+it - the protocol. `get_care_gaps` is an **MCP App** (SEP-1865, spec dialect
+`2026-01-26`): the tool points at a `ui://` resource, the resource returns a
+self-contained HTML view, and the host renders it in a sandboxed iframe that talks
+back over the same JSON-RPC.
+
+**Files**
+- `src/mcp/app/protocol.ts` - the extension's wire format (MIME type, both
+  metadata key spellings, capability sniffing). We implement it directly instead
+  of depending on `@modelcontextprotocol/ext-apps`, because that package targets
+  the newer `@modelcontextprotocol/server` split while we are on `sdk@1.30.0`.
+  The constants were read out of the published package, not out of blog prose -
+  the two disagree, and the package wins.
+- `src/mcp/app/care-board.ts` - the view (one self-contained document, no CDN,
+  no fonts, no network beyond the host bridge, so it needs no CSP allowlist).
+- `src/mcp/app/care-board.test.ts` - 7 tests over the wire.
+
+**Three things it does that a card normally does not**
+1. **Shows provenance per row** - CONFIRMED / INFERRED / *no record*. The "no
+   record" chip is drawn quietly and its tooltip says an absence of information
+   is not evidence. The trust model, on screen.
+2. **Explains its own ranking** - tap a score and it expands to
+   `cost x p(dropped) x confidence`. `get_care_gaps` now returns `factors`
+   (it was computing and discarding them). An unauditable ranking over someone's
+   medical care is the thing we set out not to build.
+3. **Claiming closes the loop** - the button calls `claim_obligation` back
+   through the host (same auth path as speech), re-reads the board, then sends
+   `ui/update-model-context` so the model knows what the hands just did and does
+   not go on offering work that is already taken.
+
+**Gotchas found the hard way**
+- Two metadata spellings are live in the wild: `_meta.ui.resourceUri` (current)
+  and `_meta["ui/resourceUri"]` (pre-standard). Emit **both** or the board
+  silently never appears on half of hosts. `appToolMeta()` does this.
+- MIME must be exactly `text/html;profile=mcp-app`. `text/html+skybridge` is
+  OpenAI's Apps SDK, a *different* dialect.
+- The view must set `color-scheme` from `hostContext.theme`. A light-themed host
+  inside a dark-mode browser otherwise keeps the UA's dark canvas while the
+  board paints the host's dark text onto it - unreadable. Caught in the harness.
+- The host pushes the originating result as `ui/notifications/tool-result`;
+  fetching on init as well double-fetches. The view waits 400ms, then falls back.
+
+**Verifying it without Claude Desktop:** there is a throwaway host harness pattern
+in the session scratchpad - serve the emitted `board.html` next to a page that
+answers `ui/initialize`, pushes a `tool-result`, and proxies `tools/call`. Both
+themes and the full claim loop were verified that way.
+
+**Degradation guarantee:** a host that cannot render ignores the resource and the
+spoken answer is untouched. There is a test asserting the spoken text never says
+"tap", "click" or "below" - the view must never become load-bearing.
 
 ## Front-end (judge-facing UI) - React + Vite + Tailwind + R3F
 

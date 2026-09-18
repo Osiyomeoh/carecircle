@@ -8,6 +8,8 @@ import { offerFor, offerSpoken, formatPrice, type OfferKind, type PurchaseOffer 
 import { can, canActOn, NotPermittedError, require as requireCap } from '../domain/auth.js';
 import { bootstrapSubject } from '../http/identity.js';
 import { CareStore, HouseholdScopeError, NotFoundError } from '../store/store.js';
+import { CARE_BOARD_HTML } from './app/care-board.js';
+import { APP_MIME_TYPE, appToolMeta } from './app/protocol.js';
 import { countPhrase, joinSpoken, sentence, speakGaps } from './text.js';
 import type { Member } from '../domain/types.js';
 import { RecordOnlyNotifier, type Notifier } from '../notify/notifier.js';
@@ -23,6 +25,9 @@ import { RecordOnlyNotifier, type Notifier } from '../notify/notifier.js';
  *    written to tell the model what to do next. A failed call should move the
  *    conversation forward, not dead-end it.
  */
+
+/** Where the Care Board view lives. Referenced by the tool that renders it. */
+const CARE_BOARD_URI = 'ui://carecircle/care-board.html';
 
 /** A tool result shaped for a voice client: one speakable line plus structure. */
 function reply(spoken: string, structured?: Record<string, unknown>) {
@@ -318,6 +323,10 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         .describe('Only include dated items within this many days. Omit for everything.'),
     },
     annotations: { readOnlyHint: true, idempotentHint: true },
+    // On a host that can draw, this same call also renders the Care Board (see
+    // ./app/care-board.ts). The spoken answer is unchanged and still correct on
+    // its own: the view is an enhancement, never a precondition.
+    _meta: appToolMeta(CARE_BOARD_URI),
   }, async ({ withinDays }) => {
     try {
       const me = actor();
@@ -330,6 +339,10 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         gaps: gaps.map((g) => ({
           id: g.id, kind: g.kind, severity: g.severity, spoken: g.spoken,
           because: g.because, obligationId: g.obligationId ?? null, score: g.score,
+          // The score's derivation travels with it so the view can show *why* a
+          // gap ranks where it does. A ranking over someone's medical care that
+          // cannot be audited should not be trusted.
+          factors: g.factors,
         })),
       });
     } catch (err) { return guidance(describeError(err)); }
@@ -934,6 +947,33 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       }],
     };
   });
+
+  // --- The Care Board: the same answer, drawn instead of spoken ----------
+  // Declared as an MCP App (SEP-1865). A host that cannot render it ignores
+  // this resource entirely and the spoken path is untouched, which is the whole
+  // point of the extension being optional.
+  server.registerResource('care-board', CARE_BOARD_URI, {
+    title: 'Care board',
+    description:
+      'The open care gaps as an interactive board: ranked, with the provenance of each '
+      + 'one and the arithmetic behind its ranking, and claimable in a tap.',
+    mimeType: APP_MIME_TYPE,
+    _meta: {
+      ui: {
+        // The document is entirely self-contained, so it asks for no origins at
+        // all - there is nothing for a host to allowlist and nothing that can be
+        // injected into a view showing a family's medical coordination.
+        csp: { resourceDomains: [], connectDomains: [] },
+        prefersBorder: false,
+      },
+    },
+  }, async (uri) => ({
+    contents: [{
+      uri: uri.href,
+      mimeType: APP_MIME_TYPE,
+      text: CARE_BOARD_HTML,
+    }],
+  }));
 
   // --- Prompts: the questions worth asking regularly ---------------------
   server.registerPrompt('daily-check', {
