@@ -5,7 +5,7 @@ import { useBoard } from '../lib/useBoard';
 import { ProvChip, provFromGap } from '../components/ProvChip';
 import type { Provenance } from '../lib/api';
 
-type Msg = { who: 'me' | 'alexa' | 'err'; text: string; tag?: string };
+type Msg = { who: 'me' | 'alexa' | 'err'; text: string; tag?: string; heard?: string };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SpeechRec: any = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -58,6 +58,12 @@ export default function Console() {
     setBusy(true);
     try {
       const turn = await api.say(member.id, text);
+      // The server repairs names the recogniser mangles. Show the repair on the
+      // message it changed rather than quietly replacing what somebody said.
+      if (turn.corrections?.length) {
+        const shown = turn.corrections.map((c) => `${c.from} → ${c.to}`).join(', ');
+        setMessages((m) => m.map((msg, i) => (i === m.length - 1 ? { ...msg, heard: shown } : msg)));
+      }
       setMessages((m) => [...m, { who: 'alexa', text: turn.spoken, tag: 'Alexa' }]);
       setCalls((c) => [...turn.toolCalls, ...c].slice(0, 12));
       speak(turn.spoken);
@@ -192,6 +198,11 @@ export default function Console() {
               m.who === 'me' ? 'ml-auto bg-alexa/15 text-ink' : m.who === 'err' ? 'bg-sevHigh/15 text-sevHigh' : 'bg-white/5 text-ink'}`}>
               {m.tag && <div className="mb-0.5 text-[11px] uppercase tracking-wider text-muted">{m.tag}</div>}
               {m.text}
+              {m.heard && (
+                <div className="mt-1.5 border-t border-line pt-1.5 text-[11px] text-muted">
+                  heard as {m.heard}
+                </div>
+              )}
             </div>
           ))}
           {busy && <div className="max-w-[85%] rounded-2xl bg-white/5 px-4 py-2.5 text-muted">…</div>}

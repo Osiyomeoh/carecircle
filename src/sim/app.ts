@@ -5,6 +5,7 @@ import { SimulatedAlexa } from './host.js';
 import { providerFromEnv } from './providers.js';
 import { diagnoseBedrock, describe as describeDiagnosis } from './preflight.js';
 import { DEMO_TOKENS } from '../demo/seed.js';
+import { buildVocabulary, correctTranscript } from './transcript.js';
 
 /**
  * Simulated Alexa+ experience.
@@ -76,6 +77,72 @@ app.use(express.static(uiDir));
 app.use(express.static(join(here, '../../public')));
 
 /** One spoken turn from one member's device. */
+/** Read the whole care picture from the MCP server, as a fresh short session. */
+async function readCareState(): Promise<Record<string, unknown>> {
+  const token = tokenFor.get('m_david');
+  const response = await fetch(MCP_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      accept: 'application/json, text/event-stream',
+      authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0', id: 1, method: 'initialize',
+      params: {
+        protocolVersion: '2025-11-25',
+        capabilities: {},
+        clientInfo: { name: 'carecircle-board', version: '0.1.0' },
+      },
+    }),
+  });
+  const sessionId = response.headers.get('mcp-session-id');
+  await response.text();
+  if (!sessionId) throw new Error('No session id returned by the MCP server');
+
+  const headers = {
+    'content-type': 'application/json',
+    accept: 'application/json, text/event-stream',
+    authorization: `Bearer ${token}`,
+    'mcp-session-id': sessionId,
+  };
+  await fetch(MCP_ENDPOINT, {
+    method: 'POST', headers,
+    body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }),
+  });
+  const read = await fetch(MCP_ENDPOINT, {
+    method: 'POST', headers,
+    body: JSON.stringify({
+      jsonrpc: '2.0', id: 2, method: 'resources/read',
+      params: { uri: 'carecircle://household/state' },
+    }),
+  });
+  const body = await read.json() as { result?: { contents?: { text?: string }[] } };
+  void fetch(MCP_ENDPOINT, { method: 'DELETE', headers }).catch(() => undefined);
+  return JSON.parse(body.result?.contents?.[0]?.text ?? '{}');
+}
+
+/**
+ * The household's own names, for repairing a transcript.
+ *
+ * Cached briefly because it is read on every utterance and changes only when
+ * somebody joins the circle or a medication is added. A failure here must never
+ * cost us the turn - an uncorrected transcript is still a usable one.
+ */
+let vocabularyCache: { terms: string[]; at: number } = { terms: [], at: 0 };
+const VOCABULARY_TTL_MS = 30_000;
+
+async function vocabulary(): Promise<string[]> {
+  if (Date.now() - vocabularyCache.at < VOCABULARY_TTL_MS) return vocabularyCache.terms;
+  try {
+    const terms = buildVocabulary(await readCareState());
+    vocabularyCache = { terms, at: Date.now() };
+  } catch {
+    vocabularyCache = { ...vocabularyCache, at: Date.now() };
+  }
+  return vocabularyCache.terms;
+}
+
 app.post('/api/say', async (req, res) => {
   const { memberId, text } = req.body as { memberId?: string; text?: string };
   if (!memberId || !text) {
@@ -83,9 +150,14 @@ app.post('/api/say', async (req, res) => {
     return;
   }
   try {
+    // General speech recognition does not know who lives here, so the words it
+    // gets wrong are the ones that matter most: a name, or a medication. Map the
+    // transcript back onto the household's own vocabulary before the planner
+    // sees it, and report what changed rather than rewriting anyone silently.
+    const { text: heard, corrections } = correctTranscript(text, await vocabulary());
     const host = await hostFor(memberId);
-    const turn = await withRetry(() => host.say(text));
-    res.json(turn);
+    const turn = await withRetry(() => host.say(heard));
+    res.json({ ...turn, ...(corrections.length ? { heard, corrections } : {}) });
   } catch (err) {
     const message = (err as Error).message;
 
@@ -148,47 +220,7 @@ app.post('/api/act', async (req, res) => {
  */
 app.get('/api/state', async (_req, res) => {
   try {
-    const token = tokenFor.get('m_david');
-    const response = await fetch(MCP_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        accept: 'application/json, text/event-stream',
-        authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0', id: 1, method: 'initialize',
-        params: {
-          protocolVersion: '2025-11-25',
-          capabilities: {},
-          clientInfo: { name: 'carecircle-board', version: '0.1.0' },
-        },
-      }),
-    });
-    const sessionId = response.headers.get('mcp-session-id');
-    await response.text();
-    if (!sessionId) throw new Error('No session id returned by the MCP server');
-
-    const headers = {
-      'content-type': 'application/json',
-      accept: 'application/json, text/event-stream',
-      authorization: `Bearer ${token}`,
-      'mcp-session-id': sessionId,
-    };
-    await fetch(MCP_ENDPOINT, {
-      method: 'POST', headers,
-      body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }),
-    });
-    const read = await fetch(MCP_ENDPOINT, {
-      method: 'POST', headers,
-      body: JSON.stringify({
-        jsonrpc: '2.0', id: 2, method: 'resources/read',
-        params: { uri: 'carecircle://household/state' },
-      }),
-    });
-    const body = await read.json() as { result?: { contents?: { text?: string }[] } };
-    void fetch(MCP_ENDPOINT, { method: 'DELETE', headers }).catch(() => undefined);
-    res.json(JSON.parse(body.result?.contents?.[0]?.text ?? '{}'));
+    res.json(await readCareState());
   } catch (err) {
     res.status(502).json({ error: (err as Error).message });
   }

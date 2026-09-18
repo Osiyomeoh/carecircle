@@ -48,7 +48,16 @@ export interface ToolCall {
   isError: boolean;
   ms: number;
 }
-export interface Turn { spoken: string; toolCalls: ToolCall[]; }
+/** A word the server mapped back onto a name this household actually uses. */
+export interface Correction { from: string; to: string }
+
+export interface Turn {
+  spoken: string;
+  toolCalls: ToolCall[];
+  /** The transcript after correction, present only when something was changed. */
+  heard?: string;
+  corrections?: Correction[];
+}
 
 export interface SimConfig { provider: string; region: string; modelId: string; endpoint: string; }
 

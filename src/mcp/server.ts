@@ -917,7 +917,16 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         mimeType: 'application/json',
         text: JSON.stringify({
           household: s.household,
-          members: s.members.map((m) => ({ id: m.id, name: m.name, role: m.role })),
+          members: s.members.map((m) => ({
+            id: m.id, name: m.name, role: m.role, spokenAs: m.spokenAs ?? null,
+          })),
+          // The names this household actually uses. A voice client needs these to
+          // map a transcript back onto real people and real medications - general
+          // speech recognition knows nothing about "Renee" or a "thyroid tablet",
+          // and those are precisely the words it gets wrong.
+          medications: s.medications.map((m) => ({
+            id: m.id, name: m.name, times: m.times, forMemberId: m.forMemberId,
+          })),
           obligations: s.obligations.map((o) => ({
             id: o.id, what: o.what, status: o.status,
             owner: nameOf(o.ownerId) ?? null, dueAt: o.dueAt ?? null,
