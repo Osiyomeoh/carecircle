@@ -61,3 +61,14 @@ body {
            transition hover:text-ink;
   }
 }
+
+/* Some people get motion sick from exactly the kind of pulsing the orb does.
+   Honour the system setting: the interface still changes state, it just stops
+   moving to say so. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

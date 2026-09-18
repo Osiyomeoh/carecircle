@@ -39,6 +39,10 @@ export default {
         rise: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
         driftSlow: { '0%,100%': { transform: 'translate(0,0)' }, '50%': { transform: 'translate(6vw,4vh)' } },
         driftSlower: { '0%,100%': { transform: 'translate(0,0)' }, '50%': { transform: 'translate(-5vw,-3vh)' } },
+        // The orb at rest: alive enough to look tappable, slow enough to ignore.
+        breath: { '0%,100%': { transform: 'scale(1)', opacity: '0.85' }, '50%': { transform: 'scale(1.05)', opacity: '1' } },
+        // A ring leaving the orb while it listens.
+        ripple: { '0%': { transform: 'scale(0.85)', opacity: '0.55' }, '100%': { transform: 'scale(1.9)', opacity: '0' } },
       },
       animation: {
         beat: 'beat 1.8s infinite',
@@ -46,6 +50,8 @@ export default {
         rise: 'rise 0.5s ease-out both',
         'drift-slow': 'driftSlow 26s ease-in-out infinite',
         'drift-slower': 'driftSlower 34s ease-in-out infinite',
+        breath: 'breath 3.4s ease-in-out infinite',
+        ripple: 'ripple 1.8s ease-out infinite',
       },
     },
   },

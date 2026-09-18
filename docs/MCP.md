@@ -299,7 +299,7 @@ git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
 npm ci
 npm run story      # the whole scenario end to end, no AWS and no keys
 npm run dev        # the MCP server on :8787 (override with PORT)
-npm test           # 101 tests, including adversarial and property-based
+npm test           # 124 tests, including adversarial and property-based
 ```
 
 `npm run story` is the fastest way to understand the system: it plays the demo

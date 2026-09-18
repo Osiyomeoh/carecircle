@@ -36,6 +36,9 @@ export default function Console() {
    *  recogniser, which does not. Falls back automatically when anything fails. */
   const [accurate, setAccurate] = useState(true);
   const [level, setLevel] = useState(0);
+  /** What the browser's recogniser thinks it is hearing, right now. Shown under
+   *  the orb so the words appear as they are spoken instead of only at the end. */
+  const [interim, setInterim] = useState('');
   const recordingRef = useRef<Recording | null>(null);
   const [calls, setCalls] = useState<ToolCall[]>([]);
   const { state, online } = useBoard(3000);
@@ -145,17 +148,19 @@ export default function Console() {
     if (!SpeechRec) return;
     const rec = new SpeechRec();
     rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = false;
-    rec.onstart = () => { setListening(true); setVoiceNote(null); };
-    rec.onend = () => setListening(false);
+    rec.onstart = () => { setListening(true); setVoiceNote(null); setInterim(''); };
+    rec.onend = () => { setListening(false); setInterim(''); };
     rec.onresult = (e: any) => {
       let t = ''; for (const r of e.results) t += r[0].transcript;
       setInput(t);
-      if (e.results[e.results.length - 1].isFinal && t.trim()) sayRef.current(t);
+      setInterim(t);
+      if (e.results[e.results.length - 1].isFinal && t.trim()) { setInterim(''); sayRef.current(t); }
     };
     // Every one of these used to fail silently. A demo where the mic quietly
     // does nothing is worse than one that says why it cannot hear you.
     rec.onerror = (e: any) => {
       setListening(false);
+      setInterim('');
       handsfreeRef.current = false;
       setHandsfree(false);
       setVoiceNote(VOICE_ERRORS[e?.error] ?? `Voice stopped: ${e?.error ?? 'unknown error'}. Typing still works.`);
@@ -163,6 +168,22 @@ export default function Console() {
     recRef.current = rec;
     return () => { try { rec.abort(); } catch { /* */ } };
   }, []);
+
+  // One entry point for the microphone, so tapping the orb and tapping the
+  // button cannot drift apart.
+  const micDisabled = !accurate && !SpeechRec;
+  const toggleMic = useCallback(() => {
+    if (accurate) {
+      void (listening ? finishAccurately() : listenAccurately());
+      return;
+    }
+    const r = recRef.current; if (!r) return;
+    setVoiceNote(null);
+    if (listening) { r.stop(); return; }
+    // start() throws if the recogniser is already running - surface it rather
+    // than swallowing it, which is how this went unnoticed.
+    try { r.start(); } catch { setVoiceNote('The microphone is already starting. Give it a second and try again.'); }
+  }, [accurate, listening, listenAccurately, finishAccurately]);
 
   const gaps = state?.gaps ?? [];
   const obById = Object.fromEntries((state?.obligations ?? []).map((o) => [o.id, o]));
@@ -196,19 +217,44 @@ export default function Console() {
           ))}
         </div>
 
-        {/* device orb */}
+        {/* device orb. Tapping it is the same action as the Speak button - the
+            orb is the thing that looks tappable, so it had better be. */}
         <div className="glass flex flex-col items-center gap-3 rounded-2xl p-6">
-          <div className={`relative flex h-28 w-28 items-center justify-center rounded-full transition
-            ${listening ? 'bg-alexa/20' : speaking ? 'bg-core/20' : 'bg-white/5'}`}>
-            <div className={`absolute inset-0 rounded-full ${listening ? 'animate-ping bg-alexa/20' : speaking ? 'animate-ping bg-core/20' : ''}`} />
-            <div className={`h-16 w-16 rounded-full bg-gradient-to-br ${speaking ? 'from-core to-alexa' : 'from-alexa to-[#2f6fd0]'} shadow-glow`} />
-          </div>
-          <div className="text-[0.8125rem] text-muted">
-            {listening
-              ? (accurate ? 'listening… tap Stop when you finish' : 'listening…')
-              : speaking ? 'speaking…'
-              : accurate || SpeechRec ? 'tap the mic and speak'
-              : 'voice needs Chrome - typing works'}
+          <button
+            type="button"
+            onClick={toggleMic}
+            disabled={micDisabled}
+            aria-label={listening ? 'Stop listening' : 'Start listening'}
+            aria-pressed={listening}
+            className="relative flex h-28 w-28 items-center justify-center rounded-full outline-none transition
+              focus-visible:ring-2 focus-visible:ring-core focus-visible:ring-offset-2 focus-visible:ring-offset-bg
+              disabled:cursor-not-allowed disabled:opacity-40 enabled:cursor-pointer">
+            {/* Rings leave the orb only while it is listening, so the animation
+                means one specific thing rather than being decoration. */}
+            {listening && <>
+              <span className="absolute inset-0 rounded-full bg-alexa/30 animate-ripple" aria-hidden />
+              <span className="absolute inset-0 rounded-full bg-alexa/20 animate-ripple" style={{ animationDelay: '0.6s' }} aria-hidden />
+            </>}
+            <span className={`absolute inset-0 rounded-full transition ${listening ? 'bg-alexa/20' : speaking ? 'bg-core/20' : 'bg-white/5'}`} aria-hidden />
+            <span className={`relative h-16 w-16 rounded-full bg-gradient-to-br shadow-glow transition
+              ${speaking ? 'from-core to-alexa scale-110' : listening ? 'from-alexa to-[#2f6fd0] scale-105' : 'from-alexa to-[#2f6fd0] animate-breath'}`} aria-hidden />
+          </button>
+
+          <div className="min-h-[1.5rem] text-center" aria-live="polite">
+            {listening ? (
+              <div className="text-[1.0625rem] font-semibold tracking-wide text-alexa">Speak now</div>
+            ) : speaking ? (
+              <div className="text-[0.9375rem] font-medium text-core">Speaking…</div>
+            ) : (
+              <div className="text-[0.8125rem] text-muted">
+                {micDisabled ? 'voice needs Chrome - typing works' : 'Tap the orb and speak'}
+              </div>
+            )}
+            {listening && (
+              <div className="mt-0.5 text-[0.6875rem] text-muted">
+                {accurate ? 'tap again when you finish' : 'pause when you finish'}
+              </div>
+            )}
           </div>
 
           {/* A live peak meter, so it is obvious the microphone is hearing you. */}
@@ -220,24 +266,21 @@ export default function Console() {
               ))}
             </div>
           )}
+
+          {/* The words as they are heard. Transcribe only answers once the
+              speaker stops, so this is the browser recogniser's to fill. */}
+          {listening && !accurate && (
+            <div className="min-h-[1.25rem] max-w-sm text-center text-[0.875rem] italic leading-snug text-ink/80">
+              {interim || <span className="text-muted not-italic">listening…</span>}
+            </div>
+          )}
           {voiceNote && (
             <div className="max-w-sm rounded-lg border border-norecord/40 bg-norecord/10 px-3 py-2 text-center text-[0.75rem] leading-relaxed text-norecord">
               {voiceNote}
             </div>
           )}
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <button disabled={!accurate && !SpeechRec} onClick={() => {
-              if (accurate) {
-                void (listening ? finishAccurately() : listenAccurately());
-                return;
-              }
-              const r = recRef.current; if (!r) return;
-              setVoiceNote(null);
-              if (listening) { r.stop(); return; }
-              // start() throws if the recogniser is already running - surface it
-              // rather than swallowing it, which is how this went unnoticed.
-              try { r.start(); } catch { setVoiceNote('The microphone is already starting. Give it a second and try again.'); }
-            }}
+            <button disabled={micDisabled} onClick={toggleMic}
               className={`rounded-lg px-4 py-2 text-sm font-medium transition ${listening ? 'bg-alexa text-[#04120d]' : 'glass text-ink'} disabled:opacity-40`}>
               {listening ? 'Stop' : '🎙 Speak'}
             </button>

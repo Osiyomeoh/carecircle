@@ -24,7 +24,7 @@ what happened        what must happen        who has it
  Thursday at 10"     drive her                has claimed it
 ```
 
-**And it is real - not a mockup.** Live MCP server you can hit right now, **101 tests**
+**And it is real - not a mockup.** Live MCP server you can hit right now, **124 tests**
 (including property-based proofs of the risk model), **93.3%** measured tool-selection
 accuracy on Amazon Bedrock, and a trust model **measured at 0% false accusations where a
 raw LLM hits 50%**. See it end-to-end in ~60 seconds, no AWS or keys required:
@@ -317,7 +317,7 @@ curl https://ypq2dfq2p7.us-east-1.awsapprunner.com/health
 # Option B - clone and reproduce locally (no AWS needed)
 git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
 npm ci
-npm test          # 101 tests (unit, adversarial, and property-based)
+npm test          # 124 tests (unit, adversarial, and property-based)
 npm run story     # the whole one-day story, end to end, over real MCP
 ```
 

@@ -1,9 +1,11 @@
 # CareCircle - session handoff
 
 A self-contained brief to resume work in a new session. Last updated 2026-09-18
-(**MCP Apps: the Care Board ships as an interactive view**; TV surface reworked to
-an ambient RN screen with sliding notifications, hosted live at `/tv-native`; sim
-CORS opened; single-gap notification loop fixed).
+(**voice accuracy: Amazon Transcribe with a self-refreshing custom vocabulary +
+transcript repair**; the console orb now shows listening state and a live interim
+transcript; the interface scales from a 360px phone to a 4K television;
+**MCP Apps: the Care Board ships as an interactive view**; TV surface reworked to
+an ambient RN screen with sliding notifications, hosted live at `/tv-native`).
 
 ## What CareCircle is (updated positioning)
 
@@ -95,7 +97,7 @@ trust/provenance model, `ingest_signal` (the real
 Ring/Bee seam - any external signal → INFERRED proposal), ownership/claiming,
 purchase-in-place (`reorder_prescription` / `confirm_purchase`), SNS notifications
 (record-only fallback), DynamoDB persistence, App Runner deploy, the multi-device web
-board (simulator), **the Care Board as an MCP App (SEP-1865)**, 101 tests +
+board (simulator), **the Care Board as an MCP App (SEP-1865)**, 124 tests +
 adversarial suite + CI.
 
 **Adapter-ready (seam only, no live third-party wiring):** Ring → `ingest_signal`
@@ -156,6 +158,88 @@ themes and the full claim loop were verified that way.
 spoken answer is untouched. There is a test asserting the spoken text never says
 "tap", "click" or "below" - the view must never become load-bearing.
 
+## DONE (2026-09-18): voice accuracy, and the mic that did nothing
+
+Three separate pieces of work, in the order they were needed.
+
+### 1. The mic was dead (and silent about it)
+
+A deterministic React bug, worth remembering because nothing appeared in the
+console: `speak` closes over `listening` -> `say` closes over `speak` -> the
+recognition effect depended on `say`. So `onstart` set `listening`, which rebuilt
+`speak`, which rebuilt `say`, which re-ran the effect, whose **cleanup aborted the
+recognition that had just started.** Fixed by building the recogniser exactly once
+(`[]` deps) and reaching the current `say` through `sayRef`.
+
+Compounding it: there was **no `rec.onerror` handler at all**, so every Web Speech
+failure mode failed silently. `VOICE_ERRORS` now maps each code to something a
+person can act on, shown in an amber box under the orb.
+
+### 2. Transcript repair (`src/sim/transcript.ts`)
+
+Recognisers mangle the names this household actually uses. The vocabulary is
+derived from the care record itself - member names, `spokenAs` aliases, medication
+names - and matched with **Soundex + Levenshtein**.
+
+**The trap, caught by its own test:** "run" and "Renee" share Soundex code R500,
+so "I'll run to the pharmacy" became "I'll Renee to the pharmacy". Guards now:
+- a length guard (`Math.abs(a.length - b.length) <= 1`) on the Soundex path,
+- an `UNTOUCHABLE` stoplist of common short words, checked first,
+- a 0.78 similarity floor on the fallback path.
+
+Corrections are **shown, never silent**: `heard as run -> Renee` renders under the
+message it changed.
+
+### 3. Amazon Transcribe (`src/sim/transcribe.ts`) - default path
+
+Browser records raw PCM16LE @ 16kHz mono (`sim-ui/src/lib/mic.ts`, `AudioContext`
++ ScriptProcessor through a muted gain node so it runs without echoing), POSTs to
+`/api/transcribe` (`express.raw`), server streams it to Transcribe **with the
+household's names as a custom vocabulary**. The repair layer still runs behind it.
+Any failure falls back to the browser recogniser and says so - which is exactly how
+a missing IAM permission surfaced as a readable message instead of a dead mic.
+This is also a second documented AWS integration for **AWS Builder**.
+
+`frames()` never splits a 16-bit sample. `signature()` is an order-independent
+fingerprint of the phrase set.
+
+**Two bugs found only by reading back what Amazon actually held:**
+- `ensureVocabulary` never refreshed a vocabulary already in `READY`, so it was
+  frozen at whatever the household looked like on first boot. It now compares
+  `phrasesOf(downloadUri)` against the current signature and rebuilds on drift.
+  Verified self-healing live: `READY -> PENDING -> READY`, ending with
+  `Tasha, David, Margaret, Mom, Renee, heart-pill, thyroid-tablet`.
+- Medications were missing entirely because **`carecircle-mcp` had never been
+  redeployed** - the documented both-services gotcha below, biting again.
+
+### 4. The orb says what it is doing
+
+The orb is now the control (tapping it is `toggleMic`, the same entry point as the
+Speak button, so the two cannot drift apart). Idle breathes; listening shows a bold
+**"Speak now"**, two staggered expanding rings, and the live peak meter; speaking is
+a distinct colour and scale. On the browser-recogniser path the **interim transcript
+streams under the orb** - Transcribe only answers once the speaker stops, so that
+line is honestly left to the recogniser that can fill it. `prefers-reduced-motion`
+is honoured globally in `index.css`.
+
+## DONE (2026-09-18): the interface scales from a phone to a television
+
+Root font ramps with the viewport in `sim-ui/src/index.css` (18px@1800 -> 22px@2200
+-> 27px@2800 -> 33px@3500). Because Tailwind's type and spacing scales are **rem**,
+moving the root size scales the whole interface at once rather than needing a
+breakpoint per element. `tv: 1920px` / `tv4k: 3200px` breakpoints exist for the
+places that is not enough; TVBoard carries overscan padding
+(`tv:px-[3.5vw] tv:py-[3vh]`).
+
+**Two real bugs found by measuring rather than looking**, at 360 / 375 / 768 / 1920
+/ 3840:
+- the console control row did not wrap - the hands-free toggle ran outside its own
+  card at 375px (`flex-wrap`);
+- the hero used `h-screen`, which is a **cap, not a floor**: 767px of copy locked
+  into a 640px viewport, silently clipping the surface chips. Now `min-h-[100svh]`.
+
+Verified at 3840x2160: `rootFont 33px`, `h1 123.75px`, no horizontal overflow.
+
 ## Front-end (judge-facing UI) - React + Vite + Tailwind + R3F
 
 The UI was migrated off vanilla HTML to a real build in **`sim-ui/`** (React 18 + Vite +
@@ -164,9 +248,10 @@ client routes served as an SPA by the sim Express server (`src/sim/app.ts` serve
 `sim-ui/dist` with a non-`/api` GET fallback to `index.html`):
 - **`/`** - Hero: R3F scene (distorted core + four evidence surfaces + bezier evidence
   streams + drei `Html` labels), live Care-Gap badge from `/api/state`.
-- **`/console`** - voice console: `SpeechRecognition` in + `SpeechSynthesis` out, member
-  selector, device orb, live board with real `claim_obligation` / `confirm_proposal` /
-  `confirm_purchase` actions via `/api/act`, tool-call log.
+- **`/console`** - voice console: **Amazon Transcribe** (default) or `SpeechRecognition`
+  in, `SpeechSynthesis` out, member selector, device orb with listening state, live board
+  with real `claim_obligation` / `confirm_proposal` / `confirm_purchase` actions via
+  `/api/act`, tool-call log. See "Voice accuracy" below.
 - **`/tv`** - 10-foot care board.
 - Dev: `cd sim-ui && npm run dev` (Vite :5174 proxies `/api` → sim :5173). Build: the
   Dockerfile runs `cd sim-ui && npm ci && npm run build` and ships `sim-ui/dist`.
@@ -232,6 +317,10 @@ cards** (the way a TV OS surfaces an alert), not a board a family reads. It is o
   - `/api/state` is proxied by the sim to the MCP server's `carecircle://household/state`
     resource, so gap/obligation TEXT changes only go live once **carecircle-mcp** redeploys.
   - Deploy builds from committed `HEAD` (`git archive HEAD`), so **commit before deploying.**
+  - **Latent bug, fixed 2026-09-18:** `deploy-mcp.sh` wrote the App Runner *instance
+    role* policy only when creating the role, so it had been frozen at its original
+    DynamoDB+SNS permissions since day one - any permission added later silently never
+    applied. The policy is now rewritten on **every** deploy, and includes `transcribe:*`.
 
 ## DONE (2026-09-17): Fire TV app - the "shared display" surface
 
@@ -338,12 +427,24 @@ Amazon device-app IDs above. Once the triplet arrives, wire `ingest_signal` (`se
 
 ## Pending / next moves
 
-1. Push commit `97b0f7a` (SUBMISSION Built-vs-seam section) to origin if not already.
-2. ~~Audit `FRICTION-LOG.md` for the 6 required fields per tool~~ **DONE** - all 14
-   entries carry Task/Steps/Expected/Actual/Severity/Workaround/Suggestion (verified
-   programmatically). The Gemini and preflight entries were completed.
-3. Write the ≤3-min demo script matched to the live UI, Ring/Bee framed honestly.
-4. Optional: seed the live board so judges land on populated Care Gaps + chips (right
-   now it reads "nothing outstanding"). Changes what every visitor sees - confirm first.
-5. Consider the top-line positioning rewrite ("responsibility layer for family care")
+1. **Option G - the "play-the-day" surface.** The video centrepiece: one press walks
+   the whole one-day arc on screen. **Open question, asked and never answered: should
+   pressing play make real MCP calls against the shared demo household?**
+   Recommendation: yes, with a visible Reset - a scripted animation is the one thing a
+   judge cannot verify, and the calls are what make it real.
+2. **Option D - speaker identity.** Accept a host-provided speaker identity as an
+   `INFERRED` signal, and file the matching FRICTION-LOG / FEATURE-REQUESTS entry:
+   **MCP has no way to pass speaker identity**, so a shared device cannot tell the
+   server who is talking. That is a real protocol gap and a scored observation.
+3. **Option H - Ring doorstep card.** Snapshot card carrying a `SIMULATED RING EVENT`
+   badge (honesty rule: never imply Ring is wired) + Margaret's photo.
+4. Write and shoot the **<=3-minute demo video**, Ring/Bee framed as seams throughout.
+5. Devpost writeup.
+6. **User-only:** register on Devpost, make the repo public near Oct 23, claim the
+   $150 AWS credits.
+7. Consider the top-line positioning rewrite ("responsibility layer for family care")
    across README/SUBMISSION openers - bigger, subjective; confirm before doing.
+
+Done since last handoff: FRICTION-LOG audit (all 14 entries carry the 6 required
+fields), the live board is seeded (3 Care Gaps + 1 proposal, not "nothing
+outstanding"), the MCP App, `docs/MCP.md`, voice accuracy, and responsive scaling.
