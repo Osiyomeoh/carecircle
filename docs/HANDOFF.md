@@ -459,7 +459,7 @@ board and not touch it. The remote is the third channel.
 - `sim-ui/src/lib/dpad.ts` - navigation as a **pure reducer**, so "can you always get
   back out?" has a provable answer. Three modes: `ambient` (the clock) -> `browsing`
   (moving between gaps) -> `identifying` (who is taking this on).
-- `src/dpad.test.ts` - 10 tests in the main suite (the suite now stands at **250**), including that
+- `src/dpad.test.ts` - 10 tests in the main suite (the suite now stands at **262**), including that
   every mode can be backed out of and that a gap list shrinking under the viewer
   never leaves focus past its end (the board polls every 4s; someone else can claim
   the focused gap mid-press).
@@ -485,6 +485,52 @@ Verified in-browser at 1600x900, locally and then **against the live `/tv`**: wa
 wrap, choose, and the failure path rendering honestly as *"Couldn't claim that:
 HTTP 500"* rather than a false success. The live check was deliberately backed out
 without claiming - the shared board is what every visitor sees.
+
+## DONE (2026-09-18): four defects one live transcript found
+
+The user drove the console by hand and pasted the transcript. Every one of these
+passed 250 tests. Read this section before adding another test file - the common
+thread is that all four are about what the model was *given*, and none of them are
+visible from inside the code under test.
+
+**1. `get_care_gaps` could see absence and not presence.** Asked *"Did Mom take a
+pill?"* it said **"There's no record of any medication taken today yet."** A thyroid
+dose logged by the aide minutes earlier had been erased. The gap text was correct
+("no record of the 08:00 dose"); the model generalised it, because gaps were all it
+was handed. **A tool that hands over half a record invites the other half to be
+invented.** It now returns `recordedToday` - what HAS been logged, with attribution -
+and the description tells a planner to check it before saying anything about what was
+or was not taken. Note the irony: this is the same erasure the attribution work fixed
+at the other end of the same session, arriving through a different door.
+
+**2. The `read_full_state` refusal was written for the aide.** Margaret asked *"can
+someone drive me Thursday?"* - the sentence `auth.ts` itself calls "the most ordinary
+sentence in this whole system" - and was told she had access to *"what's needed for
+your shift rather than the full care record."* She is not on a shift. She holds
+`request_owner`; the tool that answers her was one call away and the refusal never
+mentioned it, so the turn died in a clarifying question. **A dead end is where a model
+starts improvising.** `DENIAL_BY_ROLE` now overrides per role, and a new test asserts
+every refusal names a way forward - which immediately caught the aide's, also a dead
+end, and unrelated to the reported bug.
+
+**3. Nothing ever told the planner who was speaking.** David said *"I can't do
+Thursday"* and the model replied **"Are you David?"** - asking the one question the
+server could already answer, and inviting the answer from the conversation, which is
+precisely the channel `auth.ts` says identity must never come from. Identity was bound
+to the session credential, checked on every call, and never *disclosed*. New resource
+**`carecircle://session/me`** (memberId, name, role, `can[]`), readable by any
+authenticated member - which matters, because the case that broke was the care
+recipient, who cannot read the full care state. The host reads it at connect and stamps
+the speaker into the prompt exactly the way the date already was. Same bug shape as the
+2024-12-19 date bug: the planner could not answer because nobody told it.
+
+**4. The TV remote hint was invisible.** One line of `text-white/35` at `1.1vw` beside
+the clock, while the eye is on the notification at the top. First person in front of it
+said they could not see a remote; they were right. Now key caps (`◀ ▶ OK BACK`) at real
+contrast, and it stays up while steering so BACK is discoverable. **Third dead
+accessibility control this session** - after the Polly pace that synthesised identical
+audio and the mic that never let go. All three passed their tests. All three were found
+by a person using the thing.
 
 ## DONE (2026-09-18): "who says so" - the trust model, one level deeper
 
