@@ -58,7 +58,7 @@ layer can produce; no single device could.
 ## Track strategy (locked, per the official rules)
 
 - **Primary track: Alexa+ (MCP).** We qualify cleanly - self-hosted MCP server, spec
-  2025-11-25, Streamable HTTP, called in code (21 tools), live URL. Top-prize track.
+  2025-11-25, Streamable HTTP, called in code (22 tools), live URL. Top-prize track.
 - **Mini challenges: AWS Builder + Open Source.** Both qualify (Bedrock/DynamoDB/App
   Runner/SNS documented; `@carecircle/care-events` MIT package). A project can **win
   only one mini prize**, but entering both is allowed.
@@ -103,7 +103,7 @@ verdict.
 
 ## What's built vs. adapter-ready
 
-**Built + tested (live code):** Alexa+ MCP server (21 tools, session-bound identity),
+**Built + tested (live code):** Alexa+ MCP server (22 tools, session-bound identity),
 Care Gap engine (deterministic; severity is a stated risk model, see below),
 trust/provenance model, `ingest_signal` (the real
 Ring/Bee seam - any external signal → INFERRED proposal), ownership/claiming,
@@ -459,7 +459,7 @@ board and not touch it. The remote is the third channel.
 - `sim-ui/src/lib/dpad.ts` - navigation as a **pure reducer**, so "can you always get
   back out?" has a provable answer. Three modes: `ambient` (the clock) -> `browsing`
   (moving between gaps) -> `identifying` (who is taking this on).
-- `src/dpad.test.ts` - 10 tests in the main suite (the suite now stands at **262**), including that
+- `src/dpad.test.ts` - 10 tests in the main suite (the suite now stands at **290**), including that
   every mode can be backed out of and that a gap list shrinking under the viewer
   never leaves focus past its end (the board polls every 4s; someone else can claim
   the focused gap mid-press).
@@ -485,6 +485,52 @@ Verified in-browser at 1600x900, locally and then **against the live `/tv`**: wa
 wrap, choose, and the failure path rendering honestly as *"Couldn't claim that:
 HTTP 500"* rather than a false success. The live check was deliberately backed out
 without claiming - the shared board is what every visitor sees.
+
+## DONE (2026-09-18): the agent - what CareCircle does when nobody is talking to it
+
+The strongest single addition this session, and the answer to "is this agentic enough".
+It was already an orchestrator (`candidatesFor` ranks who to ask by load and fairness)
+with long-lasting context (append-only event log, state is a fold) and a deterministic
+engine. The one thing missing was autonomy: **nothing ever ran without a human turn.**
+An unowned ride sat until somebody checked - the exact failure the product exists to fix.
+
+**`src/domain/agent.ts` is a policy, not a cron job.** This distinction is the whole
+point and the demo line. For every possible action it computes
+`value = harmAvoided - interruptionCost` in the **same units the gap score publishes**,
+and acts only when value > 0. The behaviour a naive version hard-codes falls out of the
+arithmetic instead:
+
+- No 3am messages: `NIGHT_MULTIPLIER = 9` on interruption cost. A *multiplier*, not a
+  wall - a medical gap minutes from due can still clear it. Not `if (isNight) return`.
+- No badgering: fatigue is **`FATIGUE_BASE ** priorAsks`**, superlinear. It started
+  linear and a test caught that a high-risk gap stayed askable after 15 asks.
+- Gives up: once the circle is exhausted, escalates to the primary caregiver once, then
+  every action is net-negative and it stands down.
+- Prioritises: `harmAvoided` *is* the gap score, so cardiology outranks the church lunch.
+
+Pure `(state, now) -> {actions, restraint}`. Restraint is a first-class output: a pass
+that decides to do nothing records *why*, because an agent that only reports what it did
+is not auditable and this one mostly decides to do nothing. 40 new tests incl. fast-check
+properties (never acts on non-positive value; bounded under any load; deterministic).
+
+**Two rules the machine is held to like every human:** it ASKS, never assigns (REQUESTED
+carries no owner; a person still says yes), and every act is an event attributed to
+`system:carecircle` - so `attribution.ts` renders "CareCircle asked Renee", never a
+person, and "why did I get this?" is answerable from the log with the arithmetic attached.
+
+**Pieces:** `agent.ts` (decides, touches nothing) · `agent-runner.ts` (performs effects,
+system-attributed) · `agent-loop.ts` (heartbeat, OFF unless `CARECIRCLE_AGENT_INTERVAL_MS`
+set - never grows a timer in tests/CI by surprise; production sets it) · `run_care_agent`
+tool (dry-run or real, so the autonomy is demoable on camera without waiting an hour).
+
+**Verified live:** dry-run explains the plan; real run asks + writes the system-attributed
+event with `value:{harmAvoided,interruptionCost,net}`; second run stands down with a spoken
+reason. **Also fixed a quadratic** - risk re-scored the whole board per obligation; a
+60-obligation property test went 13s -> 0.37s.
+
+**Demo beat this unlocks (better than anything currently scripted):** nobody touches
+anything, time passes, and CareCircle asks Renee - then explains, in the same numbers on
+the board, why her and why now.
 
 ## DONE (2026-09-18): four defects one live transcript found
 
