@@ -1,7 +1,9 @@
 # CareCircle - session handoff
 
 A self-contained brief to resume work in a new session. Last updated 2026-09-18
-(**voice accuracy: Amazon Transcribe with a self-refreshing custom vocabulary +
+(**the delegation loop: ask -> decline -> ask next -> accept**; the planner now
+knows what day it is; **Amazon Polly** speaks replies with a listener-chosen pace;
+**voice accuracy: Amazon Transcribe with a self-refreshing custom vocabulary +
 transcript repair**; the console orb now shows listening state and a live interim
 transcript; the interface scales from a 360px phone to a 4K television;
 **MCP Apps: the Care Board ships as an interactive view**; TV surface reworked to
@@ -97,7 +99,7 @@ trust/provenance model, `ingest_signal` (the real
 Ring/Bee seam - any external signal → INFERRED proposal), ownership/claiming,
 purchase-in-place (`reorder_prescription` / `confirm_purchase`), SNS notifications
 (record-only fallback), DynamoDB persistence, App Runner deploy, the multi-device web
-board (simulator), **the Care Board as an MCP App (SEP-1865)**, 124 tests +
+board (simulator), **the Care Board as an MCP App (SEP-1865)**, 163 tests +
 adversarial suite + CI.
 
 **Adapter-ready (seam only, no live third-party wiring):** Ring → `ingest_signal`
@@ -239,6 +241,86 @@ places that is not enough; TVBoard carries overscan padding
   into a 640px viewport, silently clipping the surface chips. Now `min-h-[100svh]`.
 
 Verified at 3840x2160: `rootFont 33px`, `h1 123.75px`, no horizontal overflow.
+
+## DONE (2026-09-18): the delegation loop - 21 tools
+
+CareCircle could find work nobody owned. It could not pursue it. The gap between
+"Margaret needs a ride Thursday" and someone actually driving her was one the
+system could describe and not close.
+
+`request_owner` / `respond_to_request` / `get_my_requests` (`src/domain/delegation.ts`).
+
+**The central decision: `REQUESTED` is its own status and carries no owner.**
+Being asked is not having agreed, and collapsing those is the same class of error
+as reading a missing medication record as a missed dose. A pending request still
+reads as a Care Gap and is spoken as *"David was asked and hasn't answered yet."*
+
+**Risk arithmetic:** a pending ask earns a *discount*, not an exemption. Relief is
+`0.55 * exp(-hoursWaiting / 12)`, so an unanswered request climbs back to the full
+risk of unowned work within a day - the arithmetic of "I asked David" quietly
+becoming "nobody is doing this".
+
+**Who to ask** is deterministic and explainable. Family is a **tier**, not a
+tie-break: ranking purely on who is least busy handed the paid aide the cardiology
+drive ahead of both of Margaret's children, because she starts every week empty.
+Within a tier it is load first. Declines are remembered; a *stated* conflict at the
+due time excludes, mere silence does not.
+
+**Margaret can ask; she cannot assign.** New `request_owner` capability granted to
+care_recipient. She is a participant, not a subject.
+
+E2E over the real MCP wire in `src/delegation.e2e.test.ts`, including that only the
+person asked can answer. Note those tests reseed per test - the loop MOVES
+ownership, so a second test would otherwise find the work taken.
+
+## DONE (2026-09-18): the planner did not know what day it was
+
+The live board was showing a cardiology appointment dated **19 December 2024**. It
+was not stale seed data - `createdAt` was that morning. Someone said "Mom has
+cardiology Thursday at ten", and the planner, never told today's date, invented a
+timestamp near its own training prior and sent it **with no timezone**.
+
+That was the real reason "Thursday" sounded random. The engine phrased the date
+correctly; the date was fiction.
+
+Three guards, outermost first:
+- `systemPrompt({now, timezone})` in `src/sim/host.ts` stamps the current date and
+  the household's zone (read from the state resource, so dates resolve where the
+  family lives). Says never to guess a date. The eval harness uses the same
+  stamped prompt. `SYSTEM_PROMPT` is kept as a deprecated alias.
+- `src/domain/time.ts` - `toInstant()` reads a wall-clock timestamp in the
+  household's zone instead of silently treating it as UTC (which had been moving
+  every appointment by the offset), and `implausible()` refuses a date more than
+  2 days past or 400 days ahead with a question.
+- Spoken dates now always carry the date: **"Thursday the 24th"**, never a bare
+  weekday, which on a Friday could mean six days out or thirteen.
+
+**Still outstanding:** two zombie `PROPOSED` rows dated 2024-12-19 remain in the
+live table and render as cards. Removal is `confirm_proposal(confirmed:false)` on
+each - the product's own path, leaving an audit trail. Not done: it changes what
+every visitor sees, so it needs the user's go-ahead.
+
+## DONE (2026-09-18): Amazon Polly
+
+`src/sim/speech.ts`, `POST /api/speak`. The browser's SpeechSynthesis gave a
+different voice on every machine, so what a judge heard depended on their OS.
+Polly Ruth/generative is identical everywhere - **verified live, returns
+`x-carecircle-voice: Ruth/generative`.**
+
+The reason it matters beyond polish is **pace**: `slow` (75%) / `gentle` (90%) /
+`normal`, exposed in the console. Older listeners, people with hearing loss and
+anyone processing language after a stroke need slower speech, and slowing it
+without it sounding drunk needs a real engine. SSML also puts a 350ms breath after
+each sentence.
+
+Care-note text is XML-escaped before it reaches the markup. The engine steps down
+generative -> neural -> standard rather than failing, and an unreachable Polly
+falls back to the browser voice: a downgrade, never a silence.
+
+**Fourth AWS service** after Bedrock, DynamoDB and Transcribe. Needs
+`polly:SynthesizeSpeech` on the instance role (in `deploy-mcp.sh`). Note the
+`conductor` *user* lacks Polly, so it cannot be tested from the CLI - verify
+against the deployed service.
 
 ## Front-end (judge-facing UI) - React + Vite + Tailwind + R3F
 
