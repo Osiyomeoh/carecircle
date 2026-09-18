@@ -55,11 +55,46 @@ export function can(member: Member, capability: Capability): boolean {
   return CAPABILITIES[member.role].has(capability);
 }
 
+/** Everything this member may do, for a host that wants to know before it asks. */
+export function capabilitiesOf(member: Member): Capability[] {
+  return [...CAPABILITIES[member.role]];
+}
+
 /**
  * Denial reasons are written for a model to speak, not for a developer to debug.
  * They say what the person *can* do, so the conversation keeps moving instead of
  * dead-ending in an error.
  */
+/**
+ * What to say instead.
+ *
+ * A denial that only says no is a dead end, and a dead end is where a model starts
+ * improvising. We watched it happen: Margaret - the person being cared for - asked
+ * "can someone drive me Thursday?", the most ordinary sentence in this whole system.
+ * `get_care_gaps` needs `read_full_state`, which she does not have, so she was told
+ * she lacked access to the care record and the turn died there. She holds
+ * `request_owner`. The tool that answers her question was one call away and the
+ * refusal never mentioned it.
+ *
+ * Worse, the sentence she got - "what's needed for your shift rather than the full
+ * care record" - was written for the paid aide. Said to the person the household is
+ * organised around, it makes her a subject of the record rather than a participant
+ * in it, which is the exact thing the comment above CAPABILITIES says we will not do.
+ *
+ * So denials are role-aware and name the next step. A refusal should tell you what
+ * you CAN do, in the words you would use.
+ */
+const DENIAL_BY_ROLE: Partial<Record<Capability, Partial<Record<Role, string>>>> = {
+  read_full_state: {
+    care_recipient:
+      "I keep the full care record for the people looking after you, but this is your day "
+      + "too - I can tell you what's on it, or ask someone in the family to take something on.",
+  },
+  log_others_event: {
+    care_recipient: 'You can log things about yourself here.',
+  },
+};
+
 const DENIAL: Partial<Record<Capability, string>> = {
   assign_obligation:
     'Only the primary caregiver can put work on someone else\'s name. You can take it on '
@@ -69,7 +104,8 @@ const DENIAL: Partial<Record<Capability, string>> = {
   escalate:
     'Only the primary caregiver can raise an urgent alert. You could add a note so they see it.',
   read_full_state:
-    "You have access to what's needed for your shift rather than the full care record.",
+    "The full care record is the family's. I can tell you what this shift needs, "
+    + "and you can log anything you do.",
   confirm_proposal:
     'Only a family caregiver can confirm whether this is really needed.',
   log_others_event:
@@ -92,7 +128,9 @@ export function require(member: Member, capability: Capability): void {
   if (can(member, capability)) return;
   throw new NotPermittedError(
     capability,
-    DENIAL[capability] ?? `You don't have permission to do that.`,
+    DENIAL_BY_ROLE[capability]?.[member.role]
+      ?? DENIAL[capability]
+      ?? `You don't have permission to do that.`,
   );
 }
 

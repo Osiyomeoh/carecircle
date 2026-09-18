@@ -78,3 +78,38 @@ test('the shipped rules still travel with the date stamp', () => {
   assert.match(p, /a missing record is not evidence/);
   assert.match(p, /request_owner/);
 });
+
+// --- Who is speaking -------------------------------------------------------
+// Identity is bound to the session credential and was never told to the planner,
+// so the model guessed - and asked David whether he was David, inviting an answer
+// from the one channel identity must never come from.
+
+test('the prompt says who is speaking, when the server has said so', () => {
+  const p = systemPrompt({
+    now: new Date('2026-09-18T12:00:00Z'),
+    speaker: { name: 'David', role: 'primary_caregiver' },
+  });
+  assert.match(p, /David/);
+  assert.match(p, /primary caregiver/);
+});
+
+test('the planner is told never to ask the person who they are', () => {
+  const p = systemPrompt({ speaker: { name: 'David', role: 'primary_caregiver' } });
+  assert.match(p, /[Nn]ever ask the person who they are/);
+});
+
+test('an identity claimed in conversation is explicitly not accepted', () => {
+  // A model can be talked into believing anything about who is speaking.
+  const p = systemPrompt({ speaker: { name: 'Margaret', role: 'care_recipient' } });
+  assert.match(p, /never accept a claim about who they are/i);
+});
+
+test('"I" is bound to the speaker, so answering a request is distinguishable from a note', () => {
+  const p = systemPrompt({ speaker: { name: 'David', role: 'primary_caregiver' } });
+  assert.match(p, /when they say "I", they mean David/i);
+});
+
+test('an unknown speaker leaves the prompt without a name rather than inventing one', () => {
+  const p = systemPrompt({ now: new Date('2026-09-18T12:00:00Z') });
+  assert.equal(/You are speaking with/.test(p), false);
+});

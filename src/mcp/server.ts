@@ -7,7 +7,7 @@ import { candidatesFor } from '../domain/delegation.js';
 import { implausible, toInstant } from '../domain/time.js';
 import { interpretSignal, type CareSignal } from '../domain/signals.js';
 import { offerFor, offerSpoken, formatPrice, type OfferKind, type PurchaseOffer } from '../domain/commerce.js';
-import { can, canActOn, NotPermittedError, require as requireCap } from '../domain/auth.js';
+import { can, canActOn, capabilitiesOf, NotPermittedError, require as requireCap } from '../domain/auth.js';
 import { attributionOf, isReported, sayWhoSaysSo } from '../domain/attribution.js';
 import { bootstrapSubject } from '../http/identity.js';
 import { CareStore, HouseholdScopeError, NotFoundError } from '../store/store.js';
@@ -337,7 +337,10 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       + 'someone says "yes", "that one", "I\'ve got it" or "that\'s done" and you need to know '
       + 'which item they mean, call this to find it, then act. Results are already ranked by '
       + 'urgency and already phrased for speech: read them as written. Never restate a missing '
-      + 'record as someone having failed to do something.',
+      + 'record as someone having failed to do something. The result also carries '
+      + '`recordedToday` - what HAS been logged today, and who logged it. Check it before '
+      + 'saying anything about what has or has not been taken: a gap for one dose never '
+      + 'means nothing was taken, and a dose somebody else logged is still a record.',
     inputSchema: {
       withinDays: z.number().int().positive().max(365).optional()
         .describe('Only include dated items within this many days. Omit for everything.'),
@@ -355,7 +358,26 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         now: now(),
         ...(withinDays !== undefined ? { withinDays } : {}),
       });
+      // What IS on the record today, alongside what is missing from it.
+      //
+      // This tool could see absence and not presence, and a caller reading only
+      // gaps will generalise "no record of the 08:00 dose" into "nothing has been
+      // taken today" - which erases a record a real person made. We watched that
+      // happen live, to a dose the aide had just logged. Absence is only half the
+      // record and a tool that hands over half a record invites the other half to
+      // be invented.
+      const today = now().toISOString().slice(0, 10);
+      const recordedToday = state().events
+        .filter((e) => e.kind === 'medication_taken' && e.occurredAt.slice(0, 10) === today)
+        .map((e) => ({
+          what: e.data['medicationName'] ?? 'medication',
+          at: e.occurredAt,
+          attribution: attributionOf(e),
+          saidBy: nameOf(e.reportedBy) ?? null,
+        }));
+
       return reply(speakGaps(gaps), {
+        recordedToday,
         gaps: gaps.map((g) => ({
           id: g.id, kind: g.kind, severity: g.severity, spoken: g.spoken,
           because: g.because, obligationId: g.obligationId ?? null, score: g.score,
@@ -1152,6 +1174,41 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
   });
 
   // --- Resources: the care record, readable as a document ----------------
+  // --- Who is speaking -------------------------------------------------
+  //
+  // Identity is bound to the session credential and checked on every call, and
+  // until now it was never *told* to anybody. So the model had to guess who it was
+  // talking to, and we watched it do the only honest thing left: David said "I
+  // can't do Thursday" and it replied "Are you David?" - asking the one question
+  // the server could already answer, and inviting an answer from the conversation,
+  // which is exactly the channel identity must never come from.
+  //
+  // Any authenticated member may read this. It says who the credential speaks for
+  // and what that person may do - nothing about anybody else - so it discloses
+  // strictly less than the caller already holds.
+  server.registerResource('me', 'carecircle://session/me', {
+    title: 'Who this session speaks for',
+    description:
+      'The member this credential identifies, and what they are allowed to do. A host '
+      + 'should read this once and never ask the person who they are.',
+    mimeType: 'application/json',
+  }, async (uri) => {
+    const me = actor();
+    return {
+      contents: [{
+        uri: uri.href,
+        mimeType: 'application/json',
+        text: JSON.stringify({
+          memberId: me.id,
+          name: me.name,
+          spokenAs: me.spokenAs ?? null,
+          role: me.role,
+          can: capabilitiesOf(me),
+        }, null, 2),
+      }],
+    };
+  });
+
   server.registerResource('care-state', 'carecircle://household/state', {
     title: 'Current care state',
     description: 'The full care picture: members, open work, and recent events.',

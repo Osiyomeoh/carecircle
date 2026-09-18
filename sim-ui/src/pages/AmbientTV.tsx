@@ -56,6 +56,28 @@ function alertText(spoken: string): string {
   return spoken.replace(/\s-\s.*$/, '').trim() || spoken;
 }
 
+/**
+ * One or more remote keys, drawn as caps with their meaning beside them.
+ *
+ * Text and shape, never colour alone: a viewer who cannot distinguish the accent
+ * still reads the glyph and the word.
+ */
+function Keys({ glyphs, label }: { glyphs: string[]; label: string }) {
+  return (
+    <span className="flex items-center gap-2">
+      {glyphs.map((g) => (
+        <kbd
+          key={g}
+          className="rounded-lg border-2 border-white/60 bg-white/15 px-3 py-1 text-[1.25vw] font-semibold leading-none text-white"
+        >
+          {g}
+        </kbd>
+      ))}
+      <span className="text-[1.15vw] text-white/80">{label}</span>
+    </span>
+  );
+}
+
 export default function AmbientTV() {
   const { state, online } = useBoard();
   // The ambient card cycles every open gap (a LOW one still needs an owner); the
@@ -189,10 +211,32 @@ export default function AmbientTV() {
           Margaret's care circle
         </div>
 
-        {/* The remote is invisible unless you say it is there. */}
-        {!steering && !claimed && gaps.length > 0 && (
-          <div className="mt-6 text-[1.1vw] text-white/35">
-            Press any direction on the remote to take something on
+        {/*
+          The remote, drawn.
+
+          This was one line of 35%-opacity prose next to the clock, and the first
+          person to sit in front of it said they could not see a remote. They were
+          right: at ten feet, white-on-dark at a third opacity is not text, and the
+          eye is on the notification at the top of the screen anyway. An affordance
+          nobody can find is an affordance that does not exist - the same lesson as
+          the pace that synthesised nothing and the mic that never let go.
+
+          So: real contrast, key caps rather than a sentence, and it stays up while
+          you are steering so BACK is discoverable too.
+        */}
+        {!claimed && gaps.length > 0 && (
+          <div className="mt-8 flex items-center gap-4 rounded-2xl border border-white/25 bg-white/10 px-6 py-3">
+            {steering ? (
+              <>
+                <Keys glyphs={['◀', '▶']} label="choose" />
+                <Keys glyphs={['OK']} label="take it on" />
+                <Keys glyphs={['BACK']} label="the clock" />
+              </>
+            ) : (
+              <>
+                <Keys glyphs={['◀', '▲', '▼', '▶']} label="on your remote to start" />
+              </>
+            )}
           </div>
         )}
         {claimed && (

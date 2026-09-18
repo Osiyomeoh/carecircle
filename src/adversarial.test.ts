@@ -146,7 +146,10 @@ test('the paid aide cannot read the family care record', async () => {
   const session = await openSession('aide-token');
   const { body } = await callTool('aide-token', session, 'get_care_gaps');
   assert.equal(body.result.isError, true);
-  assert.match(spoken(body), /needed for your shift/);
+  // The refusal is scoped to the shift and points somewhere, rather than pinning
+  // one sentence - the wording changed once already, for good reason.
+  assert.match(spoken(body), /shift/i);
+  assert.equal(/no record|missed|did n[o']t/i.test(spoken(body)), false);
 });
 
 test('the care recipient cannot claim work on her own behalf', async () => {
