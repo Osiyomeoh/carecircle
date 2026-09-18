@@ -1,9 +1,11 @@
 # Feature requests
 
-Written while building, addressed to the teams that own each surface. Urgency is
-rated critical / important / nice-to-have.
-
-Template: what we wanted, why it mattered *for this project*, what we did instead.
+These are the things we kept wishing existed while building - written down in the moment,
+addressed to the teams who own each surface, and rated by how much they actually hurt:
+critical / important / nice-to-have. None of them are wishlist padding; every one is a
+place where we wanted to do the right thing for a family coordinating someone's care and
+the platform made us choose a workaround instead. Where we found a way around it, we say
+so - the workaround is usually the tell for what the platform should have handled.
 
 ---
 
@@ -98,6 +100,12 @@ Template: what we wanted, why it mattered *for this project*, what we did instea
 - **Instead:** We truncate to three spoken items and say how many remain, and we render
   our own cards in our simulator to show what the experience should be.
 
+> *This is the one that genuinely frustrated us, because we could feel the good product
+> on the other side of the wall. We compute a ranked list with severity, owner, due time
+> and a reason for every gap - and then, at the speech boundary, we flatten it to a
+> sentence and throw the structure away. Building the care board in our own simulator was
+> partly us refusing to accept that the richest thing we make has to die as audio.*
+
 ### Actionable cards: let a card carry the next tool call
 - **Urgency:** important
 - **What:** Cards whose controls invoke a named tool with bound arguments - a Claim
@@ -129,6 +137,35 @@ Template: what we wanted, why it mattered *for this project*, what we did instea
 
 ---
 
-## AWS (Bedrock AgentCore / Strands)
+## AWS (Bedrock)
 
-_To be filled in as we build the hosting and agent layers._
+These came straight out of the friction log - the Bedrock quota saga cost us most of a
+day, and the fixes are small.
+
+### Show me my daily token budget before I spend it
+- **Urgency:** important
+- **What:** Surface daily token consumption and remaining budget in the Bedrock console
+  and via an API readable with plain Bedrock access - the way Service Quotas already does
+  for request rates.
+- **Why it matters:** We ran a batch eval and every call died with
+  `ThrottlingException: Too many tokens per day`. There was no figure, no reset time, no
+  page to check - the only way to learn the limit was to hit it, and the only way to learn
+  it had reset was to retry. For anything batch-shaped (evals, backfills) that makes the
+  service unplannable.
+- **Instead:** We excluded throttled cases from results and paced calls by hand.
+
+### Tell me "zero quota" and "spent quota" apart
+- **Urgency:** critical
+- **What:** Distinguish an exhausted budget from an account whose quota is *zero*, in both
+  the error class and the message. A permanent zero should not arrive as a retriable
+  `ThrottlingException`.
+- **Why it matters:** Our account's applied inference quota was 0 against a default of a
+  million, but the error said "too many tokens per day" - so we spent hours looking for a
+  workload that had drained a budget that never existed. Clients retry throttling by
+  default, which for a zero quota means retrying forever. These are opposite situations and
+  only one is worth waiting out.
+- **Instead:** We built a preflight ([`docs/FRICTION-LOG.md`](FRICTION-LOG.md)) that reads
+  the applied-vs-default quota and tells the developer which case they're in, so the app
+  explains the failure instead of advising a wait that will never end.
+
+_AgentCore / Strands hosting notes to follow as we build that layer out._

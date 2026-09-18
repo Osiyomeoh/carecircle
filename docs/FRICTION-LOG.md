@@ -1,7 +1,13 @@
 # Friction log
 
-Running log kept **while building** (worth up to a 10% judging bonus; worthless if
-reconstructed at the end). One entry per friction point.
+This is the honest record of where we got stuck. We kept it open in a tab and wrote
+entries the moment something bit us - not reconstructed at the end, because a friction
+log written from memory is just a changelog wearing a costume. Some of these cost an
+hour; one cost the better part of a day and a wrong theory we had to unlearn. Each entry
+keeps the same fields so a reader can act on it, but the short italic notes are the part
+we'd actually say out loud to the team that owns the tool.
+
+One entry per friction point.
 
 Template:
 
@@ -58,6 +64,11 @@ Template:
   reason to reach for it: avoiding a build step or a loader dependency. We ended up adding
   the loader dependency anyway, which is the outcome the feature exists to prevent.
 - **Date:** 2026-09-14
+
+> *We reached for native type stripping specifically to avoid a loader, chased the
+> resolution mismatch for an hour, and ended the day installing the exact dependency we
+> were trying to do without. That stung - not because it's hard, but because the feature
+> quietly doesn't compose with TypeScript's own recommended resolution.*
 
 ### Node 24 type stripping - parameter properties are rejected at runtime
 - **Task attempted:** Run tests against source using TypeScript parameter properties
@@ -212,6 +223,13 @@ Template:
   condition - clients retry it by default, which here means retrying forever.
 - **Date:** 2026-09-14
 
+> *This is the one that cost us most of a day. "Too many tokens per day" sent us hunting
+> for a workload that had drained a budget - we checked credits, enabled a second region,
+> re-read our own code - when the truth was there had never been any budget at all: every
+> Bedrock quota on the account was zero. We were debugging consumption on an account that
+> had never consumed anything. The error didn't lie exactly, but it pointed us at the
+> wrong story and let us believe it for hours.*
+
 
 ### Service Quotas - a zeroed quota cannot be restored through Service Quotas
 - **Task attempted:** Request a Bedrock inference quota increase after discovering the
@@ -236,6 +254,12 @@ Template:
   natural request a customer can make. At minimum, the error should say what the applied
   value is and direct the customer to support when it is below default.
 - **Date:** 2026-09-14
+
+> *There's a bleak comedy to this one: our quota was zero, the self-service tool exists
+> to fix quotas, and it refused our request because 200,000 wasn't greater than a default
+> we didn't have. The only way to satisfy the validator was to ask for more than we
+> needed, dishonestly, or file a support case we couldn't file on Basic support. The
+> escape hatch had a lock on the inside.*
 
 
 ### Gemini free tier - multi-turn tool loops are unusable under rate limits
@@ -264,6 +288,12 @@ Template:
   their own code for a catalogue bug.
 - **Date:** 2026-09-16
 
+> *We only came here because Bedrock was down to zero quota and we needed any model to
+> keep iterating. What got us was how quietly it failed - single tool calls worked, so it
+> looked fine, and then every real conversational turn (which fires three or four calls in
+> a couple of seconds) died halfway through. A stopgap that works for the trivial case and
+> breaks on the actual use case is worse than one that just says no.*
+
 
 ### Ring Partner API - webhook event types are listed, but the payload schema is not
 - **Task attempted:** Build an adapter from Ring webhook events to CareCircle's care
@@ -287,6 +317,13 @@ Template:
   to the type table. One concrete `motion_detected` example with the `attributes` and
   `relationships` filled in would remove the guesswork entirely.
 - **Date:** 2026-09-16
+
+> *We wanted the Ring adapter to match Ring's real contract, not an invented shape - that
+> was a point of pride. But the docs give you the guest list and not the menu: you learn
+> which events exist and nothing about the exact fields inside them. So we wrote to the
+> handful of fields Ring guarantees and refused to guess at the rest, which is the right
+> call for a webhook handler but not the certainty you want when a parse mistake silently
+> drops a real-world event.*
 
 ### Bedrock - a model-access grant does not imply the caller can invoke the model
 - **Task attempted:** Invoke Claude Sonnet 4.5 immediately after receiving the email
