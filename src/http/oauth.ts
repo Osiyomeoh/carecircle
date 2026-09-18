@@ -104,16 +104,54 @@ export interface OAuthOptions {
   issuer: string;
   /** Members a demo user may sign in as: id -> display name. */
   members: () => Array<{ id: string; name: string }>;
+  /**
+   * Exact redirect URIs this server will send a code to.
+   *
+   * Empty means "anything", which is only tolerable before a partner has been
+   * pointed at the endpoint - so the constructor warns loudly in that case rather
+   * than letting an open redirector pass unnoticed.
+   */
+  allowedRedirects?: string[];
   now?: () => Date;
+}
+
+/**
+ * Whether we will hand a code to this redirect URI.
+ *
+ * Exact string match, never prefix and never "starts with" - OAuth 2.1 requires
+ * exact matching because `https://good.example` is a prefix of
+ * `https://good.example.attacker.test`. Localhost is allowed on any port so local
+ * development does not need the list edited constantly; loopback is not reachable
+ * by an attacker's server.
+ */
+export function redirectAllowed(uri: string, allowed: string[]): boolean {
+  if (allowed.length === 0) return true;
+  if (allowed.includes(uri)) return true;
+  try {
+    const u = new URL(uri);
+    return u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+  } catch { return false; }
 }
 
 export class OAuthProvider {
   readonly #codes = new Map<string, PendingCode>();
   readonly #opts: OAuthOptions;
 
+  readonly #allowed: string[];
+
   constructor(opts: OAuthOptions) {
     if (!opts.secret) throw new Error('OAuth requires a signing secret.');
     this.#opts = opts;
+    this.#allowed = opts.allowedRedirects ?? [];
+    if (this.#allowed.length === 0) {
+      // Not fatal: the list cannot be populated until the partner's redirect URI is
+      // known, and refusing to boot would leave no way to find it out. But an
+      // unrestricted authorization endpoint is worth saying out loud.
+      console.warn(
+        '[oauth] No redirect allowlist configured (CARECIRCLE_OAUTH_REDIRECTS). '
+        + 'Any redirect_uri will be honoured. Set it once the client\'s redirect URI is known.',
+      );
+    }
   }
 
   get issuer(): string { return this.#opts.issuer; }
@@ -169,6 +207,15 @@ export class OAuthProvider {
       res.status(400).json({
         error: 'invalid_request',
         error_description: 'code_challenge_method must be S256; plain is not supported.',
+      });
+      return;
+    }
+    // Checked BEFORE the consent screen is drawn: a person should never be asked to
+    // approve a handoff to somewhere we would refuse to send the code anyway.
+    if (!redirectAllowed(redirect_uri, this.#allowed)) {
+      res.status(400).json({
+        error: 'invalid_request',
+        error_description: 'redirect_uri is not registered for this server.',
       });
       return;
     }

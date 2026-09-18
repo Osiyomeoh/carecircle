@@ -5,7 +5,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { createCareCircleApp } from './app.ts';
 import { CareStore } from '../store/store.ts';
 import { seedDemoHousehold, DEMO_TOKENS } from '../demo/seed.ts';
-import { makePkce, pkceMatches, signToken, verifyToken, oauthResolver } from './oauth.ts';
+import { makePkce, pkceMatches, redirectAllowed, signToken, verifyToken, oauthResolver } from './oauth.ts';
 import { resolverFromEnv } from './identity.ts';
 
 /**
@@ -323,6 +323,38 @@ test('production wiring: the entrypoint resolver honours OAuth tokens', () => {
   // And the demo tokens must keep working through the same resolver.
   const asDemo = { header: () => 'Bearer renee-token' };
   assert.equal(resolver.resolve(asDemo as never), 'm_renee');
+});
+
+// --- redirect allowlist --------------------------------------------------
+
+test('attack: an unregistered redirect is refused before anyone consents', () => {
+  const allowed = ['https://client.example/cb'];
+  assert.equal(redirectAllowed('https://client.example/cb', allowed), true);
+  assert.equal(redirectAllowed('https://attacker.test/cb', allowed), false);
+});
+
+test('attack: a lookalike prefix is not a match', () => {
+  // The reason OAuth 2.1 mandates exact matching: the good URI is a PREFIX of
+  // the bad one, so anything doing startsWith() hands over the code.
+  const allowed = ['https://client.example'];
+  assert.equal(redirectAllowed('https://client.example.attacker.test', allowed), false);
+  assert.equal(redirectAllowed('https://client.example/../../evil', allowed), false);
+});
+
+test('an empty allowlist permits anything, which is why it warns', () => {
+  // Honest about the default: the list cannot be populated until the partner's
+  // redirect URI is known, so this is permissive and noisy rather than silent.
+  assert.equal(redirectAllowed('https://anywhere.test/cb', []), true);
+});
+
+test('localhost stays usable for development without editing the list', () => {
+  const allowed = ['https://client.example/cb'];
+  assert.equal(redirectAllowed('http://localhost:5173/cb', allowed), true);
+  assert.equal(redirectAllowed('http://127.0.0.1:8080/cb', allowed), true);
+});
+
+test('a malformed redirect is refused rather than throwing', () => {
+  assert.equal(redirectAllowed('not a url', ['https://client.example/cb']), false);
 });
 
 // --- PKCE unit -----------------------------------------------------------

@@ -101,6 +101,8 @@ if (oauthSecret) {
     secret: oauthSecret,
     issuer: (process.env['CARECIRCLE_PUBLIC_URL'] ?? 'http://localhost:8787').replace(/\/$/, ''),
     members: () => store.allMembers().map((m) => ({ id: m.id, name: m.spokenAs ?? m.name })),
+    allowedRedirects: (process.env['CARECIRCLE_OAUTH_REDIRECTS'] ?? '')
+      .split(',').map((u) => u.trim()).filter(Boolean),
     ...(now ? { now } : {}),
   });
   // RFC 9728 - how an MCP client finds the authorization server for this resource.
