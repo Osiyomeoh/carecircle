@@ -521,3 +521,33 @@ Template:
   buy hardware first. Pair it with a published example payload per event type - see the
   separate entry on payload schema.
 - **Date:** 2026-09-18
+
+### Amazon Polly (generative engine) - `prosody rate` is silently quantized
+- **Task attempted:** Offer three speech paces - `slow` (75%), `gentle` (90%) and
+  `normal` (100%) - so a listener with hearing loss, or anyone processing language
+  after a stroke, can slow the assistant down without it sounding drunk.
+- **Steps taken:** Wrapped the text in `<speak><prosody rate="90%">…</prosody></speak>`
+  and synthesized with voice Ruth, engine `generative`. Unit-tested the SSML string.
+  Then, testing the deployed endpoint, synthesized the same sentence at each rate and
+  compared the returned audio.
+- **Expected:** Three distinguishable renderings, or an error naming an unsupported
+  value.
+- **Actual:** `75%` produced different audio. **`90%` produced audio byte-identical to
+  `100%`** - same length, same MD5 - and identical to an unset rate. No warning, no
+  error, HTTP 200. The generative engine appears to quantize `prosody rate` to internal
+  steps and drop a value close to normal, so one of our three accessibility settings
+  did nothing at all while every test passed.
+- **Severity:** major - an accessibility control that silently does nothing is worse
+  than one that is absent, because nobody goes looking for it.
+- **Workaround:** Moved `gentle` to **80%**, clear of whatever boundary sits between
+  75% and 90%, and wrote the verification method into the code comment: compare the
+  *bytes* at two rates, because asserting the SSML proves only that we composed the
+  request correctly, which is exactly how this went unnoticed.
+- **Suggestion:** Two things. (1) Document, per engine, which SSML tags are honoured
+  and at what granularity - the SSML documentation is largely engine-agnostic, and
+  `generative` is the engine Amazon steers you toward. (2) Return a warning field when
+  a supported tag is accepted but quantized away. Silent acceptance of an instruction
+  you did not follow is the failure mode hardest for a developer to find, and it lands
+  hardest on accessibility features, which are exactly the ones a developer is least
+  able to evaluate by ear.
+- **Date:** 2026-09-18

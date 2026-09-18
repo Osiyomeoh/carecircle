@@ -317,7 +317,7 @@ different voice on every machine, so what a judge heard depended on their OS.
 Polly Ruth/generative is identical everywhere - **verified live, returns
 `x-carecircle-voice: Ruth/generative`.**
 
-The reason it matters beyond polish is **pace**: `slow` (75%) / `gentle` (90%) /
+The reason it matters beyond polish is **pace**: `slow` (75%) / `gentle` (80%) /
 `normal`, exposed in the console. Older listeners, people with hearing loss and
 anyone processing language after a stroke need slower speech, and slowing it
 without it sounding drunk needs a real engine. SSML also puts a 350ms breath after

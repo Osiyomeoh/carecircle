@@ -31,8 +31,18 @@ function polly(): PollyClient {
   return client;
 }
 
-/** Speech rates we expose. `slow` exists for listeners, not for demos. */
-export const RATES = { slow: '75%', gentle: '90%', normal: '100%' } as const;
+/**
+ * Speech rates we expose. `slow` exists for listeners, not for demos.
+ *
+ * `gentle` was 90% and produced audio **byte-identical** to 100% - the generative
+ * engine quantizes `prosody rate` to its own internal steps and reports no error,
+ * so a rate close to normal is silently dropped. 75% survived, 90% did not, which
+ * puts the boundary somewhere between. 80% is chosen to sit clear of it.
+ *
+ * Verify a change here by synthesizing the same sentence at two rates and comparing
+ * the bytes - the SSML being correct proves nothing, which is how this went unnoticed.
+ */
+export const RATES = { slow: '75%', gentle: '80%', normal: '100%' } as const;
 export type Rate = keyof typeof RATES;
 
 export function isRate(value: unknown): value is Rate {
