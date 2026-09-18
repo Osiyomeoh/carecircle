@@ -2,7 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { CORPUS, MEMBER_LABEL, type EvalCase } from './corpus.js';
 import type { ModelProvider, ToolSpec } from '../sim/providers.js';
-import { SYSTEM_PROMPT } from '../sim/host.js';
+import { systemPrompt } from '../sim/host.js';
 
 /**
  * Tool-selection evaluation.
@@ -22,7 +22,9 @@ import { SYSTEM_PROMPT } from '../sim/host.js';
  */
 
 // Measure the exact planner the product ships, not a prompt tuned to score well.
-const SYSTEM = SYSTEM_PROMPT;
+// The eval measures the planner the product actually ships, date stamp included -
+// resolving "Thursday" is part of the job being scored.
+const SYSTEM = systemPrompt();
 
 export interface CaseResult {
   case: EvalCase;

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { classify, describe as describeDiagnosis, type QuotaFact } from './preflight.ts';
+import { systemPrompt } from './host.ts';
 
 const fact = (over: Partial<QuotaFact> = {}): QuotaFact => ({
   code: 'L-F4DDD3EB',
@@ -54,4 +55,26 @@ test('descriptions name the affected quota codes', () => {
   const text = describeDiagnosis(classify([fact({ applied: 0, appliedAtLevel: 'ACCOUNT' })]));
   assert.match(text, /L-F4DDD3EB/);
   assert.match(text, /ACCOUNT HOLD/);
+});
+
+// --- the planner has to know what day it is ------------------------------
+
+test('the prompt tells the planner today, so "Thursday" can be resolved', () => {
+  const p = systemPrompt({ now: new Date('2026-09-18T12:00:00Z'), timezone: 'America/New_York' });
+  assert.match(p, /Today is Friday, September 18, 2026/);
+  assert.match(p, /America\/New_York/);
+  assert.match(p, /Never guess a date/);
+});
+
+test('the household zone is used, not the server\'s', () => {
+  const p = systemPrompt({ now: new Date('2026-09-18T02:00:00Z'), timezone: 'Asia/Tokyo' });
+  // 02:00 UTC is already Friday afternoon in Tokyo.
+  assert.match(p, /Today is Friday, September 18, 2026/);
+  assert.match(p, /Asia\/Tokyo/);
+});
+
+test('the shipped rules still travel with the date stamp', () => {
+  const p = systemPrompt();
+  assert.match(p, /a missing record is not evidence/);
+  assert.match(p, /request_owner/);
 });

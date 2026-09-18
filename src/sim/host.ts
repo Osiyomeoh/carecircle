@@ -24,15 +24,42 @@ import type { Conversation, ModelProvider, ToolResult, ToolSpec } from './provid
  * product ships - the published tool-selection number is not from a friendlier
  * prompt written to score well.
  */
-export const SYSTEM_PROMPT = `You are Alexa, speaking to a member of a family caring for an elderly relative.
+export const SYSTEM_PROMPT_RULES = `You are Alexa, speaking to a member of a family caring for an elderly relative.
 
 Rules:
 - Use the CareCircle tools for anything about medications, appointments, notes, or who is responsible for what. Never answer from memory.
 - Tool results are already written to be spoken. Say them as written; do not reformat, summarise, or add markdown.
 - Never say someone did not take a medication or did not do something. The system only knows what has been recorded, and a missing record is not evidence. Say there is no record.
 - When someone confirms, claims, or closes something with a short phrase whose subject is left implicit - "yes", "that's right", "I've got it", "I can take that one", "that's sorted" - they are acting on work that already exists, not saying nothing. Call get_care_gaps to find what they mean, then the matching tool (confirm_proposal, claim_obligation, resolve_obligation). Never treat an implicit reference as "nothing to do".
+- Someone can ASK another person to take work on without assigning it to them. "Ask David if he can drive her" is request_owner; they still have to say yes, and the work stays unowned until they do. "I'll do it" is claim_obligation. Answering something you were asked is respond_to_request.
 - When a tool returns an error, follow the instruction inside it - usually asking the person a question.
 - Be brief. This is a voice conversation, not a chat window.`;
+
+/**
+ * The planner prompt, stamped with the current date.
+ *
+ * Without this the model has to invent a timestamp for "Thursday at ten" and will
+ * reach for a date near its own training prior - we watched it record a 2026
+ * appointment as 19 December 2024. A planner that does not know what day it is
+ * cannot resolve a relative date, and every appointment in this product is spoken
+ * as a relative date.
+ */
+export function systemPrompt(ctx: { now?: Date; timezone?: string } = {}): string {
+  const now = ctx.now ?? new Date();
+  const timezone = ctx.timezone ?? 'America/New_York';
+  const stamp = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  }).format(now);
+  return `${SYSTEM_PROMPT_RULES}
+
+Today is ${stamp}, and this household is in ${timezone}.
+- Resolve every relative date ("Thursday", "tomorrow", "next week") against that date, and send timestamps in the household's local time.
+- Never guess a date. If which day they mean is not clear, ask them.`;
+}
+
+/** @deprecated Use systemPrompt(), which knows what day it is. */
+export const SYSTEM_PROMPT = SYSTEM_PROMPT_RULES;
 
 export interface ToolCallRecord {
   name: string;
@@ -54,6 +81,8 @@ export class SimulatedAlexa {
   #tools: ToolSpec[] = [];
   /** One conversation per device, so each member keeps their own thread. */
   #conversation: Conversation | null = null;
+  /** The household's zone, read from the server so dates resolve where the family lives. */
+  #timezone = 'America/New_York';
 
   private constructor(provider: ModelProvider, mcp: Client) {
     this.#provider = provider;
@@ -75,7 +104,29 @@ export class SimulatedAlexa {
 
     const host = new SimulatedAlexa(opts.provider, mcp);
     await host.#loadTools();
+    await host.#loadTimezone();
     return host;
+  }
+
+  /**
+   * Ask the server where this household lives.
+   *
+   * Dates are resolved in the family's own time, not the server's. A failure here
+   * is not worth losing a conversation over, so it falls back to the default.
+   */
+  async #loadTimezone(): Promise<void> {
+    try {
+      const res = await this.#mcp.readResource({ uri: 'carecircle://household/state' });
+      const text = (res.contents?.[0] as { text?: string } | undefined)?.text;
+      if (!text) return;
+      const tz = (JSON.parse(text) as { household?: { timezone?: string } }).household?.timezone;
+      if (tz) this.#timezone = tz;
+    } catch { /* keep the default */ }
+  }
+
+  /** What the planner needs to resolve "Thursday". */
+  #context(): { now: Date; timezone: string } {
+    return { now: new Date(), timezone: this.#timezone };
   }
 
   /**
@@ -97,7 +148,7 @@ export class SimulatedAlexa {
 
   /** One conversational turn: what the person said in, what Alexa says out. */
   async say(utterance: string): Promise<TurnResult> {
-    this.#conversation ??= this.#provider.start(SYSTEM_PROMPT, this.#tools);
+    this.#conversation ??= this.#provider.start(systemPrompt(this.#context()), this.#tools);
     const toolCalls: ToolCallRecord[] = [];
     let output = await this.#conversation.say(utterance);
 
@@ -154,7 +205,7 @@ export class SimulatedAlexa {
     const text = out.content?.[0]?.text ?? '';
     // The model is not consulted, but the next spoken turn must not contradict the
     // screen, so the conversation is told what happened.
-    this.#conversation ??= this.#provider.start(SYSTEM_PROMPT, this.#tools);
+    this.#conversation ??= this.#provider.start(systemPrompt(this.#context()), this.#tools);
     return {
       name, arguments: args, result: text,
       ...(out.structuredContent !== undefined ? { structured: out.structuredContent } : {}),

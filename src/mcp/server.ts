@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { detectCareGaps, pendingProposals } from '../domain/gaps.js';
 import { orphanedBy, proposeFromAppointment } from '../domain/inference.js';
 import { candidatesFor } from '../domain/delegation.js';
+import { implausible, toInstant } from '../domain/time.js';
 import { interpretSignal, type CareSignal } from '../domain/signals.js';
 import { offerFor, offerSpoken, formatPrice, type OfferKind, type PurchaseOffer } from '../domain/commerce.js';
 import { can, canActOn, NotPermittedError, require as requireCap } from '../domain/auth.js';
@@ -189,7 +190,11 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       + 'confirm_proposal. Tell the person what was proposed and ask.',
     inputSchema: {
       kind: z.string().describe('What the appointment is, as said (e.g. "cardiology", "dentist").'),
-      startsAt: z.string().describe('ISO timestamp of when it starts.'),
+      startsAt: z.string().describe(
+        'ISO 8601 timestamp of when it starts, in the household\'s local time '
+        + '(e.g. "2026-09-24T10:00:00"). Resolve "Thursday" against today\'s date - '
+        + 'never guess a date, and ask which day they meant if it is not clear.',
+      ),
       forMemberId: z.string().optional().describe('Who it is for. Defaults to the care recipient.'),
       detail: z.string().optional().describe('Anything else said about it.'),
     },
@@ -207,16 +212,29 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       }
       const subject = recipient.spokenAs ?? recipient.name;
 
+      // "Thursday at ten" reaches us as a timestamp a language model invented, and
+      // a model does not reliably know today's date. Two guards before this becomes
+      // an appointment somebody relies on.
+      const at = toInstant(startsAt, s.household.timezone);
+      if (!at) {
+        return guidance(
+          `I couldn't make sense of "${startsAt}" as a date and time. `
+          + 'Ask them which day and time they meant.',
+        );
+      }
+      const doubtful = implausible(at, now());
+      if (doubtful) return guidance(doubtful.spoken);
+
       const event = await store.appendEvent({
         householdId: me.householdId,
         kind: 'appointment_scheduled',
         reportedBy: me.id,
-        occurredAt: startsAt,
+        occurredAt: at,
         ...(detail ? { detail } : {}),
         data: { appointmentKind: kind, forMemberId: recipient.id },
       });
 
-      const seeds = proposeFromAppointment(kind, subject, startsAt);
+      const seeds = proposeFromAppointment(kind, subject, at);
       const proposed = await Promise.all(seeds.map((seed) => store.createObligation({
         householdId: me.householdId,
         what: seed.what,
