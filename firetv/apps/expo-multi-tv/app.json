@@ -59,6 +59,9 @@
     "ios": {
       "bundleIdentifier": "com.anonymous.MultiTVSample"
     },
-    "newArchEnabled": false
+    "newArchEnabled": false,
+    "experiments": {
+      "baseUrl": "/tv-native"
+    }
   }
 }
