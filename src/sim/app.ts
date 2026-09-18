@@ -7,6 +7,7 @@ import { diagnoseBedrock, describe as describeDiagnosis } from './preflight.js';
 import { DEMO_TOKENS } from '../demo/seed.js';
 import { buildVocabulary, correctTranscript } from './transcript.js';
 import { ensureVocabulary, hasEnoughAudio, transcribePcm, unhyphenate, SAMPLE_RATE } from './transcribe.js';
+import { isRate, synthesize } from './speech.js';
 
 /**
  * Simulated Alexa+ experience.
@@ -248,6 +249,29 @@ app.post('/api/transcribe', express.raw({ type: '*/*', limit: '12mb' }), async (
       vocabulary: vocabularyName ? 'applied' : 'building',
       sampleRate: SAMPLE_RATE,
     });
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
+});
+
+/**
+ * Speak a line with Polly.
+ *
+ * Returns audio, or a 502 the browser treats as "use your own voice instead" -
+ * losing the nicer voice is a downgrade, never a silence.
+ */
+app.post('/api/speak', async (req, res) => {
+  const { text, rate } = (req.body ?? {}) as { text?: string; rate?: string };
+  if (typeof text !== 'string' || !text.trim()) {
+    res.status(400).json({ error: 'Nothing to say.' });
+    return;
+  }
+  try {
+    const spoken = await synthesize(text, isRate(rate) ? rate : 'normal');
+    res.setHeader('content-type', spoken.contentType);
+    res.setHeader('cache-control', 'no-store');
+    res.setHeader('x-carecircle-voice', `${spoken.voice}/${spoken.engine}`);
+    res.send(spoken.audio);
   } catch (err) {
     res.status(502).json({ error: (err as Error).message });
   }

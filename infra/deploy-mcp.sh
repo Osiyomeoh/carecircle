@@ -99,7 +99,8 @@ aws iam put-role-policy --role-name "$INST_ROLE" --policy-name inline --policy-d
       "transcribe:UpdateVocabulary"],"Resource":"*"},
     {"Effect":"Allow","Action":[
       "bedrock:InvokeModel",
-      "bedrock:InvokeModelWithResponseStream"],"Resource":"*"}]}' >/dev/null
+      "bedrock:InvokeModelWithResponseStream"],"Resource":"*"},
+    {"Effect":"Allow","Action":["polly:SynthesizeSpeech"],"Resource":"*"}]}' >/dev/null
 INST_ROLE_ARN=$(aws iam get-role --role-name "$INST_ROLE" --query Role.Arn --output text)
 
 echo "==> App Runner service"

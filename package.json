@@ -27,6 +27,7 @@
     "@aws-sdk/client-bedrock": "^3.1131.0",
     "@aws-sdk/client-bedrock-runtime": "^3.1131.0",
     "@aws-sdk/client-dynamodb": "^3.1132.0",
+    "@aws-sdk/client-polly": "^3.1135.0",
     "@aws-sdk/client-service-quotas": "^3.1132.0",
     "@aws-sdk/client-sns": "^3.1133.0",
     "@aws-sdk/client-transcribe": "^3.1135.0",

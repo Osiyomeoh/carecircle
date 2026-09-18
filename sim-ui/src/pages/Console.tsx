@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, MEMBERS, type Member, type ToolCall } from '../lib/api';
+import { api, MEMBERS, type Member, type SpeechRate, type ToolCall } from '../lib/api';
 import { record, type Recording } from '../lib/mic';
 import { useBoard } from '../lib/useBoard';
 import { ProvChip, provFromGap } from '../components/ProvChip';
@@ -40,6 +40,9 @@ export default function Console() {
    *  the orb so the words appear as they are spoken instead of only at the end. */
   const [interim, setInterim] = useState('');
   const recordingRef = useRef<Recording | null>(null);
+  /** Speech pace. Slower is an access control for older listeners, not a demo toggle. */
+  const [rate, setRate] = useState<SpeechRate>('normal');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [calls, setCalls] = useState<ToolCall[]>([]);
   const { state, online } = useBoard(3000);
   const recRef = useRef<any>(null);
@@ -47,18 +50,53 @@ export default function Console() {
 
   useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages]);
 
-  const speak = useCallback((text: string) => {
-    if (!speakOn || !window.speechSynthesis) return;
+  /** What to do once a line has finished being spoken, whichever voice said it. */
+  const afterSpeaking = useCallback(() => {
+    setSpeaking(false);
+    if (handsfree && recRef.current && !listening) {
+      try { recRef.current.start(); } catch { /* */ }
+    }
+  }, [handsfree, listening]);
+
+  /** The browser's own voice: the fallback, and whatever the OS happens to provide. */
+  const speakLocally = useCallback((text: string) => {
+    if (!window.speechSynthesis) { afterSpeaking(); return; }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.02;
+    u.rate = rate === 'slow' ? 0.75 : rate === 'gentle' ? 0.9 : 1.02;
     const voices = window.speechSynthesis.getVoices();
-    const pref = voices.find((v) => /samantha|google us english|zira|aria/i.test(v.name)) ?? voices.find((v) => v.lang?.startsWith('en'));
+    const pref = voices.find((v) => /samantha|google us english|zira|aria/i.test(v.name))
+      ?? voices.find((v) => v.lang?.startsWith('en'));
     if (pref) u.voice = pref;
     u.onstart = () => setSpeaking(true);
-    u.onend = () => { setSpeaking(false); if (handsfree && recRef.current && !listening) try { recRef.current.start(); } catch { /* */ } };
+    u.onend = afterSpeaking;
+    u.onerror = afterSpeaking;
     window.speechSynthesis.speak(u);
-  }, [speakOn, handsfree, listening]);
+  }, [afterSpeaking, rate]);
+
+  /**
+   * Say a line.
+   *
+   * Polly first, because the browser's voice is whatever the listener's operating
+   * system decided and varies from warm to robotic. If Polly is unreachable the
+   * local voice still speaks - losing the nicer voice is a downgrade, not a
+   * silence, which matters when speech is somebody's only channel.
+   */
+  const speak = useCallback((text: string) => {
+    if (!speakOn) return;
+    window.speechSynthesis?.cancel();
+    audioRef.current?.pause();
+    setSpeaking(true);
+    void api.speak(text, rate).then((blob) => {
+      if (!blob) { speakLocally(text); return; }
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => { URL.revokeObjectURL(url); afterSpeaking(); };
+      audio.onerror = () => { URL.revokeObjectURL(url); speakLocally(text); };
+      void audio.play().catch(() => { URL.revokeObjectURL(url); speakLocally(text); });
+    });
+  }, [speakOn, rate, speakLocally, afterSpeaking]);
 
   const say = useCallback(async (text: string) => {
     if (!text.trim()) return;
@@ -286,6 +324,16 @@ export default function Console() {
             </button>
             <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[0.75rem] text-muted">
               <input type="checkbox" checked={speakOn} onChange={(e) => setSpeakOn(e.target.checked)} /> speak replies
+            </label>
+            <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[0.75rem] text-muted"
+              title="How fast replies are spoken. Slower speech is easier to follow for older listeners and anyone with hearing loss.">
+              pace
+              <select value={rate} onChange={(e) => setRate(e.target.value as SpeechRate)}
+                className="bg-transparent text-ink outline-none">
+                <option className="bg-bg" value="slow">slow</option>
+                <option className="bg-bg" value="gentle">gentle</option>
+                <option className="bg-bg" value="normal">normal</option>
+              </select>
             </label>
             <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[0.75rem] text-muted"
               title="Amazon Transcribe, given this household's names as a custom vocabulary. Off uses the browser's own recogniser.">

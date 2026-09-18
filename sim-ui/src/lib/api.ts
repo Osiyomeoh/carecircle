@@ -74,6 +74,9 @@ async function jsonOrThrow(res: Response) {
   return data;
 }
 
+/** Matches the server's RATES. `slow` is an accessibility control, not a demo toggle. */
+export type SpeechRate = 'slow' | 'gentle' | 'normal';
+
 export const api = {
   state: (): Promise<BoardState> => fetch('/api/state').then((r) => r.json()),
   config: (): Promise<SimConfig> => fetch('/api/config').then((r) => r.json()),
@@ -86,6 +89,19 @@ export const api = {
     fetch('/api/transcribe', {
       method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: pcm,
     }).then(jsonOrThrow),
+  /** Polly audio for a line, or null when the service is unavailable. */
+  speak: async (text: string, rate: SpeechRate): Promise<Blob | null> => {
+    try {
+      const res = await fetch('/api/speak', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text, rate }),
+      });
+      if (!res.ok) return null;
+      return await res.blob();
+    } catch {
+      return null;
+    }
+  },
   act: (memberId: string, tool: string, args: Record<string, unknown>): Promise<ToolCall> =>
     fetch('/api/act', {
       method: 'POST', headers: { 'content-type': 'application/json' },
