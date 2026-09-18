@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, MEMBERS, type Member, type ToolCall } from '../lib/api';
+import { record, type Recording } from '../lib/mic';
 import { useBoard } from '../lib/useBoard';
 import { ProvChip, provFromGap } from '../components/ProvChip';
 import type { Provenance } from '../lib/api';
@@ -31,6 +32,11 @@ export default function Console() {
   const [handsfree, setHandsfree] = useState(false);
   /** Why the mic is not listening, when it isn't. Null when nothing is wrong. */
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
+  /** Amazon Transcribe, which knows the household's names, vs the browser's own
+   *  recogniser, which does not. Falls back automatically when anything fails. */
+  const [accurate, setAccurate] = useState(true);
+  const [level, setLevel] = useState(0);
+  const recordingRef = useRef<Recording | null>(null);
   const [calls, setCalls] = useState<ToolCall[]>([]);
   const { state, online } = useBoard(3000);
   const recRef = useRef<any>(null);
@@ -72,6 +78,45 @@ export default function Console() {
     } finally { setBusy(false); }
   }, [member, speak]);
 
+  // Held in a ref so the recogniser and the recorder can reach the current `say`
+  // without being rebuilt every time it changes.
+  const sayRef = useRef(say);
+  useEffect(() => { sayRef.current = say; }, [say]);
+
+  /**
+   * Listen using Amazon Transcribe.
+   *
+   * Records raw PCM, sends it once the speaker stops, and hands the text to the
+   * same `say` the typed path uses. Any failure here drops back to the browser's
+   * recogniser rather than losing the turn.
+   */
+  const listenAccurately = useCallback(async () => {
+    setVoiceNote(null);
+    try {
+      recordingRef.current = await record(setLevel);
+      setListening(true);
+    } catch {
+      setVoiceNote('The browser blocked the microphone. Allow mic access for this site, then tap Speak again.');
+    }
+  }, []);
+
+  const finishAccurately = useCallback(async () => {
+    const recording = recordingRef.current;
+    recordingRef.current = null;
+    setListening(false);
+    setLevel(0);
+    if (!recording) return;
+    setBusy(true);
+    try {
+      const { text } = await api.transcribe(await recording.stop());
+      if (text.trim()) await sayRef.current(text);
+      else setVoiceNote("I didn't catch that. Tap Speak and try again.");
+    } catch (e) {
+      setVoiceNote(`Transcription failed: ${(e as Error).message} Falling back to the browser's recogniser.`);
+      setAccurate(false);
+    } finally { setBusy(false); }
+  }, []);
+
   const act = useCallback(async (tool: string, args: Record<string, unknown>) => {
     try {
       const res = await api.act(member.id, tool, args);
@@ -93,9 +138,6 @@ export default function Console() {
    * whose cleanup aborted the recognition that had just started. The mic
    * appeared dead with nothing in the console to explain why.
    */
-  const sayRef = useRef(say);
-  useEffect(() => { sayRef.current = say; }, [say]);
-
   const handsfreeRef = useRef(handsfree);
   useEffect(() => { handsfreeRef.current = handsfree; }, [handsfree]);
 
@@ -162,15 +204,33 @@ export default function Console() {
             <div className={`h-16 w-16 rounded-full bg-gradient-to-br ${speaking ? 'from-core to-alexa' : 'from-alexa to-[#2f6fd0]'} shadow-glow`} />
           </div>
           <div className="text-[13px] text-muted">
-            {listening ? 'listening…' : speaking ? 'speaking…' : SpeechRec ? 'tap the mic and speak' : 'voice needs Chrome - typing works'}
+            {listening
+              ? (accurate ? 'listening… tap Stop when you finish' : 'listening…')
+              : speaking ? 'speaking…'
+              : accurate || SpeechRec ? 'tap the mic and speak'
+              : 'voice needs Chrome - typing works'}
           </div>
+
+          {/* A live peak meter, so it is obvious the microphone is hearing you. */}
+          {listening && accurate && (
+            <div className="flex h-5 items-end gap-1" aria-hidden>
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+                <span key={i} className="w-1.5 rounded-full bg-alexa transition-all duration-75"
+                  style={{ height: `${Math.max(4, Math.min(1, level * (1.4 - Math.abs(i - 3) * 0.12)) * 20)}px` }} />
+              ))}
+            </div>
+          )}
           {voiceNote && (
             <div className="max-w-sm rounded-lg border border-norecord/40 bg-norecord/10 px-3 py-2 text-center text-[12px] leading-relaxed text-norecord">
               {voiceNote}
             </div>
           )}
           <div className="flex gap-2">
-            <button disabled={!SpeechRec} onClick={() => {
+            <button disabled={!accurate && !SpeechRec} onClick={() => {
+              if (accurate) {
+                void (listening ? finishAccurately() : listenAccurately());
+                return;
+              }
               const r = recRef.current; if (!r) return;
               setVoiceNote(null);
               if (listening) { r.stop(); return; }
@@ -183,6 +243,10 @@ export default function Console() {
             </button>
             <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-muted">
               <input type="checkbox" checked={speakOn} onChange={(e) => setSpeakOn(e.target.checked)} /> speak replies
+            </label>
+            <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-muted"
+              title="Amazon Transcribe, given this household's names as a custom vocabulary. Off uses the browser's own recogniser.">
+              <input type="checkbox" checked={accurate} onChange={(e) => setAccurate(e.target.checked)} /> Transcribe
             </label>
             <label className="glass flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-muted">
               <input type="checkbox" checked={handsfree} onChange={(e) => setHandsfree(e.target.checked)} /> hands-free

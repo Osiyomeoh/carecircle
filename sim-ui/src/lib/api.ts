@@ -61,6 +61,13 @@ export interface Turn {
 
 export interface SimConfig { provider: string; region: string; modelId: string; endpoint: string; }
 
+export interface Transcription {
+  text: string;
+  corrections?: Correction[];
+  /** 'applied' once Amazon has built the household vocabulary, 'building' until then. */
+  vocabulary: 'applied' | 'building';
+}
+
 async function jsonOrThrow(res: Response) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : `HTTP ${res.status}`);
@@ -74,6 +81,10 @@ export const api = {
     fetch('/api/say', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ memberId, text }),
+    }).then(jsonOrThrow),
+  transcribe: (pcm: Blob): Promise<Transcription> =>
+    fetch('/api/transcribe', {
+      method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: pcm,
     }).then(jsonOrThrow),
   act: (memberId: string, tool: string, args: Record<string, unknown>): Promise<ToolCall> =>
     fetch('/api/act', {

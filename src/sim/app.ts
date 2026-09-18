@@ -6,6 +6,7 @@ import { providerFromEnv } from './providers.js';
 import { diagnoseBedrock, describe as describeDiagnosis } from './preflight.js';
 import { DEMO_TOKENS } from '../demo/seed.js';
 import { buildVocabulary, correctTranscript } from './transcript.js';
+import { ensureVocabulary, hasEnoughAudio, transcribePcm, unhyphenate, SAMPLE_RATE } from './transcribe.js';
 
 /**
  * Simulated Alexa+ experience.
@@ -218,6 +219,40 @@ app.post('/api/act', async (req, res) => {
  * The live care board. Read through the MCP server's own resource, so the panel
  * shows exactly what the protocol exposes - not a privileged side channel.
  */
+/**
+ * Speech to text, for clients that would rather not use the browser's recogniser.
+ *
+ * Takes raw 16-bit little-endian PCM at 16 kHz mono - no container, no
+ * transcoding - and hands it to Amazon Transcribe along with this household's
+ * names as a custom vocabulary. The post-hoc corrector still runs on the result,
+ * because the vocabulary takes a minute to build after any change to the circle
+ * and we would rather be right in the meantime.
+ *
+ * Failure here is never fatal: the browser keeps its own recogniser, and the UI
+ * falls back to it.
+ */
+app.post('/api/transcribe', express.raw({ type: '*/*', limit: '12mb' }), async (req, res) => {
+  const pcm = req.body as Buffer;
+  if (!Buffer.isBuffer(pcm) || !hasEnoughAudio(pcm)) {
+    res.status(400).json({ error: 'Send at least a quarter second of 16-bit PCM at 16 kHz.' });
+    return;
+  }
+  try {
+    const terms = await vocabulary();
+    const vocabularyName = await ensureVocabulary(terms).catch(() => undefined);
+    const raw = await transcribePcm(pcm, vocabularyName);
+    const { text, corrections } = correctTranscript(unhyphenate(raw, terms), terms);
+    res.json({
+      text,
+      ...(corrections.length ? { corrections } : {}),
+      vocabulary: vocabularyName ? 'applied' : 'building',
+      sampleRate: SAMPLE_RATE,
+    });
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
+});
+
 app.get('/api/state', async (_req, res) => {
   try {
     res.json(await readCareState());

@@ -78,12 +78,20 @@ if ! aws iam get-role --role-name "$INST_ROLE" >/dev/null 2>&1; then
   aws iam create-role --role-name "$INST_ROLE" --assume-role-policy-document '{
     "Version":"2012-10-17","Statement":[{"Effect":"Allow",
     "Principal":{"Service":"tasks.apprunner.amazonaws.com"},"Action":"sts:AssumeRole"}]}' >/dev/null
-  aws iam put-role-policy --role-name "$INST_ROLE" --policy-name inline --policy-document '{
-    "Version":"2012-10-17","Statement":[
-      {"Effect":"Allow","Action":["dynamodb:*"],"Resource":"*"},
-      {"Effect":"Allow","Action":["sns:Publish"],"Resource":"*"}]}' >/dev/null
   sleep 10
 fi
+# Written every deploy, not only on creation: the policy grows as the server
+# learns to do more, and a role created before Transcribe existed would
+# otherwise keep its original permissions forever.
+aws iam put-role-policy --role-name "$INST_ROLE" --policy-name inline --policy-document '{
+  "Version":"2012-10-17","Statement":[
+    {"Effect":"Allow","Action":["dynamodb:*"],"Resource":"*"},
+    {"Effect":"Allow","Action":["sns:Publish"],"Resource":"*"},
+    {"Effect":"Allow","Action":[
+      "transcribe:StartStreamTranscription",
+      "transcribe:GetVocabulary",
+      "transcribe:CreateVocabulary",
+      "transcribe:UpdateVocabulary"],"Resource":"*"}]}' >/dev/null
 INST_ROLE_ARN=$(aws iam get-role --role-name "$INST_ROLE" --query Role.Arn --output text)
 
 echo "==> App Runner service"
