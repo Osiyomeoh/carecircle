@@ -125,6 +125,13 @@ export default function Console() {
   useEffect(() => { sayRef.current = say; }, [say]);
 
   /**
+   * Held in a ref so the recorder's endpoint callback can reach the current
+   * `finishAccurately` without `listenAccurately` depending on it - the same
+   * closure cycle that once silently killed the browser recogniser.
+   */
+  const finishRef = useRef<() => Promise<void>>(async () => {});
+
+  /**
    * Listen using Amazon Transcribe.
    *
    * Records raw PCM, sends it once the speaker stops, and hands the text to the
@@ -134,7 +141,23 @@ export default function Console() {
   const listenAccurately = useCallback(async () => {
     setVoiceNote(null);
     try {
-      recordingRef.current = await record(setLevel);
+      // The recorder calls the end of the turn itself. Tapping Stop still works;
+      // it is just no longer the only way to be heard, which matters when speech
+      // is somebody's only channel and a second deliberate tap is not available.
+      recordingRef.current = await record({
+        onLevel: setLevel,
+        onEnd: (reason) => {
+          if (reason === 'nothing') {
+            recordingRef.current?.cancel();
+            recordingRef.current = null;
+            setListening(false);
+            setLevel(0);
+            setVoiceNote("I didn't hear anything. Tap Speak and talk a little closer to the mic.");
+            return;
+          }
+          void finishRef.current();
+        },
+      });
       setListening(true);
     } catch {
       setVoiceNote('The browser blocked the microphone. Allow mic access for this site, then tap Speak again.');
@@ -157,6 +180,7 @@ export default function Console() {
       setAccurate(false);
     } finally { setBusy(false); }
   }, []);
+  useEffect(() => { finishRef.current = finishAccurately; }, [finishAccurately]);
 
   const act = useCallback(async (tool: string, args: Record<string, unknown>) => {
     try {
@@ -290,7 +314,7 @@ export default function Console() {
             )}
             {listening && (
               <div className="mt-0.5 text-[0.6875rem] text-muted">
-                {accurate ? 'tap again when you finish' : 'pause when you finish'}
+                {accurate ? 'pause when you finish - or tap to stop now' : 'pause when you finish'}
               </div>
             )}
           </div>
