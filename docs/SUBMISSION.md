@@ -46,7 +46,8 @@ The judges' own advice is to beware glossy vapor. CareCircle is the opposite:
 
 - A **live MCP server** a judge can hit now (Streamable HTTP, spec 2025-11-25).
 - **209 automated tests**, strict TypeScript, an adversarial suite, CI.
-- Tool selection **measured at 93.3%** (held-out) on Amazon Bedrock - `npm run evals`.
+- Tool selection **measured at 93.3%** (126/135, half of them held out) on Amazon
+  Bedrock - `npm run evals`, and it reproduces.
 - The trust model **measured**: a raw Sonnet 4.5 turns a missing dose into "she missed
   it" **50%** of the time; CareCircle **0%** - `npm run trust-benchmark`.
 - Reproduce the whole one-day story end-to-end with **no AWS or keys**: `npm ci && npm run story`.
@@ -200,8 +201,16 @@ graceful shutdown, DynamoDB persistence, App Runner deployment), runtime onboard
 - MCP spec **2025-11-25** over **Streamable HTTP**; 21 tools, session-bound identity
   (a member's credential, never the conversation, decides who they are).
 - **Measured tool selection: 93.3% first-tool accuracy (126/135)** on Claude Sonnet 4.5
-  via Bedrock - 68 authored cases at 100% plus **67 held-out cases** (never tuned
-  against) at 86.6%. Reproducible: `npm run evals`.
+  via Bedrock, over 68 authored cases plus **67 held-out cases never tuned against**.
+  Reproducible: `npm run evals`.
+
+  **On re-running it.** The headline reproduces exactly; the split between the two
+  halves does not, because the model is sampled rather than deterministic. Our
+  latest run was 67/68 authored and 59/67 held-out (98.5% / 88.1%); an earlier one
+  was 68/68 and 58/67 (100% / 86.6%). Same total, different halves. We report the
+  number a judge will actually get and name the variance rather than quoting our
+  best run - the arithmetic that ranks someone's care is deterministic, but the
+  language model choosing the tool is not, and those are different claims.
 - **Measured trust model: a raw Sonnet 4.5 turns a missing record into a false
   accusation ("she missed it") in 50% of absence cases; CareCircle's deterministic
   engine, 0%** - the same model, the same scenarios, every answer auditable.

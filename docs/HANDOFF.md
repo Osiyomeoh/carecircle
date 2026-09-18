@@ -562,8 +562,13 @@ cards** (the way a TV OS surfaces an alert), not a board a family reads. It is o
 - Simulator (judge-facing UI): `https://krqi2tpsif.us-east-1.awsapprunner.com`
 - Ambient TV surface (real React Native, web build): `https://krqi2tpsif.us-east-1.awsapprunner.com/tv-native/`
 - Reproduce end-to-end with no AWS/keys: `npm ci && npm run story`
-- Measured claims: `npm run evals` (93.3% tool selection), `npm run trust-benchmark`
-  (raw LLM 50% false accusation vs CareCircle 0%)
+- Measured claims, both re-verified 2026-09-18: `npm run evals` -> **126/135 = 93.3%**
+  (reproduced exactly); `npm run trust-benchmark` -> **raw Bedrock 6/12 = 50% false
+  accusation vs CareCircle 0/12**. Note the eval's *split* moves between runs even
+  though the total holds - the model is sampled, not deterministic - so do not quote
+  "authored 100%" as a standing fact. The latest run was 67/68 authored, 59/67
+  held-out. `npm run evals` needs a local server on :8787 first
+  (`PORT=8787 npx tsx src/http.ts`).
 
 ## Operational rules (important)
 
