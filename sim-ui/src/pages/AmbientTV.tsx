@@ -36,20 +36,22 @@ export default function AmbientTV() {
     return () => clearInterval(id);
   }, []);
 
-  // Cycle the notification through the current above-routine gaps.
-  const [idx, setIdx] = useState(0);
+  // Cycle the notification through the current gaps. `cycle` is monotonic (not an
+  // index) so the loop keeps re-showing even with a single gap - idx % 1 stays 0
+  // and would otherwise freeze the effect after the first hide.
+  const [cycle, setCycle] = useState(0);
   const [show, setShow] = useState(false);
   useEffect(() => {
     if (!gaps.length) { setShow(false); return; }
     setShow(true);
     const dwell = setTimeout(() => setShow(false), 6500);      // visible
-    const advance = setTimeout(() => {                          // then next
-      setIdx((i) => (i + 1) % gaps.length);
+    const advance = setTimeout(() => {                          // then next cycle
+      setCycle((c) => c + 1);
     }, 8000);
     return () => { clearTimeout(dwell); clearTimeout(advance); };
-  }, [idx, gaps.length]);
+  }, [cycle, gaps.length]);
 
-  const current = gaps.length ? gaps[idx % gaps.length] : undefined;
+  const current = gaps.length ? gaps[cycle % gaps.length] : undefined;
 
   // Fire the real Fire TV heads-up once per distinct gap (no-op in a browser).
   const notified = useRef<Set<string>>(new Set());

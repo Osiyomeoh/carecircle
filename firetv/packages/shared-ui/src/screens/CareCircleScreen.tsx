@@ -36,7 +36,10 @@ export default function CareCircleScreen() {
   const [gaps, setGaps] = useState<Gap[]>([]);
   const [online, setOnline] = useState(true);
   const [now, setNow] = useState(() => new Date());
-  const [idx, setIdx] = useState(0);
+  // A monotonic cycle counter, not an index: it advances every cycle even when
+  // there is a single gap, so the notification keeps re-showing (idx % 1 stays 0
+  // and would otherwise freeze the effect after the first slide-out).
+  const [cycle, setCycle] = useState(0);
 
   // Poll the live care state.
   useEffect(() => {
@@ -63,9 +66,11 @@ export default function CareCircleScreen() {
     return () => clearInterval(id);
   }, []);
 
-  const current = gaps.length ? gaps[idx % gaps.length] : undefined;
+  const current = gaps.length ? gaps[cycle % gaps.length] : undefined;
 
-  // Slide the notification in, dwell, slide out, then advance to the next gap.
+  // Slide the notification in, dwell, slide out, then advance to the next cycle.
+  // Keying the effect on `cycle` (which always increments) rather than an index
+  // means the loop keeps running with one gap as well as with many.
   const anim = useRef(new Animated.Value(0)).current; // 0 = hidden (up), 1 = shown
   useEffect(() => {
     if (!current) return;
@@ -73,11 +78,11 @@ export default function CareCircleScreen() {
     Animated.timing(anim, { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
     const out = setTimeout(() => {
       Animated.timing(anim, { toValue: 0, duration: 500, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => {
-        if (!cancelled && gaps.length) setIdx((i) => (i + 1) % gaps.length);
+        if (!cancelled) setCycle((c) => c + 1);
       });
     }, 6500);
     return () => { cancelled = true; clearTimeout(out); };
-  }, [idx, current?.obligationId, current?.spoken, gaps.length, anim]);
+  }, [cycle, current?.obligationId, current?.spoken, gaps.length, anim]);
 
   const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   const day = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
