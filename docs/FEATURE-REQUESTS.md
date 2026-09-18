@@ -25,6 +25,51 @@ so - the workaround is usually the tell for what the platform should have handle
 - **Instead:** Per-member bearer credentials mapped to a member id, checked against a
   role capability table on every call.
 
+### A way for a server to state the current date and time
+- **Urgency:** critical
+- **What:** Let a server advertise the current timestamp and an IANA timezone to the
+  client - the natural counterpart to `instructions` on initialize, or a standard
+  `_meta` key.
+- **Why it matters:** This is the only request here that has already produced wrong
+  data in a medical record. Asked to record "cardiology Thursday at ten", a planner
+  that does not know today's date emitted **19 December 2024** for an appointment
+  spoken in September 2026, with no timezone, and it was written to the live care
+  record and rendered to the family as real. A tool description can say "resolve
+  against today's date"; it cannot say *what today's date is*. Every MCP server that
+  deals in relative dates - scheduling, reminders, deadlines, anything with
+  "tomorrow" in it - has this problem right now, and each is solving it by stuffing
+  the date into a prompt the server may not control.
+- **Instead:** We stamp the date and household timezone into the planner prompt we
+  own, normalise offset-less timestamps as household-local, and refuse any date more
+  than two days past or a year ahead.
+
+### An explicitly non-authoritative speaker hint
+- **Urgency:** important
+- **What:** An optional field by which a host may pass "I believe this turn is from
+  profile X", clearly specified as evidence rather than proof.
+- **Why it matters:** Shared devices are the normal case for family products. On a
+  living-room Echo the credential identifies the *household* while the speaker changes
+  every turn. Identity must stay bound to the credential for authorisation - a model
+  can be talked into believing anything about who is speaking - but a weak signal a
+  server may treat as `INFERRED` would let a shared device stop asking "who is this?"
+  every turn. Our whole trust model is built on ranking evidence by confidence; we
+  would consume this correctly and so would anyone else who needed it.
+- **Instead:** One session per member, chosen explicitly.
+
+### A way to mark tool result content as user-supplied
+- **Urgency:** important
+- **What:** A `_meta` flag or content-part annotation meaning "this text was typed by
+  a person, not authored by the server".
+- **Why it matters:** Hosts reasonably treat output from a trusted server as
+  trustworthy, but servers increasingly return *other people's words*. A care note
+  written by a paid aide travels the same path as text the server wrote itself. As
+  more MCP servers relay user-generated content, "all tool output is equally
+  trustworthy" stops being a safe default - and a server currently has no vocabulary
+  to say otherwise.
+- **Instead:** We never interpolate free text into instructions, and every
+  state-changing action requires a tool call the capability model authorises
+  independently.
+
 ### A spec-version support matrix
 - **Urgency:** nice-to-have
 - **What:** Published mapping of SDK release -> supported spec versions.
@@ -151,6 +196,39 @@ so - the workaround is usually the tell for what the platform should have handle
   no driver. Care coordination is ambient by nature; the conversational turn is the
   exception, not the rule. Every assistant integration model we have seen assumes the
   conversation is the product.
+
+---
+
+## AWS (Transcribe, Polly) and Ring
+
+### Nigerian English (`en-NG`) for Amazon Transcribe
+- **Urgency:** important
+- **What:** An `en-NG` locale, on a par with `en-ZA`, `en-IN` or `en-AU`. Beyond that,
+  Yoruba and Igbo, each spoken by tens of millions - `ha-NG` (Hausa) already exists,
+  so the pipeline clearly supports Nigerian languages.
+- **Why it matters:** Nigeria is the largest English-speaking country in Africa and
+  among the largest anywhere, and there is no English variant for it. A Nigerian
+  speaker is transcribed by a model tuned for another continent. The failure lands
+  hardest on **names** - a care system that mis-hears "Adaeze" or "Oluwaseun"
+  attributes a medication to the wrong person. This is a silent accuracy tax on an
+  entire region, and it is invisible in aggregate benchmarks.
+- **Instead:** A custom vocabulary built from each household's own care record, plus a
+  phonetic repair pass that maps a mishearing back onto a person who actually exists
+  in that household. The custom-vocabulary API did most of the rescuing here - the gap
+  is coverage, not capability.
+
+### "Send a test event" in the Ring Developer Portal
+- **Urgency:** important
+- **What:** A per-event-type test button in the staging tab that fires a correctly
+  signed event at the registered webhook.
+- **Why it matters:** Ring staging is documented as testing against *real devices*,
+  while the hackathon explicitly permits a simulator and states no physical device is
+  required. Those two positions are in tension, and the gap is a hardware purchase
+  standing between a developer and a working integration. Signed test events are the
+  ordinary expectation for a webhook API.
+- **Instead:** We wrote a device simulator that builds events in Ring's documented
+  shape and signs them with the real partner HMAC key, so verification, idempotency
+  and inference all run exactly as they would for Ring traffic.
 
 ---
 
