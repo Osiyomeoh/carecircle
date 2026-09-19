@@ -1,5 +1,9 @@
 # The demo video - shot list and script
 
+> The single continuous 40-second beat inside this video — the one take that proves the
+> system is real and not a mockup — has its own second-by-second script and an executable
+> reproducer (`npm run beat`) in [DEMO-BEAT.md](DEMO-BEAT.md).
+
 **Hard limit 3:00.** Judging weights Technological Implementation, Design, Potential
 Impact and Quality of the Idea **equally**, so the video must earn all four - it
 cannot be three minutes of product tour.
@@ -141,8 +145,8 @@ asks *"who is taking this on?"*.
 
 ## 2:45-3:00 - What it actually is
 
-> **VO:** "CareCircle is an MCP server. Twenty-one tools, live now, spec 2025-11-25,
-> OAuth 2.1 with PKCE so Alexa+ can link it to a real person. Two hundred and nine
+> **VO:** "CareCircle is an MCP server. Twenty-three tools, live now, spec 2025-11-25,
+> OAuth 2.1 with PKCE so Alexa+ can link it to a real person. Three hundred and eleven
 > tests. Every number in this video is reproducible from the repo."
 
 **On screen, held to black:**

@@ -22,7 +22,8 @@
     "dynamo:check": "tsx --env-file-if-exists=.env scripts/dynamo-check.ts",
     "preflight": "tsx --env-file-if-exists=.env scripts/preflight.ts",
     "trust-benchmark": "tsx --env-file-if-exists=.env scripts/trust-benchmark.ts",
-    "ring:simulate": "tsx src/demo/ring-simulate.ts"
+    "ring:simulate": "tsx src/demo/ring-simulate.ts",
+    "beat": "tsx --env-file-if-exists=.env scripts/beat.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.1131.0",
