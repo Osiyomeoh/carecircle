@@ -185,6 +185,10 @@ choices, held on purpose:
 
 ## Architecture
 
+The one model everything else serves is the **responsibility graph** -
+`ENTITY → EVENT → OBLIGATION → OWNERSHIP → STATE`, where no obligation can exist without
+provenance. It has its own deep dive: [`docs/RESPONSIBILITY-GRAPH.md`](docs/RESPONSIBILITY-GRAPH.md).
+
 ![CareCircle MCP server architecture](docs/mcp-architecture.png)
 
 ```
