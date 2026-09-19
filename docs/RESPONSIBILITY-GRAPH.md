@@ -249,7 +249,7 @@ The tools are thin. The intelligence and the safety live in the graph.
 | Close with a resolution | `resolve_obligation` | BUILT |
 | Buy in place (proposal → confirm) | `reorder_prescription`, `confirm_purchase` | BUILT |
 | The agent that only ever asks | `run_care_agent` | BUILT |
-| **Explain how we know something** | `get_provenance` | `DELTA` |
+| **Explain how we know something** | `get_provenance` | BUILT |
 
 ---
 
@@ -258,10 +258,14 @@ The tools are thin. The intelligence and the safety live in the graph.
 Ordered by leverage-per-risk. None of this rebuilds the engine; it deepens the graph. All
 290 tests stay green and the trust benchmark stays at 0% false accusations, gated per step.
 
-1. **`get_provenance` tool + provenance-chain view.** *Lowest risk, highest judge value.*
-   The data already exists (transitions log + `sourceEventId` + obligation provenance);
-   this walks and speaks the chain — the literal answer to "how do we know?" No schema
-   change. Add adversarial tests that it never states more certainty than the chain carries.
+1. **`get_provenance` tool + provenance-chain view.** ✅ **DONE.** Pure walk in
+   [`provenance.ts`](../src/domain/provenance.ts), exposed as the `get_provenance` tool.
+   The data already existed (transitions log + `sourceEventId` + obligation provenance);
+   this walks and speaks the chain — the literal answer to "how do we know?" — with no
+   schema change. Its honesty is proven by an adversarial + property suite
+   ([`provenance.test.ts`](../src/domain/provenance.test.ts)): a guess is always spoken as
+   a guess, an absent record is never turned into "she didn't do it", and ownership is read
+   from the obligation, never inferred from who recorded a move.
 2. **Event-level provenance (`source` / `confidence` / `derivedFrom`).** Additive fields on
    `CareEvent` with safe defaults so existing writes keep passing; `ingest_signal` starts
    setting `source`/`confidence`, inferences set `derivedFrom`. Makes the chain in step 1 rich.

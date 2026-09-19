@@ -11,6 +11,7 @@ import { interpretSignal, type CareSignal } from '../domain/signals.js';
 import { offerFor, offerSpoken, formatPrice, type OfferKind, type PurchaseOffer } from '../domain/commerce.js';
 import { can, canActOn, capabilitiesOf, NotPermittedError, require as requireCap } from '../domain/auth.js';
 import { attributionOf, isReported, sayWhoSaysSo } from '../domain/attribution.js';
+import { explainProvenance } from '../domain/provenance.js';
 import { bootstrapSubject } from '../http/identity.js';
 import { CareStore, HouseholdScopeError, NotFoundError } from '../store/store.js';
 import { CARE_BOARD_HTML } from './app/care-board.js';
@@ -671,6 +672,38 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
           })),
         },
       );
+    } catch (err) { return guidance(describeError(err)); }
+  });
+
+  // --- 6b. "How do we know that?" ----------------------------------------
+  server.registerTool('get_provenance', {
+    title: 'Explain how the system knows something',
+    description:
+      'Explains the whole chain behind one piece of work - "how do you know that?", "why '
+      + 'are you saying this?", "where did that come from?", "who said she needs a ride?". '
+      + 'Walks what was actually recorded: how the obligation arose (a human confirmed it, '
+      + 'the system guessed it, or there is simply no record), the signal or event it came '
+      + 'from, and every ownership move since. Read-only. Use it whenever someone questions a '
+      + 'gap or a claim. Speak the result verbatim - it is phrased to state a guess as a guess '
+      + 'and an absent record as an absent record, and it never accuses anyone.',
+    inputSchema: {
+      obligationId: z.string().describe('Which piece of work to explain. From get_care_gaps.'),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true },
+  }, async ({ obligationId }) => {
+    try {
+      const me = actor();
+      requireCap(me, 'read_shift');
+      const o = store.getObligation(obligationId, me.householdId);
+      const explanation = explainProvenance(
+        o, store.getTransitions(obligationId), state().events, nameOf,
+      );
+      return reply(explanation.spoken, {
+        obligationId: explanation.obligationId,
+        what: explanation.what,
+        owner: explanation.owner,
+        chain: explanation.chain,
+      });
     } catch (err) { return guidance(describeError(err)); }
   });
 

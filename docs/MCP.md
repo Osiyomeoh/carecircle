@@ -4,7 +4,7 @@ Everything a client needs: how to connect, what the server exposes, who is allow
 to call what, and how to run your own.
 
 CareCircle is a **self-hosted MCP server** implementing spec **2025-11-25** over
-**Streamable HTTP**, built on `@modelcontextprotocol/sdk` 1.30.0. It exposes 18
+**Streamable HTTP**, built on `@modelcontextprotocol/sdk` 1.30.0. It exposes 23
 tools, 2 resources, 2 prompts, and one interactive view via the
 [MCP Apps extension](#the-care-board-mcp-apps).
 
@@ -159,7 +159,7 @@ to do next, and should be acted on rather than reported as a failure.
 
 ## Tools
 
-22 tools. Every one exists because a person says a sentence that needs it; there is
+23 tools. Every one exists because a person says a sentence that needs it; there is
 no tool here that mirrors a database table for its own sake.
 
 `?` marks an optional argument.
@@ -203,6 +203,7 @@ rather than the same one twice.
 |---|---|---|
 | `get_care_summary` | – | How the person being cared for is doing. Read-only. |
 | `get_shift_brief` | – | What this shift needs to know. The one read a `helper` is allowed. |
+| `get_provenance` | `obligationId` | "How do you know that?" Walks the whole chain behind one obligation - how it arose (confirmed, guessed, or no record), the signal it came from, every ownership move - and speaks it without ever stating more certainty than the record carries. Read-only. |
 | `notify_member` | `recipientName`, `message` | Records the message, and delivers over SNS when configured. |
 
 ### Purchasing
@@ -313,7 +314,7 @@ git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
 npm ci
 npm run story      # the whole scenario end to end, no AWS and no keys
 npm run dev        # the MCP server on :8787 (override with PORT)
-npm test           # 290 tests, including adversarial and property-based
+npm test           # 298 tests, including adversarial and property-based
 ```
 
 `npm run story` is the fastest way to understand the system: it plays the demo
