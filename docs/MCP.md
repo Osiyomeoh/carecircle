@@ -159,7 +159,7 @@ to do next, and should be acted on rather than reported as a failure.
 
 ## Tools
 
-18 tools. Every one exists because a person says a sentence that needs it; there is
+22 tools. Every one exists because a person says a sentence that needs it; there is
 no tool here that mirrors a database table for its own sake.
 
 `?` marks an optional argument.
@@ -182,6 +182,20 @@ no tool here that mirrors a database table for its own sake.
 | `assign_obligation` | `obligationId`, `assigneeName` | Gives it to someone else. Primary caregiver only. |
 | `confirm_proposal` | `obligationId`, `confirmed` | Turns a system guess into real work, or dismisses it. |
 | `resolve_obligation` | `obligationId`, `note?` | Marks it done. |
+
+### Delegation - asking, not assigning
+
+The circle's defining move: work is *offered* down the circle and only becomes owned
+when someone says yes. Being asked is a distinct state (`REQUESTED`) from having agreed
+(`ASSIGNED`); a decline is recorded, not erased, and the agent asks the next person
+rather than the same one twice.
+
+| Tool | Arguments | Notes |
+|---|---|---|
+| `request_owner` | `obligationId`, `assigneeName?` | **Asks** someone to take work on; it does not assign. The work stays unowned until they accept. Omit `assigneeName` to let CareCircle suggest who to ask and say why. |
+| `respond_to_request` | `obligationId`, `accepted`, `note?` | The asked person's answer. `accepted: false` is kept as information, not discarded. |
+| `get_my_requests` | – | "What have I been asked to do?" Read-only. Use before `respond_to_request` when the id is not known. |
+| `run_care_agent` | `dryRun?` | Lets CareCircle look for slipping work itself and ask an owner - never assigns. `dryRun` reports what it would do without doing it. |
 
 ### Reading the situation
 
@@ -299,7 +313,7 @@ git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
 npm ci
 npm run story      # the whole scenario end to end, no AWS and no keys
 npm run dev        # the MCP server on :8787 (override with PORT)
-npm test           # 124 tests, including adversarial and property-based
+npm test           # 290 tests, including adversarial and property-based
 ```
 
 `npm run story` is the fastest way to understand the system: it plays the demo

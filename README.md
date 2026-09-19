@@ -24,7 +24,7 @@ what happened        what must happen        who has it
  Thursday at 10"     drive her                has claimed it
 ```
 
-**And it is real - not a mockup.** Live MCP server you can hit right now, **124 tests**
+**And it is real - not a mockup.** Live MCP server you can hit right now, **290 tests**
 (including property-based proofs of the risk model), **93.3%** measured tool-selection
 accuracy on Amazon Bedrock, and a trust model **measured at 0% false accusations where a
 raw LLM hits 50%**. See it end-to-end in ~60 seconds, no AWS or keys required:
@@ -38,8 +38,17 @@ Live server: `https://ypq2dfq2p7.us-east-1.awsapprunner.com/health`
 
 **Want to point your own client at it?** [`docs/MCP.md`](docs/MCP.md) is the
 integration guide: endpoint and handshake, ready-made Claude Desktop and MCPJam
-configuration, all 18 tools with their arguments, the resources and prompts, the
+configuration, all 22 tools with their arguments, the resources and prompts, the
 role/capability matrix, and how to run your own instance.
+
+---
+
+## The thesis, in one paragraph
+
+> **CareCircle is a shared responsibility graph that turns everyday events into owned,
+> actionable care — while structurally refusing to turn silence into accusation.**
+> Alexa+ talks to it. Ring and Bee feed evidence into it. Fire TV shows it. One graph,
+> four surfaces, and a trust model that is arithmetic, not a promise.
 
 ---
 
@@ -158,6 +167,20 @@ Those exist and are well served.
 CareCircle does one thing: it finds responsibilities hidden inside everyday
 conversation, surfaces the ones nobody owns, and lets a family resolve them by voice.
 
+And it is deliberately **not** several things it could have been. These are scope
+choices, held on purpose:
+
+- **No multi-agent swarms.** One deterministic engine and one agent that asks, never a
+  cast of autonomous actors.
+- **No computer vision or robotics.** Evidence is declared, sensed, or overheard — never
+  inferred from a camera frame.
+- **No silent physical actuation.** The system proposes; a human disposes. Nothing in the
+  world changes without someone owning it.
+- **No phone-first App Store app as the main story.** The primary surface is voice; the
+  screen is a fallback and a shared display, not the product.
+- **No overclaiming.** Live integrations are marked LIVE; everything else is a named,
+  tested *seam*, and we say which is which.
+
 ---
 
 ## Architecture
@@ -176,7 +199,7 @@ conversation, surfaces the ones nobody owns, and lets a family resolve them by v
        +-------------+------+------+--------------+
        v             v             v              v
    Resources       Tools        Prompts      Elicitation
-   care state    18 tools    daily check    confirm a
+   care state    22 tools    daily check    confirm a
    timeline                  weekly review  proposal
        |             |
        +------+------+
@@ -317,7 +340,7 @@ curl https://ypq2dfq2p7.us-east-1.awsapprunner.com/health
 # Option B - clone and reproduce locally (no AWS needed)
 git clone https://github.com/Osiyomeoh/carecircle && cd carecircle
 npm ci
-npm test          # 124 tests (unit, adversarial, and property-based)
+npm test          # 290 tests (unit, adversarial, and property-based)
 npm run story     # the whole one-day story, end to end, over real MCP
 ```
 
