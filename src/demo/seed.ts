@@ -32,6 +32,10 @@ export async function seedDemoHousehold(store: CareStore): Promise<void> {
   await store.addMember({
     id: 'm_margaret', householdId: HOUSEHOLD_ID, name: 'Margaret',
     role: 'care_recipient', spokenAs: 'Mom',
+    // Margaret uses a wheelchair; getting to cardiology needs an accessible vehicle. This
+    // is a logistics fact the graph carries so a dropped ride ranks with the weight it
+    // deserves - never a label the system is allowed to editorialise about.
+    attributes: { needsAccessibleTransport: true },
   });
   await store.addMember({
     id: 'm_david', householdId: HOUSEHOLD_ID, name: 'David',
@@ -53,5 +57,12 @@ export async function seedDemoHousehold(store: CareStore): Promise<void> {
   await store.addMedication({
     id: 'med_thyroid', householdId: HOUSEHOLD_ID, name: 'thyroid tablet',
     times: ['08:00'], forMemberId: 'm_margaret',
+  });
+
+  // The cardiology practice as a first-class non-person node. The ride obligation points
+  // its subject at Margaret (whose accessibility need drives risk); this entity is here so
+  // the graph names the destination the ride is *to*, the first step of the widening.
+  await store.addEntity({
+    id: 'e_cardiology', householdId: HOUSEHOLD_ID, type: 'service', name: 'Cardiology',
   });
 }

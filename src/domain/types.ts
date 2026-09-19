@@ -13,6 +13,23 @@ export type Role =
   | 'caregiver'        // can claim, add, confirm; cannot escalate
   | 'helper';          // paid aide etc; scoped to their shift
 
+/**
+ * Standing facts about a person or thing that change how work about it must be handled.
+ *
+ * These are deliberately *logistical*, not diagnostic: the graph records that a ride
+ * must be accessible, or that a task needs a hands-on helper, because those facts change
+ * the risk and who can own the work. It never records why, and nothing downstream is
+ * permitted to translate an attribute into a judgement about the person's worth or
+ * capability - see accessibility.ts, whose whole job is to speak these as facts about the
+ * task, never as pity or as a burden.
+ */
+export interface EntityAttributes {
+  /** Getting there needs an accessible vehicle; an ordinary lift is not a fall-back. */
+  needsAccessibleTransport?: boolean;
+  /** The task needs someone who can give hands-on assistance, not just anyone free. */
+  requiresAssistance?: boolean;
+}
+
 export interface Member {
   id: string;
   householdId: string;
@@ -20,6 +37,33 @@ export interface Member {
   role: Role;
   /** How the person is referred to when spoken about, e.g. "Mom", "your sister Renee". */
   spokenAs?: string;
+  /**
+   * Standing accessibility facts about this person. A person is modelled as a Member,
+   * not a duplicate `Entity`, so their needs live here rather than in a parallel record.
+   */
+  attributes?: EntityAttributes;
+}
+
+/** What an entity is. People are modelled as `Member`; this widens the graph to the rest. */
+export type EntityType =
+  | 'person'   // reserved; people are modelled as Member today
+  | 'place'    // a clinic, a pharmacy counter, a home
+  | 'service'  // a cardiology practice, a transport service
+  | 'device';  // a Ring doorbell, a pill dispenser
+
+/**
+ * A non-person node in the responsibility graph: the place a ride goes to, the service a
+ * prescription comes from, the device a signal came from. Kept minimal on purpose - this
+ * is a product, not a knowledge-graph project. Its `attributes` feed the same deterministic
+ * risk path a Member's do, so "the destination needs accessible transport" is a fact the
+ * graph carries, not something a model has to infer.
+ */
+export interface Entity {
+  id: string;
+  householdId: string;
+  type: EntityType;
+  name: string;
+  attributes?: EntityAttributes;
 }
 
 /**
@@ -160,6 +204,13 @@ export interface Obligation {
   dueAt?: string;
   /** The event that gave rise to it, if any. */
   sourceEventId?: string;
+  /**
+   * Who or what this work is *for* - a member id or an entity id. Optional so older
+   * obligations load unchanged; when set, the subject's `attributes` flow into the gap
+   * engine, so a ride for someone who needs accessible transport ranks with the care that
+   * fact deserves. Resolving it never changes ownership - the subject is not the owner.
+   */
+  aboutEntityId?: string;
   createdAt: string;
   resolvedAt?: string;
   resolutionNote?: string;
@@ -247,4 +298,6 @@ export interface CareState {
   events: CareEvent[];
   obligations: Obligation[];
   medications: MedicationSchedule[];
+  /** Non-person nodes (places, services, devices). Empty until the graph is widened. */
+  entities: Entity[];
 }

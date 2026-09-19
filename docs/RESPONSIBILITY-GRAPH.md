@@ -51,7 +51,7 @@ STATE         the obligation's status over its life
 
 | Node | In code | Status |
 |------|---------|--------|
-| Entity | `Member` + `Household` ([types.ts:16](../src/domain/types.ts)) — **people and the household only** | BUILT (people); `DELTA` for places/services/devices |
+| Entity | `Member` (+ `attributes`) + `Household` + first-class `Entity` for places/services/devices ([types.ts](../src/domain/types.ts)) | BUILT |
 | Event | `CareEvent`, append-only, `reportedBy` + `occurredAt`/`recordedAt`, first-class `source`/`confidence`/`derivedFrom` ([types.ts:71](../src/domain/types.ts)) | BUILT |
 | Obligation | `Obligation` with required `provenance` ([types.ts:114](../src/domain/types.ts)) | BUILT |
 | Ownership | `ownerId` + an append-only `transitions` log ([store.ts:217](../src/store/store.ts)) | BUILT |
@@ -224,7 +224,9 @@ in the README and `HANDOFF.md`, never blurred.
 This is a product, not a knowledge-graph research project. The schema is deliberately small.
 
 **Entity** — `id`, `type` (`person | place | service | device`), `name`, `attributes?`
-(e.g. `needsAccessibleTransport`). *Today: person + household only; `DELTA` for the rest.*
+(`needsAccessibleTransport`, `requiresAssistance`). *BUILT. People are modelled as `Member`
+(they carry `attributes` too); `Entity` covers places/services/devices. An obligation's
+`aboutEntityId` names its subject, whose attributes flow into the gap engine.*
 
 **Event** — `id`, `kind`, `householdId`, `reportedBy` (actor), `occurredAt`, `recordedAt`,
 `detail?`, `data`, `source?`, `confidence?`, `derivedFrom?`. *BUILT.*
@@ -261,7 +263,7 @@ The tools are thin. The intelligence and the safety live in the graph.
 ## 10. The delta plan — turning the spec into code
 
 Ordered by leverage-per-risk. None of this rebuilds the engine; it deepens the graph. All
-290 tests stay green and the trust benchmark stays at 0% false accusations, gated per step.
+all tests stay green and the trust benchmark stays at 0% false accusations, gated per step.
 
 1. **`get_provenance` tool + provenance-chain view.** ✅ **DONE.** Pure walk in
    [`provenance.ts`](../src/domain/provenance.ts), exposed as the `get_provenance` tool.
@@ -277,11 +279,22 @@ Ordered by leverage-per-risk. None of this rebuilds the engine; it deepens the g
    `observed`, voice logs `reported`, member decisions `confirmed`, the agent `inferred`
    with `derivedFrom` back to the originating event — and surfaced by `get_provenance`, which
    now speaks a device signal, a person's report, and a system inference in their own voice.
-3. **First-class `Entity` for non-people + accessibility attributes.** Introduce
-   `type: person | place | service | device` and `attributes` (`needsAccessibleTransport`,
-   `requiresAssistance`). This is the biggest change (it is the one true widening) and it
-   unlocks the single disability beat — one obligation type, same tools, care recipient can
-   still reject by voice. Add one disability case to the trust benchmark.
+3. **First-class `Entity` for non-people + accessibility attributes.** ✅ **DONE.**
+   `Entity` (`type: person | place | service | device`, `name`, `attributes?`) in
+   [types.ts](../src/domain/types.ts), with people still modelled as `Member` (their
+   `attributes` live there rather than in a duplicate person record). An obligation carries
+   an optional `aboutEntityId`; when set, the subject's `attributes`
+   (`needsAccessibleTransport`, `requiresAssistance`) flow through a pure module
+   ([`accessibility.ts`](../src/domain/accessibility.ts)) into the gap engine as a **monotone,
+   bounded uplift on P(dropped)** — a dropped accessible ride ranks with the weight it
+   deserves, and the uplift can only raise a gap, never invent one. The same module speaks a
+   dignified `because` clause that is *always about the task's logistics, never the person* —
+   the accusation refusal, one level over. This is the single disability beat: one obligation
+   type, the same tools, and the care recipient can still reject by voice. Honesty is proven by
+   an adversarial + property suite ([`accessibility.test.ts`](../src/domain/accessibility.test.ts)):
+   the note never demeans over generated inputs, and attaching a need never lowers a score.
+   A third **dignity dimension** in the trust benchmark measures how often a raw LLM frames
+   the person as a burden/helpless, versus the engine's structurally-clean line.
 
 Everything past this — richer scoring, more entity types, nicer cards — is amplification.
 

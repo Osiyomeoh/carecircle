@@ -1,6 +1,7 @@
 import type {
-  CareGap, CareState, ConsequenceClass, Obligation, Severity,
+  CareGap, CareState, ConsequenceClass, EntityAttributes, Obligation, Severity,
 } from './types.js';
+import { accessibilityUplift, dignityNote, resolveSubjectAttributes } from './accessibility.js';
 
 /**
  * The Care Gap engine.
@@ -178,21 +179,28 @@ function spokenDue(dueAt: string | undefined, timezone: string, now: Date): stri
   return ` on ${dayFmt.format(due)} ${monthFmt.format(due)} ${ordinal(dayNum)} at ${time}`;
 }
 
-function unclaimedGap(o: Obligation, timezone: string, now: Date): CareGap {
-  // P(dropped) = deadline hazard OR aging hazard (either failure mode suffices).
+function unclaimedGap(o: Obligation, timezone: string, now: Date, attrs?: EntityAttributes): CareGap {
+  // P(dropped) = deadline hazard OR aging hazard (either failure mode suffices), then
+  // lifted by any accessibility need on the subject (a dropped accessible ride recovers
+  // slower). The lift is monotone, so it can only raise the rank, never invent a gap.
   const cost = HARM_COST[o.consequence];
-  const pDrop = probOr(imminenceHazard(o.dueAt, now), stalenessHazard(o.createdAt, now));
+  const pDrop = probOr(
+    probOr(imminenceHazard(o.dueAt, now), stalenessHazard(o.createdAt, now)),
+    accessibilityUplift(attrs),
+  );
   const confidence = confidenceOf(o.provenance.kind);
   const score = toScore(cost * pDrop * confidence);
   const due = spokenDue(o.dueAt, timezone, now);
+  const base = o.provenance.kind === 'INFERRED'
+    ? `Confirmed as needed, originally inferred from ${o.provenance.from}. No owner assigned.`
+    : 'This was recorded as needed and no one has claimed it.';
+  const note = dignityNote(attrs);
   return {
     id: `gap_unclaimed_${o.id}`,
     kind: 'UNCLAIMED',
     severity: severityFor(score),
     spoken: `${o.what}${due} - nobody has taken this yet.`,
-    because: o.provenance.kind === 'INFERRED'
-      ? `Confirmed as needed, originally inferred from ${o.provenance.from}. No owner assigned.`
-      : 'This was recorded as needed and no one has claimed it.',
+    because: note ? `${base} ${note}` : base,
     obligationId: o.id,
     ...(o.dueAt ? { dueAt: o.dueAt } : {}),
     score,
@@ -210,7 +218,7 @@ function unclaimedGap(o: Obligation, timezone: string, now: Date): CareGap {
  * "I asked David" quietly becoming "nobody is doing this".
  */
 function awaitingReplyGap(
-  o: Obligation, askedOf: string, timezone: string, now: Date,
+  o: Obligation, askedOf: string, timezone: string, now: Date, attrs?: EntityAttributes,
 ): CareGap {
   const cost = HARM_COST[o.consequence];
   const base = probOr(imminenceHazard(o.dueAt, now), stalenessHazard(o.createdAt, now));
@@ -218,17 +226,21 @@ function awaitingReplyGap(
     ? (now.getTime() - new Date(o.request.askedAt).getTime()) / HOUR
     : 0;
   const relief = 0.55 * Math.exp(-Math.max(0, hoursWaiting) / TAU_REPLY);
-  const pDrop = base * (1 - relief);
+  // The request's relief applies to the ordinary drop-risk; the accessibility uplift sits
+  // outside it, because being asked does not restore a fall-back ride that isn't there.
+  const pDrop = probOr(base * (1 - relief), accessibilityUplift(attrs));
   const confidence = confidenceOf(o.provenance.kind);
   const score = toScore(cost * pDrop * confidence);
   const due = spokenDue(o.dueAt, timezone, now);
+  const note = dignityNote(attrs);
+  const askedBase = `${askedOf} has been asked but has not accepted, so this still has no owner.`;
   return {
     id: `gap_awaiting_${o.id}`,
     kind: 'UNCLAIMED',
     severity: severityFor(score),
     // "asked" and "agreed" are different words on purpose.
     spoken: `${o.what}${due} - ${askedOf} was asked and hasn't answered yet.`,
-    because: `${askedOf} has been asked but has not accepted, so this still has no owner.`,
+    because: note ? `${askedBase} ${note}` : askedBase,
     obligationId: o.id,
     ...(o.dueAt ? { dueAt: o.dueAt } : {}),
     score,
@@ -236,20 +248,23 @@ function awaitingReplyGap(
   };
 }
 
-function followUpGap(o: Obligation, timezone: string, now: Date): CareGap {
+function followUpGap(o: Obligation, timezone: string, now: Date, attrs?: EntityAttributes): CareGap {
   // Assigned but past due: it has slipped (hazard -> 1). Still weighted by how bad
-  // dropping it is, and by how sure we are the underlying need was real.
+  // dropping it is, and by how sure we are the underlying need was real. An accessibility
+  // need can only hold pDrop at its ceiling here, never lower it.
   const cost = HARM_COST[o.consequence];
-  const pDrop = imminenceHazard(o.dueAt, now);
+  const pDrop = probOr(imminenceHazard(o.dueAt, now), accessibilityUplift(attrs));
   const confidence = confidenceOf(o.provenance.kind);
   const score = toScore(cost * pDrop * confidence);
   const due = spokenDue(o.dueAt, timezone, now);
+  const note = dignityNote(attrs);
+  const followBase = 'Assigned but past its due time with no resolution recorded.';
   return {
     id: `gap_followup_${o.id}`,
     kind: 'NEEDS_FOLLOW_UP',
     severity: severityFor(score),
     spoken: `${o.what} was due${due} and hasn't been marked done.`,
-    because: 'Assigned but past its due time with no resolution recorded.',
+    because: note ? `${followBase} ${note}` : followBase,
     obligationId: o.id,
     ...(o.dueAt ? { dueAt: o.dueAt } : {}),
     score,
@@ -333,19 +348,22 @@ export function detectCareGaps(state: CareState, options: GapOptions = {}): Care
   const gaps: CareGap[] = [];
 
   for (const o of state.obligations) {
+    // Standing accessibility facts about who the work is for, if any. Undefined for the
+    // vast majority of obligations, which leaves their risk untouched.
+    const attrs = resolveSubjectAttributes(state, o);
     // PROPOSED obligations are not gaps: they are guesses awaiting a human.
     // Surfacing them as work would be exactly the inference-as-fact error
     // the trust model forbids.
     if (o.status === 'OPEN' && o.ownerId === null) {
-      gaps.push(unclaimedGap(o, timezone, now));
+      gaps.push(unclaimedGap(o, timezone, now, attrs));
     } else if (o.status === 'REQUESTED' && o.ownerId === null) {
       // Still a gap. Someone was asked; nobody has agreed.
       const askedOf = state.members.find((m) => m.id === o.request?.askedOfId);
       gaps.push(awaitingReplyGap(
-        o, askedOf?.spokenAs ?? askedOf?.name ?? 'Someone', timezone, now,
+        o, askedOf?.spokenAs ?? askedOf?.name ?? 'Someone', timezone, now, attrs,
       ));
     } else if (o.status === 'ASSIGNED' && o.dueAt && new Date(o.dueAt) < now) {
-      gaps.push(followUpGap(o, timezone, now));
+      gaps.push(followUpGap(o, timezone, now, attrs));
     }
   }
 

@@ -117,6 +117,8 @@ export async function seedScenario(
     ownerId: options.rideClaimedByRenee ? 'm_renee' : null,
     dueAt: cardiologyAt.toISOString(),
     sourceEventId: appointment.id,
+    // The ride is *for* Margaret; her accessibility need flows into how this gap ranks.
+    aboutEntityId: 'm_margaret',
   });
   if (options.rideClaimedByRenee) {
     await store.transition(ride.id, householdId, 'ASSIGNED', 'm_renee', { ownerId: 'm_renee' });

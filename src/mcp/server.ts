@@ -255,6 +255,9 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         ownerId: null,
         ...(seed.dueAt ? { dueAt: seed.dueAt } : {}),
         sourceEventId: event.id,
+        // The work is for this recipient; their standing needs (e.g. accessible transport)
+        // then flow into how the gap ranks once a human confirms the proposal.
+        aboutEntityId: recipient.id,
       })));
 
       const spoken = proposed.length === 0
@@ -1204,16 +1207,27 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         .describe('Their authority in the circle.'),
       spokenAs: z.string().optional().describe('How they are referred to when spoken about.'),
       subject: z.string().optional().describe('The credential subject that authenticates as this member.'),
+      needsAccessibleTransport: z.boolean().optional()
+        .describe('Getting them places needs an accessible vehicle. Raises the risk of a dropped ride.'),
+      requiresAssistance: z.boolean().optional()
+        .describe('Their care needs someone who can give hands-on help, not just anyone free.'),
     },
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false },
-  }, async ({ name, role, spokenAs, subject }) => {
+  }, async ({ name, role, spokenAs, subject, needsAccessibleTransport, requiresAssistance }) => {
     try {
       const me = actor();
       requireCap(me, 'manage_circle');
       const memberId = `m_${randomUUID()}`;
+      // Only record attributes that were actually set, so "unspecified" stays unspecified
+      // rather than being written as an explicit "no need".
+      const attributes = {
+        ...(needsAccessibleTransport ? { needsAccessibleTransport } : {}),
+        ...(requiresAssistance ? { requiresAssistance } : {}),
+      };
       await store.addMember({
         id: memberId, householdId: me.householdId, name, role,
         ...(spokenAs ? { spokenAs } : {}),
+        ...(Object.keys(attributes).length > 0 ? { attributes } : {}),
       });
       if (subject) await store.mapIdentity({ subject, memberId, householdId: me.householdId });
       return reply(`Added ${name} to the circle as ${role.replace('_', ' ')}.`, { memberId });

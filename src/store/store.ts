@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type {
-  CareEvent, CareState, Household, IdentityMapping, Member, MedicationSchedule, Obligation,
+  CareEvent, CareState, Entity, Household, IdentityMapping, Member, MedicationSchedule, Obligation,
 } from '../domain/types.js';
 
 /**
@@ -35,12 +35,14 @@ export interface StoreSnapshot {
   medications: MedicationSchedule[];
   transitions: ObligationTransition[];
   identities: IdentityMapping[];
+  /** Non-person nodes. Optional in older persisted snapshots; defaulted on load. */
+  entities?: Entity[];
 }
 
 function emptySnapshot(): StoreSnapshot {
   return {
     households: [], members: [], events: [],
-    obligations: [], medications: [], transitions: [], identities: [],
+    obligations: [], medications: [], transitions: [], identities: [], entities: [],
   };
 }
 
@@ -112,6 +114,7 @@ export class CareStore {
       events: this.#snapshot.events.filter((e) => e.householdId === householdId),
       obligations: this.#snapshot.obligations.filter((o) => o.householdId === householdId),
       medications: this.#snapshot.medications.filter((m) => m.householdId === householdId),
+      entities: (this.#snapshot.entities ?? []).filter((e) => e.householdId === householdId),
     };
   }
 
@@ -235,6 +238,19 @@ export class CareStore {
 
   addMedication(m: MedicationSchedule): Promise<MedicationSchedule> {
     return this.#write(() => { this.#snapshot.medications.push(m); return m; });
+  }
+
+  /** Register a non-person node (place, service, device). */
+  addEntity(e: Entity): Promise<Entity> {
+    return this.#write(() => {
+      (this.#snapshot.entities ??= []).push(e);
+      return e;
+    });
+  }
+
+  /** A non-person node by id within a household, or undefined. */
+  getEntity(id: string, householdId: string): Entity | undefined {
+    return (this.#snapshot.entities ?? []).find((e) => e.id === id && e.householdId === householdId);
   }
 
   /**
