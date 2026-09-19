@@ -64,6 +64,34 @@ export type EventKind =
   | 'purchase_completed';
 
 /**
+ * Where an observation entered the graph. This is the *channel*, distinct from the
+ * actor (`reportedBy`): a person and a doorbell can both report, and the difference
+ * matters when you ask "how do we know?". `bee`, `calendar` and `pharmacy` are part
+ * of the vocabulary the seams will use; only `voice`, `ring`, `device` and `system`
+ * have live producers today.
+ */
+export type EventSource =
+  | 'voice'     // a person spoke it
+  | 'ring'      // a Ring device observed it
+  | 'device'    // some other device observed it
+  | 'bee'       // an ambient wearable overheard it (seam)
+  | 'calendar'  // a calendar sync produced it (seam)
+  | 'pharmacy'  // a pharmacy system produced it (seam)
+  | 'system';   // CareCircle itself derived it
+
+/**
+ * How sure we are of the observation *itself* - deliberately separate from an
+ * obligation's `Provenance`. An event can be `observed` (a sensor saw it) while the
+ * obligation it feeds is still only `INFERRED`. Collapsing the two is exactly the
+ * leap this system refuses: evidence is not a verdict.
+ */
+export type EventConfidence =
+  | 'observed'   // a sensor saw it happen
+  | 'reported'   // a person said it happened
+  | 'inferred'   // the system derived it from other events
+  | 'confirmed'; // a person definitively decided or acted
+
+/**
  * The immutable record of something that happened. Events are append-only:
  * care state is a fold over this log, so history is never rewritten and
  * "who said what, when" is always answerable.
@@ -81,6 +109,12 @@ export interface CareEvent {
   detail?: string;
   /** Kind-specific payload. */
   data: Record<string, unknown>;
+  /** The channel it arrived through. Absent on older events; treat as `voice`. */
+  source?: EventSource;
+  /** How sure we are of the observation itself. Absent on older events. */
+  confidence?: EventConfidence;
+  /** Ids of the events this one was derived from, when it is itself an inference. */
+  derivedFrom?: string[];
 }
 
 export type ObligationStatus =

@@ -87,12 +87,14 @@ export async function seedScenario(
     await store.appendEvent({
       householdId, kind: 'medication_taken', reportedBy: 'm_margaret',
       occurredAt: todayAt(8, 10, now, NY).toISOString(),
+      source: 'voice', confidence: 'reported',
       data: { medicationId: 'med_heart', medicationName: 'heart pill', aboutMemberId: 'm_margaret' },
     });
   }
   await store.appendEvent({
     householdId, kind: 'medication_taken', reportedBy: 'm_margaret',
     occurredAt: todayAt(8, 12, now, NY).toISOString(),
+    source: 'voice', confidence: 'reported',
     data: { medicationId: 'med_thyroid', medicationName: 'thyroid tablet', aboutMemberId: 'm_margaret' },
   });
   // The evening dose is deliberately absent. Not "missed" - unrecorded.
@@ -100,6 +102,7 @@ export async function seedScenario(
   const appointment = await store.appendEvent({
     householdId, kind: 'appointment_scheduled', reportedBy: 'm_renee',
     occurredAt: cardiologyAt.toISOString(),
+    source: 'voice', confidence: 'reported',
     detail: 'Cardiology, Thursday at 10',
     data: { appointmentKind: 'cardiology', forMemberId: 'm_margaret' },
   });
@@ -132,6 +135,7 @@ export async function seedScenario(
   await store.appendEvent({
     householdId, kind: 'note_added', reportedBy: 'm_renee',
     occurredAt: todayAt(14, 20, now, NY).toISOString(),
+    source: 'voice', confidence: 'reported',
     detail: 'Mom sounded tired on the phone.',
     data: { aboutMemberId: 'm_margaret' },
   });

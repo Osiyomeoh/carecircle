@@ -88,6 +88,40 @@ test('the source signal is evidence, not a conclusion', () => {
   assert.doesNotMatch(e.spoken, /the prescription (came|arrived)/i);
 });
 
+test('a first-class event source/confidence drives the source step, not data digging', () => {
+  const source: CareEvent = {
+    id: 'e2', householdId: 'h1', kind: 'external_signal', reportedBy: 'device:ring',
+    occurredAt: '2026-03-10T14:00:00Z', recordedAt: '2026-03-10T14:00:00Z',
+    detail: 'a package was left at the door',
+    source: 'ring', confidence: 'observed', data: {},
+  };
+  const o = obligation({
+    provenance: { kind: 'INFERRED', rule: 'delivery_may_be_refill', from: 'a delivery' },
+    sourceEventId: 'e2', status: 'PROPOSED',
+  });
+  const e = explainProvenance(o, [], [source], nameOf);
+  assert.match(e.spoken, /ring signal/i);
+  assert.match(e.spoken, /evidence, not a conclusion/i);
+  assert.equal(e.chain.some((s) => s.certainty === 'observed'), true);
+});
+
+test('a system-derived source event is spoken as a suggestion, never a fact', () => {
+  const derived: CareEvent = {
+    id: 'e3', householdId: 'h1', kind: 'check_in', reportedBy: 'agent',
+    occurredAt: '2026-03-10T15:00:00Z', recordedAt: '2026-03-10T15:00:00Z',
+    detail: 'check in on Margaret', source: 'system', confidence: 'inferred',
+    derivedFrom: ['e2'], data: {},
+  };
+  const o = obligation({
+    provenance: { kind: 'INFERRED', rule: 'no_activity', from: 'no activity' },
+    sourceEventId: 'e3', status: 'PROPOSED', what: 'Check in on Margaret',
+  });
+  const e = explainProvenance(o, [], [derived], nameOf);
+  assert.match(e.spoken, /worked out|suggestion, not a fact/i);
+  assert.doesNotMatch(e.spoken, ACCUSATORY);
+  assert.doesNotMatch(e.spoken, OVERCLAIM);
+});
+
 test('ownership is taken from the obligation, not inferred from who recorded a move', () => {
   // Renee ASSIGNED it (she wrote the row), but David is the owner. The walk must not say
   // Renee owns it just because she performed the write.

@@ -17,6 +17,18 @@ test('a delivery is evidence toward the prescription, and asks - never auto-reso
   assert.ok(!('proposeObligation' in out) || out.proposeObligation === undefined);
 });
 
+test('a device signal is recorded as observed, on its own channel', () => {
+  // Event-level provenance: a signal enters as `observed` on the device's channel,
+  // never at a confidence a person's report would carry. What it MEANS stays a proposal.
+  const fromRing = interpretSignal(sig({ kind: 'delivery_arrived' }), ctx).event;
+  assert.equal(fromRing.source, 'ring');
+  assert.equal(fromRing.confidence, 'observed');
+
+  const fromOther = interpretSignal(sig({ source: 'other', kind: 'motion' }), ctx).event;
+  assert.equal(fromOther.source, 'device');
+  assert.equal(fromOther.confidence, 'observed');
+});
+
 test('no activity proposes a check-in, framed as absence not alarm', () => {
   // The inverse beat: an obligation created by a physical absence.
   const out = interpretSignal(sig({ kind: 'no_activity' }), ctx);

@@ -86,22 +86,36 @@ function origin(p: Provenance, nameOf: NameOf): ProvenanceStep {
 /** The source event the obligation was raised from, if we still have it. */
 function sourceStep(event: CareEvent | undefined, nameOf: NameOf): ProvenanceStep | undefined {
   if (!event) return undefined;
-  const src = typeof event.data?.source === 'string' ? event.data.source : undefined;
   const what = event.detail ?? event.kind.replace(/_/g, ' ');
   const when = fmt(event.occurredAt);
-  if (src) {
+  const on = when ? ` on ${when}` : '';
+  // Prefer the event's own first-class source/confidence; fall back to the legacy
+  // data.source and the actor for events written before those fields existed.
+  const src = event.source ?? (typeof event.data?.source === 'string' ? event.data.source : undefined);
+  const observed = event.confidence === 'observed'
+    || (src !== undefined && src !== 'voice' && src !== 'system');
+
+  if (observed) {
     // A sensed signal: observed, never interpreted as meaning by itself.
+    const label = src && src !== 'device' ? `${src} signal` : 'device signal';
     return {
       at: event.occurredAt,
       certainty: 'observed',
-      detail: `It started from a ${src} signal - "${what}"${when ? ` on ${when}` : ''}. A signal is evidence, not a conclusion.`,
+      detail: `It started from a ${label} - "${what}"${on}. A signal is evidence, not a conclusion.`,
+    };
+  }
+  if (event.confidence === 'inferred' || src === 'system') {
+    return {
+      at: event.occurredAt,
+      certainty: 'inferred',
+      detail: `It started from something CareCircle worked out - "${what}"${on} - which is a suggestion, not a fact.`,
     };
   }
   const who = nameOf(event.reportedBy) ?? 'someone';
   return {
     at: event.occurredAt,
     certainty: 'recorded',
-    detail: `It started from something ${who} logged - "${what}"${when ? ` on ${when}` : ''}.`,
+    detail: `It started from something ${who} logged - "${what}"${on}.`,
   };
 }
 

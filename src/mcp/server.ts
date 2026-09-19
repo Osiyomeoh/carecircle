@@ -164,6 +164,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         kind,
         reportedBy: me.id,
         occurredAt: occurredAt ?? now().toISOString(),
+        source: 'voice',
+        confidence: 'reported',
         ...(detail ? { detail } : {}),
         data: {
           ...(medicationId ? { medicationId } : {}),
@@ -237,6 +239,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         kind: 'appointment_scheduled',
         reportedBy: me.id,
         occurredAt: at,
+        source: 'voice',
+        confidence: 'reported',
         ...(detail ? { detail } : {}),
         data: { appointmentKind: kind, forMemberId: recipient.id },
       });
@@ -296,6 +300,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         kind: 'note_added',
         reportedBy: me.id,
         occurredAt: now().toISOString(),
+        source: 'voice',
+        confidence: 'reported',
         detail: note,
         data: { aboutMemberId: about, ...(unavailable ? { unavailable } : {}) },
       });
@@ -550,6 +556,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         kind: 'owner_requested',
         reportedBy: me.id,
         occurredAt: now().toISOString(),
+        source: 'voice',
+        confidence: 'confirmed',
         detail: o.what,
         data: { obligationId, askedOfId: target.memberId, delivered: delivery.delivered },
       });
@@ -605,7 +613,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         );
         await store.appendEvent({
           householdId: me.householdId, kind: 'request_answered', reportedBy: me.id,
-          occurredAt: now().toISOString(), ...(note ? { detail: note } : {}),
+          occurredAt: now().toISOString(), source: 'voice', confidence: 'confirmed',
+          ...(note ? { detail: note } : {}),
           data: { obligationId, accepted: true },
         });
         return reply(`Thanks - ${o.what} is yours now.`, {
@@ -620,7 +629,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       );
       await store.appendEvent({
         householdId: me.householdId, kind: 'request_answered', reportedBy: me.id,
-        occurredAt: now().toISOString(), ...(note ? { detail: note } : {}),
+        occurredAt: now().toISOString(), source: 'voice', confidence: 'confirmed',
+        ...(note ? { detail: note } : {}),
         data: { obligationId, accepted: false },
       });
       // A decline should move the loop forward, not dead-end it.
@@ -767,7 +777,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       });
       await store.appendEvent({
         householdId: me.householdId, kind: 'obligation_resolved', reportedBy: me.id,
-        occurredAt: now().toISOString(), ...(note ? { detail: note } : {}),
+        occurredAt: now().toISOString(), source: 'voice', confidence: 'confirmed',
+        ...(note ? { detail: note } : {}),
         data: { obligationId },
       });
       return reply(`Marked done - ${o.what}.`, { obligationId });
@@ -946,6 +957,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
         kind: 'member_notified',
         reportedBy: me.id,
         occurredAt: now().toISOString(),
+        source: 'voice',
+        confidence: 'confirmed',
         detail: message,
         data: { recipientId: recipient.id, delivered: delivery.delivered, channel: delivery.channel },
       });
@@ -1064,7 +1077,8 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
       });
       const event = await store.appendEvent({
         householdId: me.householdId, kind: 'purchase_offered', reportedBy: me.id,
-        occurredAt: now().toISOString(), detail: offer.item,
+        occurredAt: now().toISOString(), source: 'voice', confidence: 'confirmed',
+        detail: offer.item,
         data: { offer: offer as unknown as Record<string, unknown> },
       });
       return reply(offerSpoken(offer), { eventId: event.id, offer });
@@ -1105,7 +1119,7 @@ export function createCareCircleServer(ctx: ServerContext): McpServer {
 
       await store.appendEvent({
         householdId: me.householdId, kind: 'purchase_completed', reportedBy: me.id,
-        occurredAt: now().toISOString(),
+        occurredAt: now().toISOString(), source: 'voice', confidence: 'confirmed',
         detail: confirmed ? `Placed: ${offer.item}` : `Declined: ${offer.item}`,
         data: { offerId, placed: confirmed, amountCents: offer.amountCents, simulated: true },
       });

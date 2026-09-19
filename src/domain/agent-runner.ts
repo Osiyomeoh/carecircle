@@ -79,6 +79,12 @@ export async function runAgentOnce(
       kind: 'owner_requested',
       reportedBy: AGENT_ID,
       occurredAt: now.toISOString(),
+      // The agent is CareCircle itself deciding to act on what it inferred - so the
+      // channel is `system` and the certainty is `inferred`, and the act is linked
+      // back to the event the obligation came from when there is one.
+      source: 'system',
+      confidence: 'inferred',
+      ...(obligation.sourceEventId ? { derivedFrom: [obligation.sourceEventId] } : {}),
       detail: obligation.what,
       data: {
         obligationId: action.obligationId,

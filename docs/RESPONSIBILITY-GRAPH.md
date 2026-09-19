@@ -52,7 +52,7 @@ STATE         the obligation's status over its life
 | Node | In code | Status |
 |------|---------|--------|
 | Entity | `Member` + `Household` ([types.ts:16](../src/domain/types.ts)) — **people and the household only** | BUILT (people); `DELTA` for places/services/devices |
-| Event | `CareEvent`, append-only, `reportedBy` + `occurredAt`/`recordedAt` ([types.ts:71](../src/domain/types.ts)) | BUILT; `DELTA` for explicit `source`/`confidence`/`derivedFrom` |
+| Event | `CareEvent`, append-only, `reportedBy` + `occurredAt`/`recordedAt`, first-class `source`/`confidence`/`derivedFrom` ([types.ts:71](../src/domain/types.ts)) | BUILT |
 | Obligation | `Obligation` with required `provenance` ([types.ts:114](../src/domain/types.ts)) | BUILT |
 | Ownership | `ownerId` + an append-only `transitions` log ([store.ts:217](../src/store/store.ts)) | BUILT |
 | State | `ObligationStatus` state machine ([types.ts:86](../src/domain/types.ts)) | BUILT |
@@ -116,18 +116,23 @@ Every obligation says how it is known, via a discriminated union
 The confidence weight is not decoration — it multiplies into gap severity (§5), so **an
 assumption can never outrank a fact.**
 
-### `DELTA` — provenance on the *event*, not only the obligation
+### Provenance on the *event*, not only the obligation — ✅ BUILT
 
-The spec's richer event provenance (`source`, `confidence`, `timestamp`, `actor`,
-`derivedFrom[]`) is only partly in `CareEvent` today: we have `reportedBy` (actor) and
-timestamps, and `source` is implicit in `kind: 'external_signal'` + `data`. To make the
-"how do we know?" chain fully walkable we will add to `CareEvent`:
+Richer event provenance now lives on `CareEvent` itself, distinct from the obligation's
+`Provenance`:
 
 ```ts
-source: 'voice' | 'ring' | 'bee' | 'calendar' | 'system' | 'pharmacy';
-confidence: 'observed' | 'reported' | 'inferred' | 'confirmed';
+source?: 'voice' | 'ring' | 'device' | 'bee' | 'calendar' | 'pharmacy' | 'system';
+confidence?: 'observed' | 'reported' | 'inferred' | 'confirmed';
 derivedFrom?: string[];   // ids of the events this one was inferred from
 ```
+
+The fields are optional so every event written before them still loads (an absent
+`source` reads as `voice`), and they are populated at the write path: device signals
+enter as `ring`/`device` + `observed`, voice logs as `voice` + `reported`, member
+decisions as `voice` + `confirmed`, and the agent's own acts as `system` + `inferred`,
+linked back through `derivedFrom` to the event that started them. `source` is the
+*channel* an observation arrived on, deliberately separate from `reportedBy`, the actor.
 
 Worked example — the graph never collapses these three rows into one "fact":
 
@@ -222,7 +227,7 @@ This is a product, not a knowledge-graph research project. The schema is deliber
 (e.g. `needsAccessibleTransport`). *Today: person + household only; `DELTA` for the rest.*
 
 **Event** — `id`, `kind`, `householdId`, `reportedBy` (actor), `occurredAt`, `recordedAt`,
-`detail?`, `data`. *`DELTA`: `source`, `confidence`, `derivedFrom[]`.*
+`detail?`, `data`, `source?`, `confidence?`, `derivedFrom?`. *BUILT.*
 
 **Obligation** — `id`, `what`, `status`, `consequence`, **`provenance` (required)**,
 `ownerId | null`, `dueAt?`, `sourceEventId?`, `request?`, `declinedBy?`. *BUILT.*
@@ -266,9 +271,12 @@ Ordered by leverage-per-risk. None of this rebuilds the engine; it deepens the g
    ([`provenance.test.ts`](../src/domain/provenance.test.ts)): a guess is always spoken as
    a guess, an absent record is never turned into "she didn't do it", and ownership is read
    from the obligation, never inferred from who recorded a move.
-2. **Event-level provenance (`source` / `confidence` / `derivedFrom`).** Additive fields on
-   `CareEvent` with safe defaults so existing writes keep passing; `ingest_signal` starts
-   setting `source`/`confidence`, inferences set `derivedFrom`. Makes the chain in step 1 rich.
+2. **Event-level provenance (`source` / `confidence` / `derivedFrom`).** ✅ **DONE.**
+   Additive optional fields on `CareEvent` ([types.ts](../src/domain/types.ts)) with safe
+   defaults so every existing write still passes. Populated across the write path — signals
+   `observed`, voice logs `reported`, member decisions `confirmed`, the agent `inferred`
+   with `derivedFrom` back to the originating event — and surfaced by `get_provenance`, which
+   now speaks a device signal, a person's report, and a system inference in their own voice.
 3. **First-class `Entity` for non-people + accessibility attributes.** Introduce
    `type: person | place | service | device` and `attributes` (`needsAccessibleTransport`,
    `requiresAssistance`). This is the biggest change (it is the one true widening) and it

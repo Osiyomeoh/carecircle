@@ -78,6 +78,10 @@ export function interpretSignal(
     kind: 'external_signal' as const,
     reportedBy: `device:${signal.source}`,
     occurredAt: signal.at,
+    // A device saw it: the channel is the device, and the certainty is `observed` -
+    // never higher. What it *means* is left to an INFERRED proposal a human confirms.
+    source: (signal.source === 'ring' ? 'ring' : 'device') as 'ring' | 'device',
+    confidence: 'observed' as const,
     ...(signal.detail ? { detail: signal.detail } : {}),
     data: { source: signal.source, signalKind: signal.kind, ...(signal.raw ? { raw: signal.raw } : {}) },
   };
