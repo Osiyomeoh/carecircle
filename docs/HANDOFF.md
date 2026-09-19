@@ -58,7 +58,7 @@ layer can produce; no single device could.
 ## Track strategy (locked, per the official rules)
 
 - **Primary track: Alexa+ (MCP).** We qualify cleanly - self-hosted MCP server, spec
-  2025-11-25, Streamable HTTP, called in code (22 tools), live URL. Top-prize track.
+  2025-11-25, Streamable HTTP, called in code (23 tools), live URL. Top-prize track.
 - **Mini challenges: AWS Builder + Open Source.** Both qualify (Bedrock/DynamoDB/App
   Runner/SNS documented; `@carecircle/care-events` MIT package). A project can **win
   only one mini prize**, but entering both is allowed.
@@ -103,7 +103,7 @@ verdict.
 
 ## What's built vs. adapter-ready
 
-**Built + tested (live code):** Alexa+ MCP server (22 tools, session-bound identity),
+**Built + tested (live code):** Alexa+ MCP server (23 tools, session-bound identity),
 Care Gap engine (deterministic; severity is a stated risk model, see below),
 trust/provenance model, `ingest_signal` (the real
 Ring/Bee seam - any external signal → INFERRED proposal), ownership/claiming,
@@ -767,8 +767,8 @@ cards** (the way a TV OS surfaces an alert), not a board a family reads. It is o
 - Simulator (judge-facing UI): `https://krqi2tpsif.us-east-1.awsapprunner.com`
 - Ambient TV surface (real React Native, web build): `https://krqi2tpsif.us-east-1.awsapprunner.com/tv-native/`
 - Reproduce end-to-end with no AWS/keys: `npm ci && npm run story`
-- Measured claims, both re-verified 2026-09-18: `npm run evals` -> **126/135 = 93.3%**
-  (reproduced exactly); `npm run trust-benchmark` -> **raw Bedrock 6/12 = 50% false
+- Measured claims, re-verified 2026-09-19: `npm run evals` -> **~92-93% (124-126/135 across runs;
+  temp 0 but a couple of borderline cases flip)**; `npm run trust-benchmark` -> **raw Bedrock 6/12 = 50% false
   accusation vs CareCircle 0/12**. Note the eval's *split* moves between runs even
   though the total holds - the model is sampled, not deterministic - so do not quote
   "authored 100%" as a standing fact. The latest run was 67/68 authored, 59/67
@@ -898,7 +898,7 @@ Highest-leverage item: first-run onboarding so a real family starts their OWN ci
 (the `create_household` / `add_member` / `add_medication` tools and self-signup identity
 already exist; nothing wraps them into an experience). Then un-seed for real use, the
 day-one "aha", and the store listing (Amazon certification requires it). Do NOT add engine
-depth. Still owed separately: `outputSchema` on all 22 tools (MCP design-guide audit).
+depth. Still owed separately: `outputSchema` on all 23 tools (MCP design-guide audit).
 
 ## What we learned this session
 

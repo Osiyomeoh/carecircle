@@ -66,7 +66,7 @@ The judges' own advice is to beware glossy vapor. CareCircle is the opposite:
 
 - A **live MCP server** a judge can hit now (Streamable HTTP, spec 2025-11-25).
 - **290 automated tests**, strict TypeScript, an adversarial suite, CI.
-- Tool selection **measured at 93.3%** (126/135, half of them held out) on Amazon
+- Tool selection **measured at ~92-93%** (124-126/135 across runs, half of them held out) on Amazon
   Bedrock - `npm run evals`, and it reproduces.
 - The trust model **measured on two axes**: a raw Sonnet 4.5 turns a missing dose into
   "she missed it" in **~50-58%** of absence cases, and reports a support worker's
@@ -81,7 +81,7 @@ between running code and a designed contract. MCP is the seam: it is what lets e
 different surfaces feed one shared responsibility system.
 
 **Built and tested (live code):**
-- Alexa+ MCP server - Streamable HTTP, spec 2025-11-25, **22 tools**, session-bound identity.
+- Alexa+ MCP server - Streamable HTTP, spec 2025-11-25, **23 tools**, session-bound identity.
 - The Care Gap engine - `EVENTS → OBLIGATIONS → OWNERSHIP`, deterministic, never narrated by a model.
 - The trust / provenance model - `CONFIRMED` / `INFERRED` / `NOT_LOGGED`, enforced in the type system and tests (**Known ≠ Assumed**).
 - `ingest_signal` - the generic external-signal tool: any physical or wearable event becomes an `INFERRED` proposal a human must confirm. **This is the Ring and Bee seam, and it runs today.**
@@ -220,11 +220,11 @@ graceful shutdown, DynamoDB persistence, App Runner deployment), runtime onboard
 
 ## How well it's built
 
-- MCP spec **2025-11-25** over **Streamable HTTP**; 22 tools, session-bound identity
+- MCP spec **2025-11-25** over **Streamable HTTP**; 23 tools, session-bound identity
   (a member's credential, never the conversation, decides who they are).
-- **Measured tool selection: 93.3% first-tool accuracy (126/135)** on Claude Sonnet 4.5
+- **Measured tool selection: ~92-93% first-tool accuracy (124-126/135 across runs)** on Claude Sonnet 4.5
   via Bedrock, over 68 authored cases plus **67 held-out cases never tuned against**.
-  Reproducible: `npm run evals`.
+  Reproducible: `npm run evals` (temperature 0, but a couple of borderline cases flip run-to-run, so we quote the range).
 
   **On re-running it.** The headline reproduces exactly; the split between the two
   halves does not, because the model is sampled rather than deterministic. Our
@@ -263,7 +263,7 @@ cast; "Server not initialized" errors are opaque. *Onboarding:* fast to hello-wo
 
 **Amazon Bedrock (Claude Sonnet 4.5)** - *used for* the Alexa+ planner (NL → tool
 selection) and as the AWS Builder integration. *Worked:* `Converse` is simple; Sonnet
-4.5 tool selection is strong (93.3%). *Needs work:* a model-access grant does not imply
+4.5 tool selection is strong (~92-93%). *Needs work:* a model-access grant does not imply
 the caller has `bedrock:InvokeModel` (two independent gates, identical-looking errors);
 the newer models must be called by inference-profile id, not model id; you can't
 self-diagnose quota headroom without a separate Service Quotas permission. *Onboarding:*
@@ -330,7 +330,7 @@ saved us hours - each one hit while building CareCircle this period.
 ## AWS Builder mini - which services, how, why
 
 - **Bedrock (Sonnet 4.5)** is the planner that turns a spoken sentence into a tool call
-  - the reasoning core, measured at 93.3%.
+  - the reasoning core, measured at ~92-93%.
 - **DynamoDB** is the durable care record (single-table, diff-based writes).
 - **App Runner + CodeBuild + ECR** build and serve the MCP server at a public URL.
 - **SNS** delivers `notify_member` messages for real (record-only fallback otherwise).

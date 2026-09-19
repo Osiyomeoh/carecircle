@@ -23,7 +23,8 @@
     "preflight": "tsx --env-file-if-exists=.env scripts/preflight.ts",
     "trust-benchmark": "tsx --env-file-if-exists=.env scripts/trust-benchmark.ts",
     "ring:simulate": "tsx src/demo/ring-simulate.ts",
-    "beat": "tsx --env-file-if-exists=.env scripts/beat.ts"
+    "beat": "tsx --env-file-if-exists=.env scripts/beat.ts",
+    "trust-distribution": "tsx --env-file-if-exists=.env scripts/trust-distribution.ts"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock": "^3.1131.0",

@@ -103,7 +103,7 @@ screen. This both sells and de-risks.
 4. Record the demo against the *customer* story (a real family setting up), not the
    seeded Margaret walkthrough — this doubles as onboarding proof.
 5. Only then: back to friction log and `outputSchema` (still owed from the MCP design-guide
-   audit — 22 tools, 0 `outputSchema`; see that thread in HANDOFF).
+   audit — 23 tools, 0 `outputSchema`; see that thread in HANDOFF).
 
 ## What NOT to do Monday
 
@@ -117,7 +117,7 @@ screen. This both sells and de-risks.
 
 - 290 tests green, typecheck clean, working tree clean, all pushed to `origin/main`.
 - Live: MCP `https://ypq2dfq2p7.us-east-1.awsapprunner.com`, sim
-  `https://krqi2tpsif.us-east-1.awsapprunner.com`. 22 tools. Agent heartbeat on
+  `https://krqi2tpsif.us-east-1.awsapprunner.com`. 23 tools. Agent heartbeat on
   (`CARECIRCLE_AGENT_INTERVAL_MS=900000`).
 - Deploy: commit first, `set -a; . ./.env; set +a`, `AWS_PROFILE=conductor
   ./infra/deploy-mcp.sh`, then `start-deployment` on BOTH services (the `:latest` image

@@ -166,8 +166,8 @@ Each of these was considered and cut for a reason worth remembering:
   explained. The diagram lives in the repo, where a judge can pause on it.
 - **The Fire TV APK.** Shown as the `/tv-native` surface instead - the point is the
   shared display, and the APK costs 15 seconds to prove and proves less.
-- **The eval number (93.3%).** It is a tool-selection metric and inviting a judge to
-  ask "what about the other 6.7%?" mid-video costs more than the number earns. It is
+- **The eval number (~92-93%).** It is a tool-selection metric and inviting a judge to
+  ask "what about the other ~7-8%?" mid-video costs more than the number earns. It is
   in the writeup with the miss analysis.
 - **Voice-accuracy tooling (Transcribe, the repair layer).** Real work, but it is
   infrastructure for the demo, not the argument.

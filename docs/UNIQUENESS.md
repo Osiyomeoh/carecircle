@@ -19,7 +19,7 @@ services, state across sessions, purchasing, media (cards)." We built for the se
 | 4 | **Trust model** | Whatever the model says is treated as fact | **Known ≠ Assumed** - an inference or an absence can never masquerade as a confirmed fact; enforced in types and tests |
 | 5 | **Proactivity** | Answers only what it's asked | Surfaces **what nobody owns** - the assistant as an *accountability layer*, not a lookup |
 | 6 | **Multi-surface** | One app, one API behind it | One record fed by **voice + doorbell** today, with a documented adapter seam for more |
-| 7 | **Measured quality** | "It works in the demo" | **93.3% held-out tool-selection accuracy** on Bedrock, published + reproducible |
+| 7 | **Measured quality** | "It works in the demo" | **~92-93% held-out tool-selection accuracy** (124-126/135 across runs) on Bedrock, published + reproducible |
 | 8 | **Production reality** | A laptop demo | Deployed on App Runner, DynamoDB-backed, **82 tests + adversarial suite**, CI |
 
 ## The one-line differentiator

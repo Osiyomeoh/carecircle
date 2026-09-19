@@ -39,7 +39,7 @@
   <text x="290" y="224" class="t">Alexa+ planner</text>
   <text x="290" y="246" class="s">Amazon Bedrock</text>
   <text x="290" y="264" class="s">Claude Sonnet 4.5</text>
-  <text x="290" y="290" class="s" font-weight="700" fill="#ff9900">93.3% tool accuracy</text>
+  <text x="290" y="290" class="s" font-weight="700" fill="#ff9900">~92-93% tool accuracy</text>
 
   <!-- MCP SERVER -->
   <text x="540" y="116" class="lbl">MCP SERVER</text>

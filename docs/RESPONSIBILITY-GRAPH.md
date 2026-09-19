@@ -293,8 +293,11 @@ all tests stay green and the trust benchmark stays at 0% false accusations, gate
    type, the same tools, and the care recipient can still reject by voice. Honesty is proven by
    an adversarial + property suite ([`accessibility.test.ts`](../src/domain/accessibility.test.ts)):
    the note never demeans over generated inputs, and attaching a need never lowers a score.
-   A third **dignity dimension** in the trust benchmark measures how often a raw LLM frames
-   the person as a burden/helpless, versus the engine's structurally-clean line.
+   A third **dignity dimension** in the trust benchmark probes the same failure in a raw LLM
+   (framing the person as a burden/helpless). Honestly: on these five prompts at temperature 0
+   the raw model mostly *stays* clean, so the argument here is not "raw fails and we fix it" —
+   it is that our line is structurally *incapable* of the failure (a pure function under a
+   property test), where a model is merely unlikely to reach for it on any given day.
 
 Everything past this — richer scoring, more entity types, nicer cards — is amplification.
 

@@ -25,8 +25,8 @@ what happened        what must happen        who has it
 ```
 
 **And it is real - not a mockup.** Live MCP server you can hit right now, **311 tests**
-(including property-based proofs of the risk model), **93.3%** measured tool-selection
-accuracy on Amazon Bedrock, and a trust model **measured at 0% false accusations where a
+(including property-based proofs of the risk model), **~92-93%** measured tool-selection
+accuracy on Amazon Bedrock (124-126/135 across repeated runs), and a trust model **measured at 0% false accusations where a
 raw LLM hits 50%**. See it end-to-end in ~60 seconds, no AWS or keys required:
 
 ```bash
@@ -402,15 +402,17 @@ npm run demo:reset && npm run dev   # in one shell
 npm run evals                       # in another
 ```
 
-**Result: 93.3% first-tool accuracy (126 / 135), 0 errored - Claude Sonnet 4.5 on
-Amazon Bedrock.**
+**Result: ~92-93% first-tool accuracy (124-126 / 135 across repeated runs, 0 errored) -
+Claude Sonnet 4.5 on Amazon Bedrock.** The planner runs at temperature 0, yet a couple of
+borderline cases still flip run-to-run, so we quote the range rather than a single
+false-precision decimal - a live model is not perfectly reproducible and we don't pretend it is.
 
 The corpus is deliberately split so the number cannot be gamed:
 
-- **68 authored cases**, used while tuning the tool descriptions - **100%**.
+- **68 authored cases**, used while tuning the tool descriptions - **~100%**.
 - **67 held-out cases**, written afterward and never tuned against (harder phrasings,
   multi-intent, wrong-role attempts, the purchase flow, and out-of-scope lines that
-  name care words on purpose) - **86.6%**.
+  name care words on purpose) - **~86-87%**.
 
 The model receives the real tool definitions and one utterance, using the exact
 planner prompt the simulator ships (imported, not a friendlier copy written to
@@ -418,7 +420,7 @@ score well); we record its first tool choice and execute nothing. Cases that nev
 reach the model - credentials, throttling - are excluded from the figure rather than
 counted as wrong, because a number that can lie is worse than no number.
 
-**Honest limitations** (the nine held-out misses, unfixed on purpose): reschedules
+**Honest limitations** (the ~9-11 held-out misses, unfixed on purpose): reschedules
 ("move her cardiology to Friday"), vague-time scheduling ("a flu shot next week
 sometime"), a couple of elliptical unavailabilities ("count me out this weekend"),
 and cold purchase confirmations with no offer in context. These are the edges a
@@ -426,7 +428,7 @@ larger corpus would harden next.
 
 We went from an early 85.3% to 100% on the authored set by finding the exact failures
 the harness named and rewriting the ambiguous descriptions - then re-measured on the
-held-out set to get the honest 93.3%.
+held-out set to get the honest ~92-93%.
 
 Demo credentials (one per member - the identity model in miniature):
 
